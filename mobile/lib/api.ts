@@ -5,6 +5,11 @@ import type {
   SavedClothingItem,
   ClothingItemBrief,
   ClothingItemDetail,
+  OutfitRecommendationResponse,
+  OutfitFeedbackRequest,
+  OutfitFavoriteRequest,
+  OutfitFavoriteResponse,
+  OutfitFavoriteItem,
 } from "./types";
 import { AppError } from "./errors";
 
@@ -139,4 +144,57 @@ export async function checkHealth(): Promise<boolean> {
   } catch {
     return false;
   }
+}
+
+// ── Outfit Recommendations (Phase 4A) ──
+
+export async function getOutfitRecommendations(params?: {
+  occasion?: string;
+  season?: string;
+}): Promise<OutfitRecommendationResponse> {
+  const { data } = await api.get<OutfitRecommendationResponse>(
+    "/recommendations",
+    { params },
+  );
+  return data;
+}
+
+// ── Outfit Feedback ──
+
+export async function submitOutfitFeedback(
+  params: OutfitFeedbackRequest,
+): Promise<void> {
+  await api.post("/recommendations/feedback", params);
+}
+
+// ── Outfit Favorites ──
+
+export async function addOutfitFavorite(
+  params: OutfitFavoriteRequest,
+): Promise<OutfitFavoriteResponse> {
+  const { data } = await api.post<OutfitFavoriteResponse>(
+    "/recommendations/favorites",
+    params,
+  );
+  return data;
+}
+
+export async function removeOutfitFavorite(outfitId: string): Promise<void> {
+  await api.delete(`/recommendations/favorites/${outfitId}`);
+}
+
+export async function listOutfitFavorites(): Promise<OutfitFavoriteItem[]> {
+  const { data } = await api.get<OutfitFavoriteItem[]>(
+    "/recommendations/favorites",
+  );
+  return data;
+}
+
+export async function checkOutfitFavorite(
+  outfitId: string,
+): Promise<boolean> {
+  const { data } = await api.get<{ saved: boolean }>(
+    `/recommendations/favorites/${outfitId}`,
+  );
+  return data.saved;
 }

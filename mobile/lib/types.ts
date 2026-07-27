@@ -75,3 +75,57 @@ export interface ClothingItemDetail {
   created_at: string;
   updated_at: string;
 }
+
+// ── Outfit recommendations (Phase 4A) ──
+
+/** An item within a recommended outfit. */
+export interface OutfitItem {
+  id: string;
+  attributes: Record<string, unknown>;
+  thumbnail_url: string | null;
+}
+
+/** One scored outfit recommendation. */
+export interface OutfitRecommendationItem {
+  outfit_id: string;
+  outfit_items: OutfitItem[];
+  score: number;
+  explanation: string;
+  outfit_category: string;
+}
+
+/** Response from GET /recommendations (outfit engine). */
+export interface OutfitRecommendationResponse {
+  recommendations: OutfitRecommendationItem[];
+}
+
+// ── Outfit feedback ──
+
+export interface OutfitFeedbackRequest {
+  outfit_id: string;
+  feedback: "like" | "dislike";
+}
+
+export interface OutfitFeedbackResponse {
+  feedback: string;
+}
+
+// ── Outfit favorites ──
+
+export interface OutfitFavoriteRequest {
+  outfit_id: string;
+  outfit_data: OutfitRecommendationItem;
+}
+
+export interface OutfitFavoriteResponse {
+  id: string;
+  outfit_id: string;
+  created_at: string;
+}
+
+export interface OutfitFavoriteItem {
+  id: string;
+  outfit_id: string;
+  outfit_data: OutfitRecommendationItem;
+  created_at: string;
+}

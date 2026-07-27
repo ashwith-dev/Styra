@@ -48,6 +48,7 @@ export default function WardrobeScreen() {
       <View style={styles.header}>
         <Text style={styles.title}>My Wardrobe</Text>
         <View style={styles.headerRight}>
+          <Button label="Outfits" onPress={() => router.push("/recommendations")} variant="ghost" />
           <Button label="+ Add" onPress={() => router.push("/upload/capture")} variant="ghost" />
           <Button label="Sign Out" onPress={signOut} variant="ghost" />
         </View>

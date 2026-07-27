@@ -72,7 +72,7 @@ class UpdateClothingRequest(BaseModel):
 
 
 # ---------------------------------------------------------------------------
-# POST /recommendations
+# POST /recommendations  (existing — item-based similarity via pgvector)
 # ---------------------------------------------------------------------------
 class RecommendationRequest(BaseModel):
     clothing_item_id: str
@@ -89,3 +89,50 @@ class RecommendationItem(BaseModel):
 class RecommendationResponse(BaseModel):
     source_item_id: str
     recommendations: list[RecommendationItem]
+
+
+# ---------------------------------------------------------------------------
+# GET /recommendations  (new — outfit-based AI stylist engine)
+# ---------------------------------------------------------------------------
+class OutfitItem(BaseModel):
+    id: str
+    attributes: dict
+    thumbnail_url: Optional[str] = None
+
+
+class OutfitRecommendationItem(BaseModel):
+    outfit_id: str
+    outfit_items: list[OutfitItem]
+    score: float
+    explanation: str
+    outfit_category: str
+
+
+class OutfitRecommendationResponse(BaseModel):
+    recommendations: list[OutfitRecommendationItem]
+
+
+# ---------------------------------------------------------------------------
+# POST /recommendations/feedback  — like/dislike an outfit
+# ---------------------------------------------------------------------------
+class OutfitFeedbackRequest(BaseModel):
+    outfit_id: str
+    feedback: str  # "like" or "dislike"
+
+
+class OutfitFeedbackResponse(BaseModel):
+    feedback: str
+
+
+# ---------------------------------------------------------------------------
+# POST /recommendations/favorites  — save an outfit as favourite
+# ---------------------------------------------------------------------------
+class OutfitFavoriteRequest(BaseModel):
+    outfit_id: str
+    outfit_data: OutfitRecommendationItem
+
+
+class OutfitFavoriteResponse(BaseModel):
+    id: str
+    outfit_id: str
+    created_at: str

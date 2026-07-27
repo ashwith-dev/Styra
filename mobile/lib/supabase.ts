@@ -1,7 +1,9 @@
 import { createClient } from "@supabase/supabase-js";
 import * as SecureStore from "expo-secure-store";
 
-// SecureStore-based adapter for React Native (persists session across restarts)
+// SecureStore-based adapter for React Native (persists session across restarts).
+// All operations are wrapped in try/catch so that keychain failures on
+// unsupported devices or transient hardware errors don't crash the auth flow.
 export const ExpoSecureStoreAdapter = {
   getItem: async (key: string): Promise<string | null> => {
     try {
@@ -11,10 +13,20 @@ export const ExpoSecureStoreAdapter = {
     }
   },
   setItem: async (key: string, value: string): Promise<void> => {
-    await SecureStore.setItemAsync(key, value);
+    try {
+      await SecureStore.setItemAsync(key, value);
+    } catch {
+      // Write failures are non-fatal: the session token will be missing
+      // on next launch, forcing a fresh sign-in. No crash.
+    }
   },
   removeItem: async (key: string): Promise<void> => {
-    await SecureStore.deleteItemAsync(key);
+    try {
+      await SecureStore.deleteItemAsync(key);
+    } catch {
+      // Delete failures are non-fatal: stale tokens are harmless and
+      // will be overwritten or ignored by the auth client.
+    }
   },
 };
 

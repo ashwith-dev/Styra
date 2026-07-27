@@ -3,3 +3,4 @@ export { Input } from "./Input";
 export { LoadingOverlay } from "./LoadingOverlay";
 export { ErrorMessage } from "./ErrorMessage";
 export { SearchBar } from "./SearchBar";
+export { ErrorBoundary } from "./ErrorBoundary";

@@ -142,7 +142,7 @@ export default function ItemDetailScreen() {
     return (
       <View style={styles.centered}>
         <ErrorMessage message={error || "Could not load item."} onRetry={loadItem} />
-        <Button label="Back to Wardrobe" onPress={() => router.back()} variant="outline" />
+        <Button label="Back to Wardrobe" onPress={() => router.replace("/wardrobe")} variant="outline" />
       </View>
     );
   }
