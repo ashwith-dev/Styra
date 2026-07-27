@@ -36,12 +36,15 @@ export const ClothingCard = memo(function ClothingCard({
       onPress={onPress}
       onLongPress={onLongPress}
       activeOpacity={0.8}
-      accessibilityLabel={`${getLabel(attrs)}, double tap to view`}
+      accessibilityRole="imagebutton"
+      accessibilityLabel={getLabel(attrs)}
+      accessibilityHint="Double tap to view details, long press to delete"
     >
       <CachedImage
         uri={imageUrl}
         style={styles.image}
         resizeMode="cover"
+        accessibilityLabel={`${getLabel(attrs)} photo`}
       />
       <View style={styles.info}>
         <Text style={styles.label} numberOfLines={1}>

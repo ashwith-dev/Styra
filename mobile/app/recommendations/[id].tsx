@@ -32,6 +32,9 @@ const OutfitItemRow = memo(function OutfitItemRow({ item }: { item: any }) {
       style={styles.itemRow}
       activeOpacity={0.7}
       onPress={() => router.push(`/items/${item.id}`)}
+      accessibilityRole="button"
+      accessibilityLabel={`${itemLabel(item.attributes)}, ${attrValue(item.attributes, "category")}`}
+      accessibilityHint="View item details"
     >
       <CachedImage
         uri={item.thumbnail_url}
@@ -84,6 +87,9 @@ const FeedbackSection = memo(function FeedbackSection({
           ]}
           onPress={() => onFeedback("like")}
           activeOpacity={0.7}
+          accessibilityRole="button"
+          accessibilityLabel="Like this outfit"
+          accessibilityState={{ selected: feedback === "like" }}
         >
           <Text style={styles.feedbackIcon}>👍</Text>
           <Text
@@ -102,6 +108,9 @@ const FeedbackSection = memo(function FeedbackSection({
           ]}
           onPress={() => onFeedback("dislike")}
           activeOpacity={0.7}
+          accessibilityRole="button"
+          accessibilityLabel="Dislike this outfit"
+          accessibilityState={{ selected: feedback === "dislike" }}
         >
           <Text style={styles.feedbackIcon}>👎</Text>
           <Text
@@ -225,6 +234,8 @@ export default function OutfitDetailScreen() {
           <TouchableOpacity
             onPress={() => router.back()}
             style={styles.backButton}
+            accessibilityRole="button"
+            accessibilityLabel="Go back to recommendations"
           >
             <Text style={styles.backLabel}>← Back</Text>
           </TouchableOpacity>
@@ -267,6 +278,8 @@ export default function OutfitDetailScreen() {
             onPress={handleSave}
             disabled={saving}
             activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel={saved ? "Unsave outfit" : "Save outfit"}
           >
             <Text style={[styles.saveIcon, saved && styles.saveIconActive]}>
               {saved ? "\u2605" : "\u2606"}
@@ -323,6 +336,10 @@ const styles = StyleSheet.create({
   },
   backButton: {
     alignSelf: "flex-start",
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.sm,
+    minWidth: 44,
+    minHeight: 44,
   },
   backLabel: {
     fontSize: fontSize.md,

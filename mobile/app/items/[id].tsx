@@ -164,7 +164,10 @@ export default function ItemDetailScreen() {
           </View>
         )}
 
-        <ScrollView contentContainerStyle={styles.scrollContent}>
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+        >
           <CachedImage
             uri={item.segmented_image_url}
             style={styles.image}

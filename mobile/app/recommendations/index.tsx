@@ -259,6 +259,9 @@ export default function RecommendationsScreen() {
           <TouchableOpacity
             activeOpacity={0.7}
             onPress={() => handleCardPress(index)}
+            accessibilityRole="button"
+            accessibilityLabel={`${formatCategory(item.outfit_category)} outfit, ${item.score.toFixed(0)}% match`}
+            accessibilityHint="View outfit details"
           >
             <RecommendationCard rec={item} />
           </TouchableOpacity>

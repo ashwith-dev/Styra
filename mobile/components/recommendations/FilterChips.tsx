@@ -23,6 +23,9 @@ export const FilterChips = memo(function FilterChips({ options, selected, onSele
             style={[styles.chip, active && styles.chipActive]}
             onPress={() => onSelect(opt.value)}
             activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel={opt.label}
+            accessibilityState={{ selected: active }}
           >
             <Text style={[styles.chipText, active && styles.chipTextActive]}>
               {opt.label}
@@ -47,6 +50,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.borderLight,
+    minHeight: 44,
   },
   chipActive: {
     backgroundColor: colors.primary,

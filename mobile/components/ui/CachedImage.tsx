@@ -7,6 +7,7 @@ interface CachedImageProps {
   style: ImageStyle;
   resizeMode?: "cover" | "contain" | "stretch";
   placeholder?: string;
+  accessibilityLabel?: string;
 }
 
 export function CachedImage({
@@ -14,6 +15,7 @@ export function CachedImage({
   style,
   resizeMode = "cover",
   placeholder = "📷",
+  accessibilityLabel,
 }: CachedImageProps) {
   const [failed, setFailed] = useState(!uri);
 
@@ -31,6 +33,7 @@ export function CachedImage({
       style={style}
       resizeMode={resizeMode}
       onError={() => setFailed(true)}
+      accessibilityLabel={accessibilityLabel}
     />
   );
 }

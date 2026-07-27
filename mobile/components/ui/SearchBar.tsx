@@ -14,7 +14,7 @@ export function SearchBar({
 }: SearchBarProps) {
   return (
     <View style={styles.container}>
-      <Text style={styles.icon}>🔍</Text>
+      <Text style={styles.icon} accessibilityElementsHidden>🔍</Text>
       <TextInput
         style={styles.input}
         value={value}
@@ -24,9 +24,16 @@ export function SearchBar({
         autoCapitalize="none"
         autoCorrect={false}
         returnKeyType="search"
+        accessibilityLabel="Search wardrobe"
       />
       {value.length > 0 && (
-        <TouchableOpacity onPress={() => onChangeText("")} style={styles.clear}>
+        <TouchableOpacity
+          onPress={() => onChangeText("")}
+          style={styles.clear}
+          accessibilityRole="button"
+          accessibilityLabel="Clear search"
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        >
           <Text style={styles.clearText}>✕</Text>
         </TouchableOpacity>
       )}

@@ -66,6 +66,9 @@ function SettingsSwitchRow({
         onValueChange={onValueChange}
         trackColor={{ false: colors.border, true: colors.primary }}
         thumbColor="#FFFFFF"
+        accessibilityRole="switch"
+        accessibilityLabel={label}
+        accessibilityState={{ checked: value }}
       />
     </View>
   );

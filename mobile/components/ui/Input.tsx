@@ -20,7 +20,11 @@ export function Input({
 }: InputProps) {
   return (
     <View style={styles.wrapper}>
-      {label && <Text style={styles.label}>{label}</Text>}
+      {label && (
+        <Text style={styles.label} accessibilityRole="text">
+          {label}
+        </Text>
+      )}
       <TextInput
         style={[
           styles.input,
@@ -29,9 +33,14 @@ export function Input({
         ]}
         placeholderTextColor={colors.textTertiary}
         autoCapitalize="none"
+        accessibilityLabel={label}
         {...rest}
       />
-      {error && <Text style={styles.error}>{error}</Text>}
+      {error && (
+        <Text style={styles.error} accessibilityRole="alert">
+          {error}
+        </Text>
+      )}
     </View>
   );
 }

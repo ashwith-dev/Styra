@@ -10,6 +10,7 @@
 const REQUIRED_VARS = [
   ["EXPO_PUBLIC_SUPABASE_URL", "Supabase project URL"],
   ["EXPO_PUBLIC_SUPABASE_ANON_KEY", "Supabase anonymous key"],
+  ["EXPO_PUBLIC_API_URL", "Backend API URL"],
 ] as const;
 
 export function validateEnv(): void {

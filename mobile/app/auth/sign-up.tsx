@@ -60,6 +60,7 @@ export default function SignUp() {
         onChangeText={(t) => { setEmail(t); setError(null); }}
         keyboardType="email-address"
         autoComplete="email"
+        returnKeyType="next"
       />
 
       <Input
@@ -69,6 +70,8 @@ export default function SignUp() {
         onChangeText={(t) => { setPassword(t); setError(null); }}
         secureTextEntry
         autoComplete="new-password"
+        returnKeyType="go"
+        onSubmitEditing={handleSignUp}
       />
 
       {error && <Text style={styles.error}>{error}</Text>}

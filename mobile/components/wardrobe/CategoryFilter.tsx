@@ -32,6 +32,9 @@ export const CategoryFilter = memo(function CategoryFilter({ selected, onSelect 
             style={[styles.chip, active && styles.chipActive]}
             onPress={() => onSelect(cat.key)}
             activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel={cat.label}
+            accessibilityState={{ selected: active }}
           >
             <Text style={[styles.chipText, active && styles.chipTextActive]}>
               {cat.label}
@@ -56,6 +59,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.borderLight,
+    minHeight: 44,
   },
   chipActive: {
     backgroundColor: colors.primary,
