@@ -1,8 +1,6 @@
 import { useState } from "react";
 import {
-  View,
   Text,
-  Alert,
   KeyboardAvoidingView,
   Platform,
   StyleSheet,

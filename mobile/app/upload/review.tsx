@@ -1,12 +1,13 @@
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useEffect, useMemo } from "react";
 import {
   View,
   Text,
   Image,
   ScrollView,
   StyleSheet,
+  BackHandler,
 } from "react-native";
-import { router, useLocalSearchParams } from "expo-router";
+import { router, useLocalSearchParams, useNavigation } from "expo-router";
 import * as api from "../../lib/api";
 import { getUserFacingMessage } from "../../lib/errors";
 import type { AIPipelineResult } from "../../lib/types";
@@ -63,6 +64,24 @@ export default function ReviewScreen() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [state, setState] = useState<ScreenState>("review");
   const [saveError, setSaveError] = useState<string | null>(null);
+
+  // Block leaving the screen while a save is in flight, so navigation can't
+  // unmount mid-request.
+  const navigation = useNavigation();
+  const saving = state === "saving";
+
+  useEffect(() => {
+    navigation.setOptions({
+      gestureEnabled: !saving,
+      headerBackVisible: !saving,
+    });
+  }, [navigation, saving]);
+
+  useEffect(() => {
+    if (!saving) return;
+    const sub = BackHandler.addEventListener("hardwareBackPress", () => true);
+    return () => sub.remove();
+  }, [saving]);
 
   // ── Derived values ──
 

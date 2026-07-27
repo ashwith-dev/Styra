@@ -4,9 +4,8 @@ import {
   ActivityIndicator,
   StyleSheet,
   type ViewStyle,
-  type TextStyle,
 } from "react-native";
-import { colors, fontSize, fontWeight, borderRadius, spacing } from "../../lib/theme";
+import { colors, fontSize, fontWeight, borderRadius } from "../../lib/theme";
 
 interface ButtonProps {
   label: string;

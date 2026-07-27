@@ -1,13 +1,13 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   View,
   Text,
   Image,
   StyleSheet,
-  Alert,
   ScrollView,
+  BackHandler,
 } from "react-native";
-import { router } from "expo-router";
+import { router, useNavigation } from "expo-router";
 import * as api from "../../lib/api";
 import { useImagePicker } from "../../hooks/useImagePicker";
 import { Button, LoadingOverlay, ErrorMessage } from "../../components/ui";
@@ -20,6 +20,24 @@ export default function CaptureScreen() {
   const { image, processing, takePhoto, pickFromGallery, reset } = useImagePicker();
   const [state, setState] = useState<ScreenState>("select");
   const [error, setError] = useState<string | null>(null);
+
+  // Block leaving the screen while analysis is in flight, so the navigation
+  // push to /upload/review can't fire after the user has backed out.
+  const navigation = useNavigation();
+  const analyzing = state === "analyzing";
+
+  useEffect(() => {
+    navigation.setOptions({
+      gestureEnabled: !analyzing,
+      headerBackVisible: !analyzing,
+    });
+  }, [navigation, analyzing]);
+
+  useEffect(() => {
+    if (!analyzing) return;
+    const sub = BackHandler.addEventListener("hardwareBackPress", () => true);
+    return () => sub.remove();
+  }, [analyzing]);
 
   const handleAnalyze = useCallback(async () => {
     if (!image) return;

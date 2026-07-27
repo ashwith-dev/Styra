@@ -2,7 +2,7 @@ import { createClient } from "@supabase/supabase-js";
 import * as SecureStore from "expo-secure-store";
 
 // SecureStore-based adapter for React Native (persists session across restarts)
-const ExpoSecureStoreAdapter = {
+export const ExpoSecureStoreAdapter = {
   getItem: async (key: string): Promise<string | null> => {
     try {
       return await SecureStore.getItemAsync(key);
@@ -14,7 +14,7 @@ const ExpoSecureStoreAdapter = {
     await SecureStore.setItemAsync(key, value);
   },
   removeItem: async (key: string): Promise<void> => {
-    await SecureStore.removeItemAsync(key);
+    await SecureStore.deleteItemAsync(key);
   },
 };
 

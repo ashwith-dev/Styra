@@ -34,6 +34,13 @@ function createClient(): AxiosInstance {
     (error: AxiosError) => {
       if (error.response) {
         const status = error.response.status;
+
+        // Session rejected by the server: clear it locally so the root
+        // navigator redirects to sign-in instead of leaving a dead session.
+        if (status === 401) {
+          void supabase.auth.signOut({ scope: "local" });
+        }
+
         const detail = (error.response.data as any)?.detail;
         const message =
           typeof detail === "string"

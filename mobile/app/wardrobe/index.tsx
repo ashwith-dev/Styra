@@ -1,130 +1,203 @@
-import { useEffect } from "react";
+import { useCallback } from "react";
 import {
   View,
   Text,
   FlatList,
-  Image,
-  TouchableOpacity,
   ActivityIndicator,
   StyleSheet,
-  Alert,
+  RefreshControl,
 } from "react-native";
-import { router } from "expo-router";
+import { router, useFocusEffect } from "expo-router";
 import { useWardrobe } from "../../hooks/useWardrobe";
 import { useAuth } from "../../providers/AuthProvider";
+import { Button, ErrorMessage } from "../../components/ui";
+import { SearchBar } from "../../components/ui/SearchBar";
+import { CategoryFilter } from "../../components/wardrobe/CategoryFilter";
+import { ClothingCard } from "../../components/wardrobe/ClothingCard";
+import { colors, fontSize, fontWeight, spacing } from "../../lib/theme";
+
+const NUM_COLUMNS = 2;
 
 export default function WardrobeScreen() {
-  const { items, loading, refresh, removeItem } = useWardrobe();
+  const {
+    items,
+    loading,
+    error,
+    searchQuery,
+    setSearchQuery,
+    categoryFilter,
+    setCategoryFilter,
+    refresh,
+    confirmDelete,
+  } = useWardrobe();
   const { signOut } = useAuth();
 
-  useEffect(() => {
-    refresh();
-  }, []);
+  // Refresh on mount and whenever the screen regains focus (after save,
+  // edit, or delete flows navigate back here)
+  useFocusEffect(
+    useCallback(() => {
+      refresh();
+    }, [refresh]),
+  );
 
-  const handleDelete = (id: string) => {
-    Alert.alert("Remove Item", "Are you sure?", [
-      { text: "Cancel", style: "cancel" },
-      { text: "Remove", style: "destructive", onPress: () => removeItem(id) },
-    ]);
-  };
+  // ── Header ──
 
-  return (
-    <View style={styles.container}>
-      {/* Header */}
+  const ListHeader = (
+    <View>
+      {/* Title bar */}
       <View style={styles.header}>
         <Text style={styles.title}>My Wardrobe</Text>
         <View style={styles.headerRight}>
-          <TouchableOpacity
-            style={styles.addButton}
-            onPress={() => router.push("/upload/capture")}
-          >
-            <Text style={styles.addButtonText}>+ Add</Text>
-          </TouchableOpacity>
-          <TouchableOpacity onPress={signOut}>
-            <Text style={styles.signOut}>Sign Out</Text>
-          </TouchableOpacity>
+          <Button label="+ Add" onPress={() => router.push("/upload/capture")} variant="ghost" />
+          <Button label="Sign Out" onPress={signOut} variant="ghost" />
         </View>
       </View>
 
-      {/* Grid */}
-      {loading && items.length === 0 ? (
-        <ActivityIndicator size="large" style={{ marginTop: 60 }} />
-      ) : items.length === 0 ? (
-        <View style={styles.empty}>
-          <Text style={styles.emptyTitle}>Your wardrobe is empty</Text>
-          <Text style={styles.emptySubtitle}>
-            Take a photo of your first clothing item to get started.
-          </Text>
-          <TouchableOpacity
-            style={styles.emptyButton}
-            onPress={() => router.push("/upload/capture")}
-          >
-            <Text style={styles.emptyButtonText}>Add First Item</Text>
-          </TouchableOpacity>
+      {/* Search */}
+      <SearchBar value={searchQuery} onChangeText={setSearchQuery} />
+
+      {/* Category filter */}
+      <CategoryFilter selected={categoryFilter} onSelect={setCategoryFilter} />
+    </View>
+  );
+
+  // ── Loading (initial) ──
+
+  if (loading && items.length === 0 && !error) {
+    return (
+      <View style={styles.container}>
+        {ListHeader}
+        <View style={styles.centered}>
+          <ActivityIndicator size="large" color={colors.primary} />
         </View>
-      ) : (
-        <FlatList
-          data={items}
-          numColumns={2}
-          keyExtractor={(item) => item.id}
-          onRefresh={refresh}
-          refreshing={loading}
-          columnWrapperStyle={styles.row}
-          renderItem={({ item }) => (
-            <TouchableOpacity
-              style={styles.card}
-              onPress={() => router.push(`/items/${item.id}`)}
-              onLongPress={() => handleDelete(item.id)}
-            >
-              <Image
-                source={{ uri: item.thumbnail_url || item.segmented_image_url }}
-                style={styles.thumb}
-              />
-              <Text style={styles.cardLabel} numberOfLines={1}>
-                {getLabel(item)}
+      </View>
+    );
+  }
+
+  // ── Error (initial) ──
+
+  if (error && items.length === 0) {
+    return (
+      <View style={styles.container}>
+        {ListHeader}
+        <View style={styles.centered}>
+          <ErrorMessage message={error} onRetry={refresh} />
+        </View>
+      </View>
+    );
+  }
+
+  // ── Empty ──
+
+  if (!loading && items.length === 0) {
+    return (
+      <View style={styles.container}>
+        {ListHeader}
+        <View style={styles.centered}>
+          {searchQuery || categoryFilter ? (
+            <>
+              <Text style={styles.emptyTitle}>No matching items</Text>
+              <Text style={styles.emptySubtitle}>
+                Try a different search or filter.
               </Text>
-            </TouchableOpacity>
+              <Button
+                label="Clear Filters"
+                onPress={() => {
+                  setSearchQuery("");
+                  setCategoryFilter("");
+                }}
+              />
+            </>
+          ) : (
+            <>
+              <Text style={styles.emptyTitle}>Your wardrobe is empty</Text>
+              <Text style={styles.emptySubtitle}>
+                Take a photo of your first clothing item to get started.
+              </Text>
+              <Button
+                label="Add First Item"
+                onPress={() => router.push("/upload/capture")}
+              />
+            </>
           )}
-        />
-      )}
+        </View>
+      </View>
+    );
+  }
+
+  // ── Grid ──
+
+  return (
+    <View style={styles.container}>
+      <FlatList
+        data={items}
+        numColumns={NUM_COLUMNS}
+        keyExtractor={(item) => item.id}
+        ListHeaderComponent={ListHeader}
+        contentContainerStyle={styles.gridContent}
+        columnWrapperStyle={styles.row}
+        refreshControl={
+          <RefreshControl refreshing={loading} onRefresh={refresh} tintColor={colors.primary} />
+        }
+        renderItem={({ item }) => (
+          <ClothingCard
+            item={item}
+            onPress={() => router.push(`/items/${item.id}`)}
+            onLongPress={() => confirmDelete(item.id)}
+          />
+        )}
+      />
     </View>
   );
 }
 
-function getLabel(item: any): string {
-  const attrs = item.attributes || {};
-  const color = attrs.color?.value || "";
-  const type = attrs.type?.value || "item";
-  return [color, type].filter(Boolean).join(" ");
-}
-
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#fff" },
+  container: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
+  centered: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    padding: spacing.xl,
+    gap: spacing.lg,
+  },
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingHorizontal: 16,
+    paddingHorizontal: spacing.lg,
     paddingTop: 60,
-    paddingBottom: 12,
+    paddingBottom: spacing.sm,
   },
-  title: { fontSize: 24, fontWeight: "700" },
-  headerRight: { flexDirection: "row", alignItems: "center", gap: 12 },
-  addButton: {
-    backgroundColor: "#000",
-    borderRadius: 8,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
+  title: {
+    fontSize: fontSize.xl,
+    fontWeight: fontWeight.bold,
+    color: colors.text,
   },
-  addButtonText: { color: "#fff", fontWeight: "600", fontSize: 14 },
-  signOut: { color: "#007AFF", fontSize: 14 },
-  row: { justifyContent: "space-between", paddingHorizontal: 16, marginBottom: 16 },
-  card: { width: "48%", borderRadius: 12, overflow: "hidden", backgroundColor: "#f5f5f5" },
-  thumb: { width: "100%", aspectRatio: 1 },
-  cardLabel: { padding: 8, fontSize: 13, fontWeight: "500" },
-  empty: { flex: 1, justifyContent: "center", alignItems: "center", padding: 32 },
-  emptyTitle: { fontSize: 20, fontWeight: "600", marginBottom: 8 },
-  emptySubtitle: { fontSize: 15, color: "#666", textAlign: "center", marginBottom: 24 },
-  emptyButton: { backgroundColor: "#000", borderRadius: 8, paddingHorizontal: 24, paddingVertical: 14 },
-  emptyButtonText: { color: "#fff", fontWeight: "600", fontSize: 16 },
+  headerRight: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.xs,
+  },
+  gridContent: {
+    paddingBottom: spacing.xxl,
+  },
+  row: {
+    justifyContent: "space-between",
+    paddingHorizontal: spacing.md,
+  },
+  emptyTitle: {
+    fontSize: fontSize.lg,
+    fontWeight: fontWeight.semibold,
+    color: colors.text,
+    textAlign: "center",
+  },
+  emptySubtitle: {
+    fontSize: fontSize.sm,
+    color: colors.textSecondary,
+    textAlign: "center",
+    lineHeight: 20,
+  },
 });

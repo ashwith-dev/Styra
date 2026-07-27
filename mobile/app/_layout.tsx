@@ -19,8 +19,8 @@ function RootNavigator() {
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen name="auth" redirect={!!session} />
       <Stack.Screen name="wardrobe" redirect={!session} />
-      <Stack.Screen name="upload" />
-      <Stack.Screen name="items" />
+      <Stack.Screen name="upload" redirect={!session} />
+      <Stack.Screen name="items" redirect={!session} />
       <Stack.Screen name="+not-found" />
     </Stack>
   );
