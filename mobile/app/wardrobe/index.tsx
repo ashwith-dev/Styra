@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
 import {
   View,
   Text,
@@ -40,26 +40,24 @@ export default function WardrobeScreen() {
     }, [refresh]),
   );
 
-  // ── Header ──
+  // ── Header (memoised to prevent FlatList from remounting it on scroll) ──
 
-  const ListHeader = (
-    <View>
-      {/* Title bar */}
-      <View style={styles.header}>
-        <Text style={styles.title}>My Wardrobe</Text>
-        <View style={styles.headerRight}>
-          <Button label="Outfits" onPress={() => router.push("/recommendations")} variant="ghost" />
-          <Button label="+ Add" onPress={() => router.push("/upload/capture")} variant="ghost" />
-          <Button label="Sign Out" onPress={signOut} variant="ghost" />
+  const ListHeader = useMemo(
+    () => (
+      <View>
+        <View style={styles.header}>
+          <Text style={styles.title}>My Wardrobe</Text>
+          <View style={styles.headerRight}>
+            <Button label="Outfits" onPress={() => router.push("/recommendations")} variant="ghost" />
+            <Button label="+ Add" onPress={() => router.push("/upload/capture")} variant="ghost" />
+            <Button label="Sign Out" onPress={signOut} variant="ghost" />
+          </View>
         </View>
+        <SearchBar value={searchQuery} onChangeText={setSearchQuery} />
+        <CategoryFilter selected={categoryFilter} onSelect={setCategoryFilter} />
       </View>
-
-      {/* Search */}
-      <SearchBar value={searchQuery} onChangeText={setSearchQuery} />
-
-      {/* Category filter */}
-      <CategoryFilter selected={categoryFilter} onSelect={setCategoryFilter} />
-    </View>
+    ),
+    [searchQuery, categoryFilter, signOut, setSearchQuery, setCategoryFilter],
   );
 
   // ── Loading (initial) ──

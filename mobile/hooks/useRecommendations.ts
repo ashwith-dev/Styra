@@ -21,6 +21,10 @@ export function getCachedRecommendation(
   return _cachedRecommendations[index];
 }
 
+export function getCachedRecommendations(): OutfitRecommendationItem[] {
+  return _cachedRecommendations;
+}
+
 export function addDislikedOutfit(outfitId: string) {
   _dislikedOutfitIds.add(outfitId);
 }
@@ -63,13 +67,18 @@ export const SEASONS: { label: string; value: Season | "" }[] = [
   { label: "Winter", value: "winter" },
 ];
 
+// Track already-prefetched URLs to avoid redundant network requests when
+// the recommendations screen re-fetches on every focus (e.g. tab switches).
+const _prefetchedUrls = new Set<string>();
+
 /**
  * Prefetch a list of image URIs in the background so they render from cache
  * when the Image component mounts.
  */
 export function prefetchImages(urls: (string | null | undefined)[]): void {
   for (const url of urls) {
-    if (url) {
+    if (url && !_prefetchedUrls.has(url)) {
+      _prefetchedUrls.add(url);
       Image.prefetch(url);
     }
   }

@@ -2,7 +2,6 @@ import { memo, useCallback, useEffect, useState } from "react";
 import {
   View,
   Text,
-  Image,
   ScrollView,
   TouchableOpacity,
   StyleSheet,
@@ -11,7 +10,7 @@ import { useLocalSearchParams, router } from "expo-router";
 import { getCachedRecommendation, cacheRecommendations, addDislikedOutfit, prefetchImages } from "../../hooks/useRecommendations";
 import * as api from "../../lib/api";
 import { getUserFacingMessage } from "../../lib/errors";
-import { Button } from "../../components/ui";
+import { Button, CachedImage } from "../../components/ui";
 import { colors, fontSize, fontWeight, spacing, borderRadius } from "../../lib/theme";
 
 function attrValue(attrs: Record<string, unknown>, key: string): string {
@@ -34,8 +33,8 @@ const OutfitItemRow = memo(function OutfitItemRow({ item }: { item: any }) {
       activeOpacity={0.7}
       onPress={() => router.push(`/items/${item.id}`)}
     >
-      <Image
-        source={{ uri: item.thumbnail_url || undefined }}
+      <CachedImage
+        uri={item.thumbnail_url}
         style={styles.itemThumb}
         resizeMode="cover"
       />

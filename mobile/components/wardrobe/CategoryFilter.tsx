@@ -1,3 +1,4 @@
+import { memo } from "react";
 import { Text, TouchableOpacity, ScrollView, StyleSheet } from "react-native";
 import { colors, fontSize, fontWeight, spacing, borderRadius } from "../../lib/theme";
 
@@ -16,7 +17,7 @@ interface CategoryFilterProps {
   onSelect: (key: string) => void;
 }
 
-export function CategoryFilter({ selected, onSelect }: CategoryFilterProps) {
+export const CategoryFilter = memo(function CategoryFilter({ selected, onSelect }: CategoryFilterProps) {
   return (
     <ScrollView
       horizontal
@@ -40,7 +41,7 @@ export function CategoryFilter({ selected, onSelect }: CategoryFilterProps) {
       })}
     </ScrollView>
   );
-}
+});
 
 const styles = StyleSheet.create({
   scroll: {

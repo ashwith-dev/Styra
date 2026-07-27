@@ -1,9 +1,8 @@
-import { memo, useCallback } from "react";
+import { memo, useCallback, useMemo } from "react";
 import {
   View,
   Text,
   FlatList,
-  Image,
   StyleSheet,
   RefreshControl,
   ScrollView,
@@ -12,7 +11,7 @@ import {
 import { useFocusEffect, router } from "expo-router";
 import { useRecommendations, OCCASIONS, SEASONS } from "../../hooks/useRecommendations";
 import { FilterChips } from "../../components/recommendations/FilterChips";
-import { ErrorMessage } from "../../components/ui";
+import { ErrorMessage, CachedImage } from "../../components/ui";
 import { colors, fontSize, fontWeight, spacing, borderRadius, shadows } from "../../lib/theme";
 
 function attrValue(attrs: Record<string, unknown>, key: string): string {
@@ -124,8 +123,8 @@ const RecommendationCard = memo(function RecommendationCard({ rec }: { rec: any 
       >
         {rec.outfit_items.map((item: any) => (
           <View key={item.id} style={styles.thumbnailWrapper}>
-            <Image
-              source={{ uri: item.thumbnail_url || undefined }}
+            <CachedImage
+              uri={item.thumbnail_url}
               style={styles.thumbnail}
               resizeMode="cover"
             />
@@ -227,16 +226,19 @@ export default function RecommendationsScreen() {
 
   // ── Main list ──
 
-  const listHeader = (
-    <>
-      <Header />
-      <FilterBar
-        occasion={occasion}
-        onOccasionChange={setOccasion}
-        season={season}
-        onSeasonChange={setSeason}
-      />
-    </>
+  const listHeader = useMemo(
+    () => (
+      <>
+        <Header />
+        <FilterBar
+          occasion={occasion}
+          onOccasionChange={setOccasion}
+          season={season}
+          onSeasonChange={setSeason}
+        />
+      </>
+    ),
+    [occasion, season, setOccasion, setSeason],
   );
 
   return (

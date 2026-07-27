@@ -1,9 +1,9 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useState } from "react";
 import { View, Text, ScrollView, StyleSheet } from "react-native";
 import { router } from "expo-router";
 import { useAuth } from "../../providers/AuthProvider";
-import { useWardrobe } from "../../hooks/useWardrobe";
-import { useRecommendations } from "../../hooks/useRecommendations";
+import { getCachedWardrobeCount, getCachedWardrobeCategoryCount } from "../../hooks/useWardrobe";
+import { getCachedRecommendations } from "../../hooks/useRecommendations";
 import { Button } from "../../components/ui";
 import { colors, fontSize, fontWeight, spacing, borderRadius, shadows } from "../../lib/theme";
 
@@ -18,28 +18,17 @@ function StatCard({ label, value }: { label: string; value: string }) {
 
 export default function ProfileScreen() {
   const { user, signOut } = useAuth();
-  const { allItems, refresh: refreshWardrobe } = useWardrobe();
-  const { recommendations, refresh: refreshRecs } = useRecommendations();
+  const [totalItems, setTotalItems] = useState(getCachedWardrobeCount());
+  const [categoryCount, setCategoryCount] = useState(getCachedWardrobeCategoryCount());
+  const [totalRecommendations, setTotalRecommendations] = useState(
+    getCachedRecommendations().length,
+  );
 
   useEffect(() => {
-    refreshWardrobe();
-    refreshRecs();
+    setTotalItems(getCachedWardrobeCount());
+    setCategoryCount(getCachedWardrobeCategoryCount());
+    setTotalRecommendations(getCachedRecommendations().length);
   }, []);
-
-  const totalItems = allItems.length;
-
-  const categoryCount = useMemo(() => {
-    const cats = new Set<string>();
-    for (const item of allItems) {
-      const cat = (
-        item.attributes as Record<string, unknown>
-      )?.category as { value?: unknown } | undefined;
-      if (cat?.value) cats.add(String(cat.value));
-    }
-    return cats.size;
-  }, [allItems]);
-
-  const totalRecommendations = recommendations.length;
 
   const displayName =
     (user?.user_metadata?.name as string | undefined) ??

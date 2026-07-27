@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import type { Session, User, AuthError } from "@supabase/supabase-js";
 import { supabase } from "../lib/supabase";
 
@@ -16,13 +16,17 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const mountedRef = useRef(true);
 
   // ── Initial session restore (persists across app restarts) ──
   useEffect(() => {
+    mountedRef.current = true;
     supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!mountedRef.current) return;
       setSession(session);
       setLoading(false);
     });
+    return () => { mountedRef.current = false; };
   }, []);
 
   // ── Listen for auth changes (handles token refresh, sign-out from other tabs) ──

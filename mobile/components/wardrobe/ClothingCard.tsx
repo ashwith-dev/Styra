@@ -2,11 +2,11 @@ import { memo } from "react";
 import {
   View,
   Text,
-  Image,
   TouchableOpacity,
   StyleSheet,
 } from "react-native";
 import type { ClothingItemBrief } from "../../lib/types";
+import { CachedImage } from "../ui";
 import { colors, fontSize, fontWeight, spacing, borderRadius, shadows } from "../../lib/theme";
 
 interface ClothingCardProps {
@@ -38,8 +38,8 @@ export const ClothingCard = memo(function ClothingCard({
       activeOpacity={0.8}
       accessibilityLabel={`${getLabel(attrs)}, double tap to view`}
     >
-      <Image
-        source={{ uri: imageUrl }}
+      <CachedImage
+        uri={imageUrl}
         style={styles.image}
         resizeMode="cover"
       />

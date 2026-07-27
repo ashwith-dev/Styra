@@ -2,7 +2,6 @@ import { useState, useCallback, useEffect, useMemo } from "react";
 import {
   View,
   Text,
-  Image,
   ScrollView,
   StyleSheet,
   BackHandler,
@@ -11,7 +10,7 @@ import { router, useLocalSearchParams, useNavigation } from "expo-router";
 import * as api from "../../lib/api";
 import { getUserFacingMessage } from "../../lib/errors";
 import type { AIPipelineResult } from "../../lib/types";
-import { Button, LoadingOverlay, ErrorMessage } from "../../components/ui";
+import { Button, LoadingOverlay, ErrorMessage, CachedImage } from "../../components/ui";
 import { AttributeField } from "../../components/upload/AttributeField";
 import { AttributeTags } from "../../components/upload/AttributeTags";
 import { colors, fontSize, fontWeight, spacing, borderRadius } from "../../lib/theme";
@@ -209,8 +208,8 @@ export default function ReviewScreen() {
         keyboardShouldPersistTaps="handled"
       >
         {/* Segmented image */}
-        <Image
-          source={{ uri: params.segmentedImageUrl }}
+        <CachedImage
+          uri={params.segmentedImageUrl}
           style={styles.image}
           resizeMode="contain"
         />

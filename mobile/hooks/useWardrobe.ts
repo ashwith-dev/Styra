@@ -4,6 +4,25 @@ import type { ClothingItemBrief, ClothingItemDetail } from "../lib/types";
 import * as api from "../lib/api";
 import { AppError } from "../lib/errors";
 
+// Module-level cache so other screens (e.g. Profile) can read wardrobe
+// counts without instantiating a full hook and triggering an API call.
+let _cachedWardrobeItems: ClothingItemBrief[] = [];
+
+export function getCachedWardrobeCount(): number {
+  return _cachedWardrobeItems.length;
+}
+
+export function getCachedWardrobeCategoryCount(): number {
+  const cats = new Set<string>();
+  for (const item of _cachedWardrobeItems) {
+    const cat = (
+      item.attributes as Record<string, unknown>
+    )?.category as { value?: unknown } | undefined;
+    if (cat?.value) cats.add(String(cat.value));
+  }
+  return cats.size;
+}
+
 export function useWardrobe() {
   const [items, setItems] = useState<ClothingItemBrief[]>([]);
   const [loading, setLoading] = useState(false);
@@ -18,6 +37,7 @@ export function useWardrobe() {
     setError(null);
     try {
       const data = await api.listClothing();
+      _cachedWardrobeItems = data;
       setItems(data);
     } catch (err) {
       const msg = err instanceof AppError ? err.message : "Failed to load wardrobe";

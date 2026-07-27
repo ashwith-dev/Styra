@@ -1,0 +1,47 @@
+import { useState } from "react";
+import { View, Image, Text, StyleSheet, type ImageStyle } from "react-native";
+import { colors, fontSize } from "../../lib/theme";
+
+interface CachedImageProps {
+  uri: string | null | undefined;
+  style: ImageStyle;
+  resizeMode?: "cover" | "contain" | "stretch";
+  placeholder?: string;
+}
+
+export function CachedImage({
+  uri,
+  style,
+  resizeMode = "cover",
+  placeholder = "📷",
+}: CachedImageProps) {
+  const [failed, setFailed] = useState(!uri);
+
+  if (failed || !uri) {
+    return (
+      <View style={[style, styles.placeholder]}>
+        <Text style={styles.placeholderText}>{placeholder}</Text>
+      </View>
+    );
+  }
+
+  return (
+    <Image
+      source={{ uri }}
+      style={style}
+      resizeMode={resizeMode}
+      onError={() => setFailed(true)}
+    />
+  );
+}
+
+const styles = StyleSheet.create({
+  placeholder: {
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: colors.surface,
+  },
+  placeholderText: {
+    fontSize: fontSize.xxl,
+  },
+});

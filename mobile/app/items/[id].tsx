@@ -1,8 +1,7 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import {
   View,
   Text,
-  Image,
   ScrollView,
   TextInput,
   ActivityIndicator,
@@ -14,7 +13,7 @@ import * as api from "../../lib/api";
 import { buildAttributeUpdatePayload } from "../../lib/attributes";
 import { getUserFacingMessage } from "../../lib/errors";
 import type { ClothingItemDetail } from "../../lib/types";
-import { Button, ErrorMessage } from "../../components/ui";
+import { Button, ErrorMessage, CachedImage } from "../../components/ui";
 import { colors, fontSize, fontWeight, spacing, borderRadius } from "../../lib/theme";
 
 type ScreenState = "loading" | "loaded" | "error" | "editing" | "saving";
@@ -48,6 +47,11 @@ export default function ItemDetailScreen() {
   const [state, setState] = useState<ScreenState>("loading");
   const [error, setError] = useState<string | null>(null);
   const [edits, setEdits] = useState<Record<string, string>>({});
+  const mountedRef = useRef(true);
+
+  useEffect(() => {
+    return () => { mountedRef.current = false; };
+  }, []);
 
   // ── Load ──
 
@@ -56,9 +60,11 @@ export default function ItemDetailScreen() {
     setError(null);
     try {
       const data = await api.getClothingItem(id);
+      if (!mountedRef.current) return;
       setItem(data);
       setState("loaded");
     } catch (err) {
+      if (!mountedRef.current) return;
       setError(getUserFacingMessage(err));
       setState("error");
     }
@@ -159,8 +165,8 @@ export default function ItemDetailScreen() {
         )}
 
         <ScrollView contentContainerStyle={styles.scrollContent}>
-          <Image
-            source={{ uri: item.segmented_image_url }}
+          <CachedImage
+            uri={item.segmented_image_url}
             style={styles.image}
             resizeMode="contain"
           />
@@ -211,8 +217,8 @@ export default function ItemDetailScreen() {
   return (
     <View style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        <Image
-          source={{ uri: item.segmented_image_url }}
+        <CachedImage
+          uri={item.segmented_image_url}
           style={styles.image}
           resizeMode="contain"
         />
