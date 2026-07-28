@@ -1,320 +1,291 @@
-import { useEffect, useState, useCallback, useRef } from "react";
-import {
-  View,
-  Text,
-  ScrollView,
-  TextInput,
-  ActivityIndicator,
-  StyleSheet,
-  Alert,
-} from "react-native";
+import { StyleSheet, Text, TouchableOpacity, View, ScrollView } from "react-native";
 import { useLocalSearchParams, router } from "expo-router";
-import * as api from "../../lib/api";
-import { buildAttributeUpdatePayload } from "../../lib/attributes";
-import { getUserFacingMessage } from "../../lib/errors";
-import type { ClothingItemDetail } from "../../lib/types";
-import { Button, ErrorMessage, CachedImage } from "../../components/ui";
-import { colors, fontSize, fontWeight, spacing, borderRadius } from "../../lib/theme";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { Ionicons } from "@expo/vector-icons";
+import {
+  Button,
+  CachedImage,
+  Chip,
+  ErrorMessage,
+  Input,
+  LoadingOverlay,
+  LoadingSkeletonCard,
+} from "@/components/ui";
+import { colors, radius, shadows, spacing, typography } from "@/theme";
+import {
+  EDITABLE_FIELDS,
+  getAttrValue,
+  getClothingLabel,
+  getItemImageUrl,
+  useItemDetail,
+} from "@/features/wardrobe";
 
-type ScreenState = "loading" | "loaded" | "error" | "editing" | "saving";
+// ─────────────────────────────────────────────────────────────────────────────
+// Detail Screen
+// ─────────────────────────────────────────────────────────────────────────────
 
-// ── Editable fields ──
-
-interface EditField {
-  key: string;
-  label: string;
-}
-
-const EDITABLE_FIELDS: EditField[] = [
-  { key: "category", label: "Category" },
-  { key: "type", label: "Type" },
-  { key: "color", label: "Color" },
-  { key: "pattern", label: "Pattern" },
-  { key: "material", label: "Material" },
-  { key: "style", label: "Style" },
-  { key: "neckline", label: "Neckline" },
-  { key: "sleeve_length", label: "Sleeve Length" },
-  { key: "fit", label: "Fit" },
-  { key: "length", label: "Length" },
-  { key: "closure", label: "Closure" },
-  { key: "brand", label: "Brand" },
-  { key: "description", label: "Description" },
-];
-
+/**
+ * Clothing Detail screen — also hosts inline Edit mode.
+ *
+ * States:
+ *   loading   → full-screen skeleton
+ *   error     → ErrorMessage + retry
+ *   loaded    → image, attribute chips, Edit / Delete CTAs
+ *   editing   → Input fields for each editable attribute
+ *   saving    → editing view + LoadingOverlay
+ *   deleting  → loaded view + LoadingOverlay
+ */
 export default function ItemDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const [item, setItem] = useState<ClothingItemDetail | null>(null);
-  const [state, setState] = useState<ScreenState>("loading");
-  const [error, setError] = useState<string | null>(null);
-  const [edits, setEdits] = useState<Record<string, string>>({});
-  const mountedRef = useRef(true);
-
-  useEffect(() => {
-    return () => { mountedRef.current = false; };
-  }, []);
-
-  // ── Load ──
-
-  const loadItem = useCallback(async () => {
-    setState("loading");
-    setError(null);
-    try {
-      const data = await api.getClothingItem(id);
-      if (!mountedRef.current) return;
-      setItem(data);
-      setState("loaded");
-    } catch (err) {
-      if (!mountedRef.current) return;
-      setError(getUserFacingMessage(err));
-      setState("error");
-    }
-  }, [id]);
-
-  useEffect(() => {
-    loadItem();
-  }, [loadItem]);
-
-  // ── Edit helpers ──
-
-  const getFieldValue = useCallback(
-    (key: string): string => {
-      if (edits[key] !== undefined) return edits[key];
-      const attrs = item?.attributes || {};
-      const val = (attrs as any)[key];
-      if (val && typeof val === "object" && "value" in val) return String(val.value);
-      if (typeof val === "string") return val;
-      return "";
-    },
-    [edits, item],
-  );
-
-  const startEditing = useCallback(() => {
-    setEdits({}); // reset edits to original values
-    setState("editing");
-  }, []);
-
-  const cancelEditing = useCallback(() => {
-    setEdits({});
-    setState("loaded");
-  }, []);
-
-  const saveEdits = useCallback(async () => {
-    setState("saving");
-    try {
-      const attrs = buildAttributeUpdatePayload(item?.attributes ?? {}, edits);
-      const updated = await api.updateClothingItem(id, attrs);
-      setItem(updated);
-      setEdits({});
-      setState("loaded");
-    } catch (err) {
-      Alert.alert("Save Failed", getUserFacingMessage(err));
-      setState("editing");
-    }
-  }, [item, edits, id]);
-
-  // ── Delete ──
-
-  const handleDelete = useCallback(() => {
-    Alert.alert("Remove Item", "Are you sure you want to remove this item?", [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Remove",
-        style: "destructive",
-        onPress: async () => {
-          try {
-            await api.deleteClothingItem(id);
-            router.replace("/wardrobe");
-          } catch (err) {
-            Alert.alert("Error", getUserFacingMessage(err));
-          }
-        },
-      },
-    ]);
-  }, [id]);
+  const {
+    item,
+    state,
+    error,
+    getFieldValue,
+    setEditField,
+    startEditing,
+    cancelEditing,
+    saveEdits,
+    handleDelete,
+    reload,
+  } = useItemDetail(id);
 
   // ── Loading ──
-
   if (state === "loading") {
     return (
-      <View style={styles.centered}>
-        <ActivityIndicator size="large" color={colors.primary} />
-      </View>
+      <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
+        <BackButton />
+        <View style={styles.skeletonWrapper}>
+          <LoadingSkeletonCard />
+        </View>
+      </SafeAreaView>
     );
   }
 
   // ── Error ──
-
   if (state === "error" || !item) {
     return (
-      <View style={styles.centered}>
-        <ErrorMessage message={error || "Could not load item."} onRetry={loadItem} />
-        <Button label="Back to Wardrobe" onPress={() => router.replace("/wardrobe")} variant="outline" />
-      </View>
+      <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
+        <BackButton />
+        <View style={styles.centered}>
+          <ErrorMessage message={error ?? "Could not load item."} onRetry={reload} />
+          <Button
+            label="Back to Wardrobe"
+            onPress={() => router.replace("/wardrobe")}
+            variant="ghost"
+            style={styles.backBtn}
+          />
+        </View>
+      </SafeAreaView>
     );
   }
 
-  // ── Editing ──
+  const attrs = item.attributes ?? {};
+  const label = getClothingLabel(attrs);
+  const imageUrl = getItemImageUrl(item);
 
+  // ── Editing / Saving ──
   if (state === "editing" || state === "saving") {
     return (
-      <View style={styles.container}>
-        {state === "saving" && (
-          <View style={styles.savingOverlay}>
-            <ActivityIndicator size="large" color="#fff" />
-          </View>
-        )}
+      <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
+        <LoadingOverlay visible={state === "saving"} />
 
-        <ScrollView
-          contentContainerStyle={styles.scrollContent}
-          keyboardShouldPersistTaps="handled"
-        >
-          <CachedImage
-            uri={item.segmented_image_url}
-            style={styles.image}
-            resizeMode="contain"
-          />
-
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Edit Attributes</Text>
-            <Text style={styles.sectionSubtitle}>Modify any field below.</Text>
-
-            {EDITABLE_FIELDS.map((field) => (
-              <View key={field.key} style={styles.editFieldContainer}>
-                <Text style={styles.editFieldLabel}>{field.label}</Text>
-                <TextInput
-                  style={styles.editInput}
-                  value={getFieldValue(field.key)}
-                  onChangeText={(t) =>
-                    setEdits((prev) => ({ ...prev, [field.key]: t }))
-                  }
-                  placeholderTextColor={colors.textTertiary}
-                />
-              </View>
-            ))}
-          </View>
-        </ScrollView>
-
-        {/* Edit actions */}
-        <View style={styles.bottomBar}>
+        {/* Header */}
+        <View style={styles.editHeader}>
+          <BackButton onPress={cancelEditing} label="Cancel" />
+          <Text style={styles.editTitle}>Edit Item</Text>
           <Button
-            label="Cancel"
-            onPress={cancelEditing}
-            variant="outline"
-            disabled={state === "saving"}
-          />
-          <Button
-            label="Save Changes"
+            label="Save"
             onPress={saveEdits}
             loading={state === "saving"}
             disabled={state === "saving"}
+            variant="primary"
+            size="sm"
+            style={styles.saveBtn}
+            testID="edit-save"
           />
         </View>
-      </View>
+
+        <ScrollView
+          contentContainerStyle={styles.editScroll}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          {/* Thumbnail */}
+          <CachedImage
+            uri={imageUrl}
+            style={styles.editImage}
+            resizeMode="contain"
+            accessibilityLabel={label}
+          />
+
+          {/* Fields */}
+          <View style={styles.editFields}>
+            {EDITABLE_FIELDS.map((field) => (
+              <Input
+                key={field.key}
+                label={field.label}
+                value={getFieldValue(field.key)}
+                onChangeText={(v) => setEditField(field.key, v)}
+                multiline={field.multiline}
+                numberOfLines={field.multiline ? 3 : 1}
+                returnKeyType={field.multiline ? "default" : "next"}
+                testID={`edit-field-${field.key}`}
+              />
+            ))}
+          </View>
+        </ScrollView>
+      </SafeAreaView>
     );
   }
 
-  // ── Loaded (view mode) ──
-
-  const attrs = item.attributes || {};
-
+  // ── Loaded / Deleting ──
   return (
-    <View style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scrollContent}>
-        <CachedImage
-          uri={item.segmented_image_url}
-          style={styles.image}
-          resizeMode="contain"
-        />
+    <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
+      <LoadingOverlay visible={state === "deleting"} />
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Details</Text>
-          {renderAttr("Category", attrs["category"])}
-          {renderAttr("Type", attrs["type"])}
-          {renderAttr("Color", attrs["color"])}
-          {renderAttr("Pattern", attrs["pattern"])}
-          {renderAttr("Material", attrs["material"])}
-          {renderAttr("Style", attrs["style"])}
-          {renderAttr("Neckline", attrs["neckline"])}
-          {renderAttr("Sleeve Length", attrs["sleeve_length"])}
-          {renderAttr("Fit", attrs["fit"])}
-          {renderAttr("Length", attrs["length"])}
-          {renderAttr("Closure", attrs["closure"])}
-          {renderAttr("Brand", attrs["brand"])}
-          {renderAttr("Description", attrs["description"])}
+      {/* Header */}
+      <View style={styles.detailHeader}>
+        <BackButton />
+        <View style={styles.detailHeaderActions}>
+          <TouchableOpacity
+            onPress={startEditing}
+            style={styles.iconBtn}
+            accessibilityRole="button"
+            accessibilityLabel="Edit item"
+            testID="detail-edit"
+          >
+            <Ionicons name="pencil-outline" size={20} color={colors.textPrimary} />
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={handleDelete}
+            style={styles.iconBtn}
+            accessibilityRole="button"
+            accessibilityLabel="Delete item"
+            testID="detail-delete"
+          >
+            <Ionicons name="trash-outline" size={20} color={colors.error} />
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      <ScrollView
+        contentContainerStyle={styles.detailScroll}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Hero image */}
+        <View style={styles.imageWrapper}>
+          <CachedImage
+            uri={imageUrl}
+            style={styles.heroImage}
+            resizeMode="contain"
+            accessibilityLabel={`Photo of ${label}`}
+          />
         </View>
 
-        {(attrs["season"] != null || attrs["occasion"] != null) && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Season & Occasion</Text>
-            {renderMulti("Season", attrs["season"])}
-            {renderMulti("Occasion", attrs["occasion"])}
-          </View>
-        )}
+        {/* Name + category */}
+        <View style={styles.titleRow}>
+          <Text style={styles.itemTitle}>{label || "Clothing Item"}</Text>
+          {getAttrValue(attrs.category) ? (
+            <Chip
+              label={getAttrValue(attrs.category)}
+              selected
+              style={styles.categoryChip}
+            />
+          ) : null}
+        </View>
 
-        {item.pipeline_metrics && (
-          <View style={styles.metadataBox}>
-            <Text style={styles.metadataText}>
-              Pipeline: {Object.keys(item.pipeline_metrics).length} stages
-            </Text>
+        {/* Attribute rows */}
+        <View style={styles.attrSection}>
+          <AttributeRow label="Type" value={getAttrValue(attrs.type)} />
+          <AttributeRow label="Color" value={getAttrValue(attrs.color)} />
+          <AttributeRow label="Pattern" value={getAttrValue(attrs.pattern)} />
+          <AttributeRow label="Material" value={getAttrValue(attrs.material)} />
+          <AttributeRow label="Style" value={getAttrValue(attrs.style)} />
+          <AttributeRow label="Fit" value={getAttrValue(attrs.fit)} />
+          <AttributeRow label="Neckline" value={getAttrValue(attrs.neckline)} />
+          <AttributeRow label="Sleeve Length" value={getAttrValue(attrs.sleeve_length)} />
+          <AttributeRow label="Length" value={getAttrValue(attrs.length)} />
+          <AttributeRow label="Closure" value={getAttrValue(attrs.closure)} />
+          <AttributeRow label="Brand" value={getAttrValue(attrs.brand)} />
+        </View>
+
+        {/* Season + Occasion chips */}
+        <MultiChipRow label="Season" attr={attrs.season} />
+        <MultiChipRow label="Occasion" attr={attrs.occasion} />
+
+        {/* Description */}
+        {getAttrValue(attrs.description) ? (
+          <View style={styles.descSection}>
+            <Text style={styles.descLabel}>Description</Text>
+            <Text style={styles.descValue}>{getAttrValue(attrs.description)}</Text>
           </View>
-        )}
+        ) : null}
       </ScrollView>
+    </SafeAreaView>
+  );
+}
 
-      {/* Bottom actions */}
-      <View style={styles.bottomBar}>
-        <Button label="Edit Attributes" onPress={startEditing} variant="outline" />
-        <Button label="Delete Item" onPress={handleDelete} />
+// ─────────────────────────────────────────────────────────────────────────────
+// Sub-components (file-local, not exported)
+// ─────────────────────────────────────────────────────────────────────────────
+
+function BackButton({
+  onPress,
+  label,
+}: {
+  onPress?: () => void;
+  label?: string;
+}) {
+  return (
+    <TouchableOpacity
+      onPress={onPress ?? (() => router.back())}
+      style={styles.backButton}
+      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+      accessibilityRole="button"
+      accessibilityLabel={label ?? "Go back"}
+      testID="detail-back"
+    >
+      <Ionicons name="arrow-back" size={22} color={colors.textPrimary} />
+      {label ? <Text style={styles.backLabel}>{label}</Text> : null}
+    </TouchableOpacity>
+  );
+}
+
+function AttributeRow({ label, value }: { label: string; value: string }) {
+  if (!value || value === "unknown") return null;
+  return (
+    <View style={styles.attrRow}>
+      <Text style={styles.attrLabel}>{label}</Text>
+      <Text style={styles.attrValue}>{value}</Text>
+    </View>
+  );
+}
+
+function MultiChipRow({ label, attr }: { label: string; attr: unknown }) {
+  const items = Array.isArray(attr) ? attr : [];
+  if (items.length === 0) return null;
+  const values = items.map((i) =>
+    typeof i === "object" && i !== null && "value" in i ? String(i.value) : String(i),
+  );
+  return (
+    <View style={styles.chipRow}>
+      <Text style={styles.chipRowLabel}>{label}</Text>
+      <View style={styles.chipList}>
+        {values.map((v) => (
+          <Chip key={v} label={v} style={styles.chip} />
+        ))}
       </View>
     </View>
   );
 }
 
-// ── Helpers ──
-
-function renderAttr(label: string, attr: unknown) {
-  if (attr == null) return null;
-
-  const value =
-    typeof attr === "object" && attr !== null && "value" in attr
-      ? (attr as any).value
-      : attr;
-  const confidence =
-    typeof attr === "object" && attr !== null && "confidence" in attr
-      ? (attr as any).confidence
-      : null;
-
-  if (!value || value === "unknown") return null;
-
-  return (
-    <View style={styles.attrRow} key={label}>
-      <Text style={styles.attrLabel}>{label}</Text>
-      <Text style={styles.attrValue}>
-        {String(value)}
-        {confidence != null && (
-          <Text style={styles.confidence}>  ({Math.round(confidence * 100)}%)</Text>
-        )}
-      </Text>
-    </View>
-  );
-}
-
-function renderMulti(label: string, attr: unknown) {
-  const items = (attr as any[]) || [];
-  if (items.length === 0) return null;
-
-  const labels = items.map((i) => i?.value ?? String(i)).join(", ");
-  return (
-    <View style={styles.attrRow} key={label}>
-      <Text style={styles.attrLabel}>{label}</Text>
-      <Text style={styles.attrValue}>{labels}</Text>
-    </View>
-  );
-}
-
-// ── Styles ──
+// ─────────────────────────────────────────────────────────────────────────────
+// Styles
+// ─────────────────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
-  container: {
+  safe: {
     flex: 1,
     backgroundColor: colors.background,
   },
@@ -322,106 +293,169 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: colors.background,
     padding: spacing.xl,
-    gap: spacing.lg,
+    gap: spacing.md,
   },
-  scrollContent: {
-    paddingBottom: 120,
+  backBtn: {
+    marginTop: spacing.md,
   },
-  image: {
+  skeletonWrapper: {
+    padding: spacing.xl,
+  },
+
+  // ── Back button ──
+  backButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.xs,
+    paddingVertical: spacing.xs,
+  },
+  backLabel: {
+    ...typography.caption,
+    color: colors.textPrimary,
+  },
+
+  // ── Detail header ──
+  detailHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: spacing.xl,
+    paddingVertical: spacing.md,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.border,
+  },
+  detailHeaderActions: {
+    flexDirection: "row",
+    gap: spacing.md,
+  },
+  iconBtn: {
+    width: 44,
+    height: 44,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  // ── Detail scroll ──
+  detailScroll: {
+    paddingBottom: spacing.massive,
+  },
+  imageWrapper: {
+    backgroundColor: colors.surface,
+    ...shadows.small,
+  },
+  heroImage: {
     width: "100%",
     aspectRatio: 1,
-    backgroundColor: colors.surface,
+    backgroundColor: colors.border,
   },
-  section: {
-    padding: spacing.lg,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.borderLight,
+  titleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: spacing.xl,
+    paddingTop: spacing.xl,
+    paddingBottom: spacing.sm,
   },
-  sectionTitle: {
-    fontSize: fontSize.lg,
-    fontWeight: fontWeight.bold,
-    color: colors.text,
-    marginBottom: spacing.xs,
+  itemTitle: {
+    ...typography.h2,
+    color: colors.textPrimary,
+    flex: 1,
+    marginRight: spacing.md,
   },
-  sectionSubtitle: {
-    fontSize: fontSize.sm,
-    color: colors.textSecondary,
-    marginBottom: spacing.lg,
+  categoryChip: {
+    flexShrink: 0,
+  },
+
+  // ── Attribute rows ──
+  attrSection: {
+    paddingHorizontal: spacing.xl,
+    marginTop: spacing.md,
   },
   attrRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    paddingVertical: spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.borderLight,
+    paddingVertical: spacing.sm,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.border,
   },
   attrLabel: {
-    fontSize: fontSize.sm,
+    ...typography.caption,
     color: colors.textSecondary,
     flex: 1,
   },
   attrValue: {
-    fontSize: fontSize.sm,
-    fontWeight: fontWeight.medium,
-    color: colors.text,
+    ...typography.caption,
+    color: colors.textPrimary,
+    fontWeight: "500",
     flex: 2,
     textAlign: "right",
+    textTransform: "capitalize",
   },
-  confidence: {
-    fontSize: fontSize.xs,
-    color: colors.textTertiary,
+
+  // ── Chip rows (Season / Occasion) ──
+  chipRow: {
+    paddingHorizontal: spacing.xl,
+    paddingTop: spacing.xl,
   },
-  metadataBox: {
-    margin: spacing.lg,
-    padding: spacing.md,
-    borderRadius: borderRadius.md,
-    backgroundColor: colors.surface,
-    alignItems: "center",
-  },
-  metadataText: {
-    fontSize: fontSize.xs,
-    color: colors.textTertiary,
-  },
-  bottomBar: {
-    flexDirection: "row",
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    padding: spacing.lg,
-    paddingBottom: spacing.xxl,
-    backgroundColor: colors.background,
-    borderTopWidth: 1,
-    borderTopColor: colors.borderLight,
-    gap: spacing.md,
-  },
-  // Edit mode
-  editFieldContainer: {
-    marginBottom: spacing.md,
-  },
-  editFieldLabel: {
-    fontSize: fontSize.xs,
-    fontWeight: fontWeight.semibold,
+  chipRowLabel: {
+    ...typography.label,
     color: colors.textSecondary,
-    marginBottom: spacing.xs,
-    textTransform: "uppercase",
+    marginBottom: spacing.sm,
+    fontSize: 11,
   },
-  editInput: {
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: borderRadius.md,
-    padding: spacing.md,
-    fontSize: fontSize.md,
-    color: colors.text,
-    backgroundColor: colors.background,
+  chipList: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: spacing.xs,
   },
-  savingOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(0,0,0,0.4)",
-    justifyContent: "center",
+  chip: {},
+
+  // ── Description ──
+  descSection: {
+    paddingHorizontal: spacing.xl,
+    paddingTop: spacing.xl,
+  },
+  descLabel: {
+    ...typography.label,
+    color: colors.textSecondary,
+    fontSize: 11,
+    marginBottom: spacing.sm,
+  },
+  descValue: {
+    ...typography.body,
+    color: colors.textPrimary,
+    lineHeight: 24,
+  },
+
+  // ── Edit mode ──
+  editHeader: {
+    flexDirection: "row",
     alignItems: "center",
-    zIndex: 999,
+    justifyContent: "space-between",
+    paddingHorizontal: spacing.xl,
+    paddingVertical: spacing.md,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.border,
+  },
+  editTitle: {
+    ...typography.h3,
+    color: colors.textPrimary,
+  },
+  saveBtn: {
+    backgroundColor: colors.textPrimary,
+    borderRadius: radius.full,
+  },
+  editScroll: {
+    paddingBottom: spacing.massive,
+  },
+  editImage: {
+    width: "100%",
+    aspectRatio: 1.2,
+    backgroundColor: colors.border,
+    marginBottom: spacing.xl,
+  },
+  editFields: {
+    paddingHorizontal: spacing.xl,
   },
 });

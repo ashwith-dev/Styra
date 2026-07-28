@@ -81,8 +81,19 @@ async def save_clothing(
 @router.get("/clothing", response_model=ListClothingResponse)
 async def list_clothing(
     user_id: str = Depends(get_current_user),
+    limit: int = 1000,
+    offset: int = 0,
 ) -> ListClothingResponse:
     supabase = get_supabase()
+    
+    total_resp = (
+        supabase.table("clothing_items")
+        .select("id", count="exact")
+        .eq("user_id", user_id)
+        .execute()
+    )
+    total_count = total_resp.count if hasattr(total_resp, "count") and total_resp.count else 0
+
     resp = (
         supabase.table("clothing_items")
         .select(
@@ -91,6 +102,7 @@ async def list_clothing(
         )
         .eq("user_id", user_id)
         .order("created_at", desc=True)
+        .range(offset, offset + limit - 1)
         .execute()
     )
     items = [
@@ -105,7 +117,7 @@ async def list_clothing(
         )
         for r in (resp.data or [])
     ]
-    return ListClothingResponse(items=items)
+    return ListClothingResponse(items=items, total_count=total_count)
 
 
 @router.get("/clothing/{item_id}", response_model=ClothingItemDetail)

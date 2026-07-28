@@ -46,6 +46,7 @@ class ClothingItemBrief(BaseModel):
 
 class ListClothingResponse(BaseModel):
     items: list[ClothingItemBrief]
+    total_count: int = 0
 
 
 # ---------------------------------------------------------------------------

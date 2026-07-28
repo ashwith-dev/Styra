@@ -13,7 +13,7 @@ class Settings(BaseSettings):
     storage_bucket_segmented: str = "clothing-segmented"
     storage_bucket_thumbnails: str = "clothing-thumbnails"
 
-    cors_origins: str = "*"
+    cors_origins: str = "http://localhost:8081,http://localhost:3000"
     max_image_size_mb: int = 10
     min_image_resolution: int = 500
 
