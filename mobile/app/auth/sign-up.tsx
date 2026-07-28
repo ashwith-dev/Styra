@@ -1,120 +1,167 @@
-import { useState } from "react";
-import {
-  Text,
-  Alert,
-  KeyboardAvoidingView,
-  Platform,
-  StyleSheet,
-} from "react-native";
+import { Alert, StyleSheet, Text, View } from "react-native";
 import { router } from "expo-router";
-import { useAuth } from "../../providers/AuthProvider";
-import { Button, Input } from "../../components/ui";
-import { colors, fontSize, fontWeight, spacing } from "../../lib/theme";
+import { Button, Input } from "@/components/ui";
+import { colors, radius, spacing, typography } from "@/theme";
+import {
+  AuthDivider,
+  AuthFooterLink,
+  AuthScreenLayout,
+  SocialButton,
+  useSignUpForm,
+} from "@/features/auth";
 
+/**
+ * Sign Up screen — STYRA branded design.
+ *
+ * Layout: STYRA logo → "Create Your Stylist" → name/email/password inputs →
+ *         Create Account CTA → OR CONTINUE WITH → Google → footer link.
+ */
 export default function SignUp() {
-  const { signUp } = useAuth();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const {
+    name,
+    email,
+    password,
+    nameError,
+    emailError,
+    passwordError,
+    submitError,
+    loading,
+    setName,
+    setEmail,
+    setPassword,
+    emailRef,
+    passwordRef,
+    handleSubmit,
+  } = useSignUpForm();
 
-  const handleSignUp = async () => {
-    if (!email.trim()) {
-      setError("Please enter your email address.");
-      return;
-    }
-    if (!password.trim() || password.length < 6) {
-      setError("Password must be at least 6 characters.");
-      return;
-    }
-
-    setLoading(true);
-    setError(null);
-
-    const { error: authError } = await signUp(email, password);
-    setLoading(false);
-
-    if (authError) {
-      setError(authError.message);
-    } else {
-      Alert.alert(
-        "Check your email",
-        "We sent you a confirmation link. You can sign in once verified.",
-      );
-      router.push("/auth/sign-in");
-    }
+  const handleGoogleSignIn = () => {
+    Alert.alert(
+      "Coming Soon",
+      "Google sign-in requires additional native setup. Check back in a future release.",
+    );
   };
 
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
-    >
-      <Text style={styles.title}>Create Account</Text>
-      <Text style={styles.subtitle}>Add your wardrobe in minutes</Text>
+    <AuthScreenLayout>
+      {/* Headline */}
+      <View style={styles.header}>
+        <Text style={styles.heading}>Create Your Stylist</Text>
+        <Text style={styles.subheading}>Build your personal AI wardrobe.</Text>
+      </View>
 
-      <Input
-        label="Email"
-        placeholder="you@example.com"
-        value={email}
-        onChangeText={(t) => { setEmail(t); setError(null); }}
-        keyboardType="email-address"
-        autoComplete="email"
-        returnKeyType="next"
-      />
+      {/* Form */}
+      <View style={styles.form}>
+        <Input
+          placeholder="Name"
+          value={name}
+          onChangeText={setName}
+          error={nameError ?? undefined}
+          autoComplete="name"
+          autoCapitalize="words"
+          returnKeyType="next"
+          onSubmitEditing={() => emailRef.current?.focus()}
+          testID="sign-up-name"
+          accessibilityLabel="Name"
+        />
 
-      <Input
-        label="Password"
-        placeholder="At least 6 characters"
-        value={password}
-        onChangeText={(t) => { setPassword(t); setError(null); }}
-        secureTextEntry
-        autoComplete="new-password"
-        returnKeyType="go"
-        onSubmitEditing={handleSignUp}
-      />
+        <Input
+          ref={emailRef}
+          placeholder="Email Address"
+          value={email}
+          onChangeText={setEmail}
+          error={emailError ?? undefined}
+          keyboardType="email-address"
+          autoComplete="email"
+          autoCapitalize="none"
+          returnKeyType="next"
+          onSubmitEditing={() => passwordRef.current?.focus()}
+          testID="sign-up-email"
+          accessibilityLabel="Email Address"
+        />
 
-      {error && <Text style={styles.error}>{error}</Text>}
+        <Input
+          ref={passwordRef}
+          placeholder="Password"
+          value={password}
+          onChangeText={setPassword}
+          error={passwordError ?? undefined}
+          secureTextEntry
+          autoComplete="new-password"
+          returnKeyType="go"
+          onSubmitEditing={handleSubmit}
+          testID="sign-up-password"
+          accessibilityLabel="Password"
+        />
 
+        {/* Submit error */}
+        {submitError && (
+          <Text style={styles.submitError} accessibilityRole="alert">
+            {submitError}
+          </Text>
+        )}
+      </View>
+
+      {/* Primary CTA */}
       <Button
-        label={loading ? "Creating account..." : "Sign Up"}
-        onPress={handleSignUp}
+        label="Create Account"
+        onPress={handleSubmit}
         loading={loading}
         disabled={loading}
+        variant="primary"
+        size="lg"
+        fullWidth
+        style={styles.primaryBtn}
+        testID="sign-up-submit"
       />
 
-      <Button
-        label="Already have an account? Sign In"
-        onPress={() => router.push("/auth/sign-in")}
-        variant="ghost"
+      {/* Social sign-in */}
+      <AuthDivider />
+      <SocialButton
+        label="Continue with Google"
+        onPress={handleGoogleSignIn}
+        testID="sign-up-google"
       />
-    </KeyboardAvoidingView>
+
+      {/* Footer */}
+      <AuthFooterLink
+        prefix="Already have an account?"
+        linkLabel="Sign In"
+        onPress={() => router.replace("/auth/sign-in")}
+        testID="sign-up-to-signin"
+      />
+    </AuthScreenLayout>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: "center",
-    padding: spacing.xl,
-    backgroundColor: colors.background,
+  header: {
+    alignItems: "center",
+    marginBottom: spacing.xl,
   },
-  title: {
-    fontSize: fontSize.xxl,
-    fontWeight: fontWeight.bold,
+  heading: {
+    ...typography.h2,
+    color: colors.textPrimary,
     textAlign: "center",
     marginBottom: spacing.xs,
   },
-  subtitle: {
-    fontSize: fontSize.md,
+  subheading: {
+    ...typography.body,
     color: colors.textSecondary,
     textAlign: "center",
-    marginBottom: spacing.xxl,
   },
-  error: {
-    fontSize: fontSize.sm,
+  form: {
+    alignSelf: "stretch",
+    marginBottom: spacing.sm,
+  },
+  submitError: {
+    ...typography.caption,
     color: colors.error,
     textAlign: "center",
-    marginBottom: spacing.md,
+    marginTop: spacing.xs,
+  },
+  primaryBtn: {
+    backgroundColor: colors.textPrimary,
+    borderRadius: radius.full,
+    alignSelf: "stretch",
   },
 });
