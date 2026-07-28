@@ -1,399 +1,363 @@
-import { memo, useCallback, useMemo } from "react";
+import { useCallback } from "react";
 import {
-  View,
-  Text,
   FlatList,
-  StyleSheet,
   RefreshControl,
   ScrollView,
+  StyleSheet,
+  Text,
   TouchableOpacity,
+  View,
 } from "react-native";
-import { useFocusEffect, router } from "expo-router";
-import { useRecommendations, OCCASIONS, SEASONS } from "../../hooks/useRecommendations";
-import { FilterChips } from "../../components/recommendations/FilterChips";
-import { ErrorMessage, CachedImage } from "../../components/ui";
-import { colors, fontSize, fontWeight, spacing, borderRadius, shadows } from "../../lib/theme";
-
-function attrValue(attrs: Record<string, unknown>, key: string): string {
-  const v = (attrs[key] as any)?.value;
-  return typeof v === "string" ? v : "";
-}
-
-function outfitLabel(attrs: Record<string, unknown>): string {
-  const color = attrValue(attrs, "color");
-  const type = attrValue(attrs, "type");
-  return [color, type].filter(Boolean).join(" ") || "Item";
-}
-
-// ── Skeleton card shown during initial load ──
-
-const SKELETON_ITEMS = Array.from({ length: 4 });
-
-function SkeletonCard() {
-  return (
-    <View style={styles.card}>
-      <View style={styles.cardHeader}>
-        <View style={styles.skeletonBadge} />
-        <View style={[styles.skeletonBlock, { width: 48, height: 24 }]} />
-      </View>
-      <View style={styles.thumbnailRow}>
-        {Array.from({ length: 3 }).map((_, i) => (
-          <View key={i} style={styles.skeletonThumb} />
-        ))}
-      </View>
-      <View style={[styles.skeletonBlock, { width: "80%", height: 14, marginTop: spacing.sm }]} />
-      <View style={[styles.skeletonBlock, { width: "60%", height: 14, marginTop: spacing.xs }]} />
-    </View>
-  );
-}
-
-function SkeletonList() {
-  return (
-    <>
-      <Header />
-      {SKELETON_ITEMS.map((_, i) => (
-        <SkeletonCard key={i} />
-      ))}
-    </>
-  );
-}
-
-// ── Header (styled to match existing design exactly) ──
-
-function Header() {
-  return (
-    <View style={styles.header}>
-      <Text style={styles.title}>Outfits</Text>
-    </View>
-  );
-}
-
-// ── FilterBar ──
-
-const FilterBar = memo(function FilterBar({
-  occasion,
-  onOccasionChange,
-  season,
-  onSeasonChange,
-}: {
-  occasion: string;
-  onOccasionChange: (v: string) => void;
-  season: string;
-  onSeasonChange: (v: string) => void;
-}) {
-  return (
-    <View style={styles.filterBar}>
-      <Text style={styles.filterLabel}>Occasion</Text>
-      <FilterChips
-        options={OCCASIONS}
-        selected={occasion}
-        onSelect={onOccasionChange}
-      />
-      <Text style={styles.filterLabel}>Season</Text>
-      <FilterChips
-        options={SEASONS}
-        selected={season}
-        onSelect={onSeasonChange}
-      />
-    </View>
-  );
-});
-
-// ── Recommendation card (memoised) ──
-
-const RecommendationCard = memo(function RecommendationCard({ rec }: { rec: any }) {
-  const scoreColor =
-    rec.score >= 70 ? "#2E7D32" : rec.score >= 40 ? "#E65100" : colors.error;
-
-  return (
-    <View style={styles.card}>
-      {/* Category badge + score */}
-      <View style={styles.cardHeader}>
-        <Text style={styles.categoryBadge}>{formatCategory(rec.outfit_category)}</Text>
-        <Text style={[styles.score, { color: scoreColor }]}>
-          {rec.score.toFixed(0)}%
-        </Text>
-      </View>
-
-      {/* Thumbnail row */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.thumbnailRow}
-      >
-        {rec.outfit_items.map((item: any) => (
-          <View key={item.id} style={styles.thumbnailWrapper}>
-            <CachedImage
-              uri={item.thumbnail_url}
-              style={styles.thumbnail}
-              resizeMode="cover"
-            />
-            <Text style={styles.thumbnailLabel} numberOfLines={1}>
-              {outfitLabel(item.attributes)}
-            </Text>
-          </View>
-        ))}
-      </ScrollView>
-
-      {/* Explanation */}
-      <Text style={styles.explanation}>{rec.explanation}</Text>
-    </View>
-  );
-});
-
-// ── Helpers ──
-
-function formatCategory(cat: string): string {
-  return cat
-    .replace(/_/g, " ")
-    .replace(/\b\w/g, (c) => c.toUpperCase());
-}
-
-// ── Main screen ──
+import { router, useFocusEffect } from "expo-router";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { Ionicons } from "@expo/vector-icons";
+import { Badge } from "@/components/ui/Badge";
+import { CachedImage } from "@/components/ui/CachedImage";
+import { Card } from "@/components/ui/Card";
+import { Chip } from "@/components/ui/Chip";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { ErrorMessage } from "@/components/ui/ErrorMessage";
+import { LoadingSkeletonCard } from "@/components/ui/LoadingSkeleton";
+import { colors, radius, spacing, typography } from "@/theme";
+import {
+  RECOMMENDATION_OCCASIONS,
+  RECOMMENDATION_SEASONS,
+  useRecommendationsData,
+} from "@/features/recommendations";
+import type { AIRecommendationItemV1 } from "@/features/recommendations";
 
 export default function RecommendationsScreen() {
-  const {
-    recommendations,
-    loading,
-    error,
-    occasion,
-    setOccasion,
-    season,
-    setSeason,
-    refresh,
-  } = useRecommendations();
+  const { recommendations, aiState, occasion, season, error, actions } =
+    useRecommendationsData();
 
   useFocusEffect(
     useCallback(() => {
-      refresh();
-    }, [refresh]),
+      void actions.fetchRecommendations();
+    }, [actions.fetchRecommendations]),
   );
 
-  const handleCardPress = useCallback((index: number) => {
-    router.push(`/recommendations/${index}`);
-  }, []);
-
-  // ── Skeleton / initial loading — show skeleton cards instead of spinner ──
-
-  if (loading && recommendations.length === 0 && !error) {
-    return (
-      <View style={styles.container}>
-        <ScrollView>
-          <SkeletonList />
-        </ScrollView>
-      </View>
-    );
-  }
-
-  // ── Initial error (no cached data) ──
-
-  if (error && recommendations.length === 0) {
-    return (
-      <View style={styles.container}>
-        <ScrollView>
-          <Header />
-          <View style={styles.centered}>
-            <ErrorMessage message={error} onRetry={refresh} />
-          </View>
-        </ScrollView>
-      </View>
-    );
-  }
-
-  // ── Empty state ──
-
-  if (!loading && recommendations.length === 0) {
-    return (
-      <View style={styles.container}>
-        <ScrollView>
-          <Header />
-          <FilterBar
-            occasion={occasion}
-            onOccasionChange={setOccasion}
-            season={season}
-            onSeasonChange={setSeason}
-          />
-          <View style={styles.centered}>
-            <Text style={styles.emptyTitle}>No recommendations yet</Text>
-            <Text style={styles.emptySubtitle}>
-              Add more clothing items to your wardrobe to get outfit suggestions.
-            </Text>
-          </View>
-        </ScrollView>
-      </View>
-    );
-  }
-
-  // ── Main list ──
-
-  const listHeader = useMemo(
-    () => (
-      <>
-        <Header />
-        <FilterBar
-          occasion={occasion}
-          onOccasionChange={setOccasion}
-          season={season}
-          onSeasonChange={setSeason}
-        />
-      </>
-    ),
-    [occasion, season, setOccasion, setSeason],
+  const handleSelectOccasion = useCallback(
+    (val: string) => {
+      actions.setOccasion(val);
+      void actions.fetchRecommendations({ occasion: val });
+    },
+    [actions],
   );
+
+  const handleSelectSeason = useCallback(
+    (val: string) => {
+      actions.setSeason(val);
+      void actions.fetchRecommendations({ season: val });
+    },
+    [actions],
+  );
+
+  const loading = aiState === "loading" && recommendations.length === 0;
 
   return (
-    <View style={styles.container}>
-      <FlatList
-        data={recommendations}
-        keyExtractor={(item) => item.outfit_id}
-        ListHeaderComponent={listHeader}
-        contentContainerStyle={styles.listContent}
-        refreshControl={
-          <RefreshControl
-            refreshing={loading}
-            onRefresh={refresh}
-            tintColor={colors.primary}
-          />
-        }
-        renderItem={({ item, index }) => (
+    <SafeAreaView style={styles.safe} edges={["top"]}>
+      {/* Header */}
+      <View style={styles.header}>
+        <View style={styles.headerLeft}>
           <TouchableOpacity
-            activeOpacity={0.7}
-            onPress={() => handleCardPress(index)}
+            onPress={() => router.back()}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             accessibilityRole="button"
-            accessibilityLabel={`${formatCategory(item.outfit_category)} outfit, ${item.score.toFixed(0)}% match`}
-            accessibilityHint="View outfit details"
+            accessibilityLabel="Go back"
           >
-            <RecommendationCard rec={item} />
+            <Ionicons name="arrow-back" size={22} color={colors.textPrimary} />
           </TouchableOpacity>
-        )}
-        // ── FlatList performance optimisations ──
-        windowSize={5}
-        maxToRenderPerBatch={5}
-        removeClippedSubviews
-        initialNumToRender={4}
-      />
-    </View>
+          <Text style={styles.headerTitle} accessibilityRole="header">
+            AI Outfit Stylist
+          </Text>
+        </View>
+
+        <Badge label="AI ENGINE" variant="warning" size="sm" />
+      </View>
+
+      {/* Occasion Filter Strip */}
+      <View style={styles.filterSection}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.filterScroll}
+        >
+          {RECOMMENDATION_OCCASIONS.map((occ) => (
+            <Chip
+              key={occ.value || "all_occ"}
+              label={occ.label}
+              selected={occasion === occ.value}
+              onPress={() => handleSelectOccasion(occ.value)}
+            />
+          ))}
+        </ScrollView>
+      </View>
+
+      {/* Main Recommendations Content */}
+      {loading ? (
+        <View style={styles.skeletonWrapper}>
+          <LoadingSkeletonCard />
+        </View>
+      ) : error && recommendations.length === 0 ? (
+        <View style={styles.centered}>
+          <ErrorMessage
+            message={error}
+            onRetry={() => actions.fetchRecommendations()}
+          />
+        </View>
+      ) : recommendations.length === 0 ? (
+        <View style={styles.emptyWrapper}>
+          <EmptyState
+            icon="✨"
+            title="No Outfits Found"
+            description="Try selecting a different occasion or adding more clothing items to your wardrobe."
+            actionLabel="Add Clothing"
+            onAction={() => router.push("/upload/capture")}
+          />
+        </View>
+      ) : (
+        <FlatList
+          data={recommendations}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={styles.listContent}
+          windowSize={5}
+          maxToRenderPerBatch={5}
+          removeClippedSubviews
+          refreshControl={
+            <RefreshControl
+              refreshing={aiState === "loading"}
+              onRefresh={() => actions.fetchRecommendations()}
+              tintColor={colors.textSecondary}
+            />
+          }
+          renderItem={({ item, index }) => (
+            <RecommendationCard
+              recommendation={item}
+              onPress={() =>
+                router.push({
+                  pathname: "/recommendations/[id]",
+                  params: { id: item.id, index: String(index) },
+                })
+              }
+              onFeedback={(type) => actions.submitFeedback(item.id, type)}
+              onSaveToLooks={() => actions.saveToLooks(item.id)}
+            />
+          )}
+        />
+      )}
+    </SafeAreaView>
   );
 }
 
-// ── Styles (unchanged from original) ──
+function RecommendationCard({
+  recommendation,
+  onPress,
+  onFeedback,
+  onSaveToLooks,
+}: {
+  recommendation: AIRecommendationItemV1;
+  onPress: () => void;
+  onFeedback: (type: "like" | "dislike") => void;
+  onSaveToLooks: () => void;
+}) {
+  return (
+    <Card
+      variant="elevated"
+      padding={0}
+      onPress={onPress}
+      style={styles.card}
+      accessibilityLabel={recommendation.title}
+    >
+      <View style={styles.cardHeader}>
+        <Text style={styles.cardTitle}>{recommendation.title}</Text>
+        <Badge
+          label={`${recommendation.matchScore}% MATCH`}
+          variant="default"
+          size="sm"
+        />
+      </View>
+
+      {/* Item Images Grid */}
+      <View style={styles.itemGrid}>
+        {recommendation.items.map((item) => (
+          <View key={item.id} style={styles.itemCell}>
+            <CachedImage
+              uri={item.thumbnail_url || item.segmented_image_url}
+              style={styles.itemImage}
+              resizeMode="cover"
+            />
+          </View>
+        ))}
+      </View>
+
+      {/* AI Explanation */}
+      <View style={styles.explanationBox}>
+        <Ionicons name="sparkles-outline" size={16} color={colors.accent} />
+        <Text style={styles.explanationText} numberOfLines={2}>
+          {recommendation.explanation}
+        </Text>
+      </View>
+
+      {/* Actions Bar */}
+      <View style={styles.cardActions}>
+        <View style={styles.feedbackGroup}>
+          <TouchableOpacity
+            onPress={() => onFeedback("like")}
+            style={styles.iconActionBtn}
+            accessibilityRole="button"
+            accessibilityLabel="Like outfit"
+          >
+            <Ionicons name="thumbs-up-outline" size={18} color={colors.textPrimary} />
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => onFeedback("dislike")}
+            style={styles.iconActionBtn}
+            accessibilityRole="button"
+            accessibilityLabel="Dislike outfit"
+          >
+            <Ionicons name="thumbs-down-outline" size={18} color={colors.textSecondary} />
+          </TouchableOpacity>
+        </View>
+
+        <TouchableOpacity
+          onPress={onSaveToLooks}
+          style={styles.saveActionBtn}
+          accessibilityRole="button"
+          accessibilityLabel="Save to looks"
+        >
+          <Ionicons name="bookmark-outline" size={16} color={colors.textPrimary} />
+          <Text style={styles.saveActionText}>Save to Looks</Text>
+        </TouchableOpacity>
+      </View>
+    </Card>
+  );
+}
 
 const styles = StyleSheet.create({
-  container: {
+  safe: {
     flex: 1,
     backgroundColor: colors.background,
   },
-  centered: {
-    justifyContent: "center",
-    alignItems: "center",
-    padding: spacing.xl,
-    gap: spacing.lg,
-  },
   header: {
-    paddingHorizontal: spacing.lg,
-    paddingTop: 60,
-    paddingBottom: spacing.sm,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: spacing.xl,
+    paddingVertical: spacing.md,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.border,
   },
-  title: {
-    fontSize: fontSize.xl,
-    fontWeight: fontWeight.bold,
-    color: colors.text,
+  headerLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
   },
-  filterBar: {
-    paddingBottom: spacing.sm,
+  headerTitle: {
+    ...typography.h2,
+    color: colors.textPrimary,
   },
-  filterLabel: {
-    fontSize: fontSize.xs,
-    fontWeight: fontWeight.semibold,
-    color: colors.textSecondary,
-    textTransform: "uppercase",
-    letterSpacing: 1,
-    paddingHorizontal: spacing.lg,
-    marginTop: spacing.sm,
+  filterSection: {
+    paddingVertical: spacing.xs,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.border,
+  },
+  filterScroll: {
+    paddingHorizontal: spacing.xl,
+    gap: spacing.xs,
   },
   listContent: {
-    paddingBottom: spacing.xxl,
+    padding: spacing.xl,
+    paddingBottom: spacing.massive,
   },
-  emptyTitle: {
-    fontSize: fontSize.lg,
-    fontWeight: fontWeight.semibold,
-    color: colors.text,
-    textAlign: "center",
+  skeletonWrapper: {
+    padding: spacing.xl,
   },
-  emptySubtitle: {
-    fontSize: fontSize.sm,
-    color: colors.textSecondary,
-    textAlign: "center",
-    lineHeight: 20,
+  centered: {
+    padding: spacing.xl,
+    alignItems: "center",
+  },
+  emptyWrapper: {
+    flex: 1,
+    paddingHorizontal: spacing.xl,
   },
   card: {
-    marginHorizontal: spacing.lg,
     marginBottom: spacing.lg,
-    borderRadius: borderRadius.lg,
-    backgroundColor: colors.background,
-    ...shadows.md,
-    padding: spacing.lg,
+    overflow: "hidden",
+    backgroundColor: colors.surface,
   },
   cardHeader: {
     flexDirection: "row",
+    alignItems: "center",
     justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: spacing.md,
+    padding: spacing.md,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.border,
   },
-  categoryBadge: {
-    fontSize: fontSize.xs,
-    fontWeight: fontWeight.semibold,
-    color: colors.primary,
+  cardTitle: {
+    ...typography.h3,
+    fontSize: 15,
+    color: colors.textPrimary,
+  },
+  itemGrid: {
+    flexDirection: "row",
+    height: 140,
+    backgroundColor: colors.border,
+  },
+  itemCell: {
+    flex: 1,
+    borderRightWidth: StyleSheet.hairlineWidth,
+    borderRightColor: colors.surface,
     backgroundColor: colors.surface,
+  },
+  itemImage: {
+    width: "100%",
+    height: "100%",
+  },
+  explanationBox: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.xs,
+    padding: spacing.md,
+    backgroundColor: colors.surface,
+  },
+  explanationText: {
+    ...typography.caption,
+    fontSize: 12,
+    color: colors.textSecondary,
+    flex: 1,
+    lineHeight: 18,
+  },
+  cardActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.border,
+  },
+  feedbackGroup: {
+    flexDirection: "row",
+    gap: spacing.xs,
+  },
+  iconActionBtn: {
+    width: 44,
+    height: 44,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  saveActionBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.xxs,
+    paddingVertical: spacing.xs,
     paddingHorizontal: spacing.sm,
-    paddingVertical: 2,
-    borderRadius: borderRadius.sm,
-    overflow: "hidden",
+    borderRadius: radius.sm,
+    backgroundColor: colors.background,
   },
-  score: {
-    fontSize: fontSize.lg,
-    fontWeight: fontWeight.bold,
-  },
-  thumbnailRow: {
-    gap: spacing.sm,
-    marginBottom: spacing.md,
-  },
-  thumbnailWrapper: {
-    alignItems: "center",
-    width: 72,
-  },
-  thumbnail: {
-    width: 64,
-    height: 64,
-    borderRadius: borderRadius.md,
-    backgroundColor: colors.surface,
-  },
-  thumbnailLabel: {
-    fontSize: 10,
-    color: colors.textSecondary,
-    marginTop: 2,
-    textAlign: "center",
-  },
-  explanation: {
-    fontSize: fontSize.sm,
-    color: colors.textSecondary,
-    lineHeight: 20,
-  },
-  // Skeleton styles
-  skeletonBadge: {
-    width: 64,
-    height: 20,
-    borderRadius: borderRadius.sm,
-    backgroundColor: colors.surface,
-  },
-  skeletonBlock: {
-    borderRadius: borderRadius.sm,
-    backgroundColor: colors.surface,
-  },
-  skeletonThumb: {
-    width: 64,
-    height: 64,
-    borderRadius: borderRadius.md,
-    backgroundColor: colors.surface,
+  saveActionText: {
+    ...typography.caption,
+    fontWeight: "600",
+    color: colors.textPrimary,
   },
 });

@@ -1,52 +1,33 @@
-import { useState, useCallback, useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import {
-  View,
-  Text,
+  BackHandler,
   ScrollView,
   StyleSheet,
-  BackHandler,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import { router, useLocalSearchParams, useNavigation } from "expo-router";
-import * as api from "../../lib/api";
-import { getUserFacingMessage } from "../../lib/errors";
-import type { AIPipelineResult } from "../../lib/types";
-import { Button, LoadingOverlay, ErrorMessage, CachedImage } from "../../components/ui";
-import { AttributeField } from "../../components/upload/AttributeField";
-import { AttributeTags } from "../../components/upload/AttributeTags";
-import { colors, fontSize, fontWeight, spacing, borderRadius } from "../../lib/theme";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { Ionicons } from "@expo/vector-icons";
+import { Button, CachedImage, ErrorMessage, LoadingOverlay } from "@/components/ui";
+import { colors, radius, spacing, typography } from "@/theme";
+import type { AIPipelineResult } from "@/lib/types";
+import { AttributeField } from "@/components/upload/AttributeField";
+import { AttributeTags } from "@/components/upload/AttributeTags";
+import {
+  DEFAULT_OCCASIONS,
+  DEFAULT_SEASONS,
+  UPLOAD_SINGLE_ATTRS,
+  useUploadState,
+} from "@/features/upload";
 
-// ── Editable field definitions ──
-
-interface FieldDef {
-  key: string;
-  label: string;
-  required?: boolean;
-  validate?: (v: string) => string | null;
-}
-
-const SINGLE_ATTRS: FieldDef[] = [
-  { key: "category", label: "Category", required: true,
-    validate: (v) => !v.trim() ? "Category is required" : null },
-  { key: "type", label: "Type", required: true,
-    validate: (v) => !v.trim() ? "Type is required" : null },
-  { key: "color", label: "Color", required: true,
-    validate: (v) => !v.trim() ? "Color is required" : null },
-  { key: "pattern", label: "Pattern" },
-  { key: "material", label: "Material" },
-  { key: "style", label: "Style" },
-  { key: "neckline", label: "Neckline" },
-  { key: "sleeve_length", label: "Sleeve Length" },
-  { key: "fit", label: "Fit" },
-  { key: "length", label: "Length" },
-  { key: "closure", label: "Closure" },
-  { key: "brand", label: "Brand" },
-  { key: "description", label: "Description" },
-];
-
-// ── Screen ──
-
-type ScreenState = "review" | "saving" | "error";
-
+/**
+ * ReviewScreen: Displays detected AI attributes, supports editing, and saves to wardrobe.
+ *
+ * Cancellation behavior: Discards the draft state completely when leaving the screen
+ * without saving. Only persists when explicitly tapping "Save to Wardrobe".
+ */
 export default function ReviewScreen() {
   const params = useLocalSearchParams<{
     pipelineToken: string;
@@ -55,20 +36,29 @@ export default function ReviewScreen() {
   }>();
 
   const aiResult = useMemo<AIPipelineResult>(
-    () => JSON.parse(params.resultJson),
+    () => (params.resultJson ? JSON.parse(params.resultJson) : {}),
     [params.resultJson],
   );
 
-  const [edits, setEdits] = useState<Record<string, string>>({});
-  const [errors, setErrors] = useState<Record<string, string>>({});
-  const [state, setState] = useState<ScreenState>("review");
-  const [saveError, setSaveError] = useState<string | null>(null);
+  const {
+    draft,
+    getValue,
+    setAttribute,
+    errors,
+    saving,
+    saveError,
+    saveDraft,
+    resetDraft,
+    setSaveError,
+  } = useUploadState({
+    pipelineToken: params.pipelineToken,
+    segmentedImageUrl: params.segmentedImageUrl,
+    aiResult,
+  });
 
-  // Block leaving the screen while a save is in flight, so navigation can't
-  // unmount mid-request.
   const navigation = useNavigation();
-  const saving = state === "saving";
 
+  // Prevent leaving screen while save API is in flight
   useEffect(() => {
     navigation.setOptions({
       gestureEnabled: !saving,
@@ -82,18 +72,18 @@ export default function ReviewScreen() {
     return () => sub.remove();
   }, [saving]);
 
-  // ── Derived values ──
+  const handleSave = useCallback(async () => {
+    const success = await saveDraft();
+    if (success) {
+      // Screen component manages navigation after successful save
+      router.replace("/wardrobe");
+    }
+  }, [saveDraft]);
 
-  const getValue = useCallback(
-    (key: string): string => {
-      if (edits[key] !== undefined) return edits[key];
-      const val = (aiResult as any)[key];
-      if (val && typeof val === "object" && "value" in val) return String(val.value);
-      if (typeof val === "string") return val;
-      return "";
-    },
-    [edits, aiResult],
-  );
+  const handleCancel = useCallback(() => {
+    resetDraft();
+    router.replace("/wardrobe");
+  }, [resetDraft]);
 
   const getConfidence = useCallback(
     (key: string): number => {
@@ -104,235 +94,198 @@ export default function ReviewScreen() {
     [aiResult],
   );
 
-  const setValue = useCallback((key: string, text: string) => {
-    setEdits((prev) => ({ ...prev, [key]: text }));
-    // Clear error when user types
-    setErrors((prev) => {
-      const next = { ...prev };
-      delete next[key];
-      return next;
-    });
-  }, []);
-
-  // ── Validation ──
-
-  const validate = useCallback((): boolean => {
-    const newErrors: Record<string, string> = {};
-    for (const attr of SINGLE_ATTRS) {
-      if (attr.validate) {
-        const err = attr.validate(getValue(attr.key));
-        if (err) newErrors[attr.key] = err;
-      }
-    }
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  }, [getValue]);
-
-  // ── Save ──
-
-  const buildPayload = useCallback((): Record<string, unknown> => {
-    const payload: Record<string, unknown> = {};
-    for (const attr of SINGLE_ATTRS) {
-      const val = getValue(attr.key);
-      if (val.trim()) {
-        payload[attr.key] = { value: val.trim(), confidence: 1.0 };
-      }
-    }
-    // Preserve multi-value attributes as-is
-    if (aiResult.season) payload.season = aiResult.season;
-    if (aiResult.occasion) payload.occasion = aiResult.occasion;
-    return payload;
-  }, [getValue, aiResult]);
-
-  const handleSave = useCallback(async () => {
-    if (!validate()) return;
-
-    setState("saving");
-    setSaveError(null);
-
-    try {
-      const attrs = buildPayload();
-      await api.saveClothing(params.pipelineToken, attrs);
-      router.replace("/wardrobe");
-    } catch (err: unknown) {
-      setSaveError(getUserFacingMessage(err));
-      setState("error");
-    }
-  }, [validate, buildPayload, params.pipelineToken]);
-
-  const handleRetry = useCallback(() => {
-    setState("saving");
-    setSaveError(null);
-
-    // Bypass the validate call on retry
-    (async () => {
-      try {
-        const attrs = buildPayload();
-        await api.saveClothing(params.pipelineToken, attrs);
-        router.replace("/wardrobe");
-      } catch (err: unknown) {
-        setSaveError(getUserFacingMessage(err));
-        setState("error");
-      }
-    })();
-  }, [buildPayload, params.pipelineToken]);
-
-  const handleBackToReview = useCallback(() => {
-    setState("review");
-    setSaveError(null);
-  }, []);
-
-  // ── Error screen ──
-
-  if (state === "error") {
-    return (
-      <View style={styles.errorContainer}>
-        <Text style={styles.errorTitle}>Save Failed</Text>
-        <ErrorMessage message={saveError || "Something went wrong."} />
-        <View style={styles.errorActions}>
-          <Button label="Try Again" onPress={handleRetry} />
-          <Button label="Go Back" onPress={handleBackToReview} variant="outline" />
-        </View>
-      </View>
-    );
-  }
-
-  // ── Review screen ──
-
   return (
-    <View style={styles.container}>
-      <LoadingOverlay visible={state === "saving"} />
+    <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
+      <LoadingOverlay visible={saving} />
+
+      {/* Screen Header */}
+      <View style={styles.header}>
+        <TouchableOpacity
+          onPress={handleCancel}
+          disabled={saving}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          accessibilityRole="button"
+          accessibilityLabel="Cancel upload"
+        >
+          <Ionicons name="close" size={24} color={colors.textPrimary} />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle} accessibilityRole="header">
+          Review & Edit
+        </Text>
+        <TouchableOpacity
+          onPress={handleSave}
+          disabled={saving}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          accessibilityRole="button"
+          accessibilityLabel="Save to wardrobe"
+          testID="save-header-btn"
+        >
+          <Text style={styles.saveHeaderLabel}>Save</Text>
+        </TouchableOpacity>
+      </View>
 
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
       >
-        {/* Segmented image */}
-        <CachedImage
-          uri={params.segmentedImageUrl}
-          style={styles.image}
-          resizeMode="contain"
-        />
+        {saveError && (
+          <View style={styles.errorWrapper}>
+            <ErrorMessage message={saveError} />
+          </View>
+        )}
 
-        {/* Section: detected attributes */}
-        <Text style={styles.sectionTitle}>Detected Attributes</Text>
+        {/* Segmented Hero Image */}
+        <View style={styles.imageCard}>
+          <CachedImage
+            uri={params.segmentedImageUrl}
+            style={styles.heroImage}
+            resizeMode="contain"
+            accessibilityLabel="Segmented clothing item"
+          />
+        </View>
+
+        {/* Section: Single Attributes */}
+        <Text style={styles.sectionTitle}>Clothing Information</Text>
         <Text style={styles.sectionSubtitle}>
-          Review and edit the attributes before saving.
+          Review detected attributes and edit any field before saving.
         </Text>
 
-        {SINGLE_ATTRS.map((attr) => (
+        {UPLOAD_SINGLE_ATTRS.map((field) => (
           <AttributeField
-            key={attr.key}
-            label={attr.label}
-            value={getValue(attr.key)}
-            confidence={getConfidence(attr.key)}
-            onChangeText={(t) => setValue(attr.key, t)}
-            error={errors[attr.key]}
+            key={field.key}
+            label={field.label}
+            value={getValue(field.key)}
+            confidence={getConfidence(field.key)}
+            onChangeText={(t) => setAttribute(field.key, t)}
+            error={errors[field.key]}
+            multiline={field.multiline}
+            testID={`field-${field.key}`}
           />
         ))}
 
-        {/* Multi-value attributes (read-only) */}
+        {/* Section: Season & Occasion */}
         <Text style={styles.sectionTitle}>Season & Occasion</Text>
         <AttributeTags
           label="Season"
-          items={aiResult.season || []}
-          emptyLabel="Not detected"
+          items={draft.season}
+          selectableOptions={DEFAULT_SEASONS}
         />
         <AttributeTags
           label="Occasion"
-          items={aiResult.occasion || []}
-          emptyLabel="Not detected"
+          items={draft.occasion}
+          selectableOptions={DEFAULT_OCCASIONS}
         />
 
-        {/* Pipeline metadata */}
-        <View style={styles.metadataBox}>
-          <Text style={styles.metadataText}>
-            Model: {aiResult.model_name}
-          </Text>
-        </View>
+        {/* Model Metadata */}
+        {aiResult.model_name && (
+          <View style={styles.metadataBox}>
+            <Text style={styles.metadataText}>
+              Analyzed with {aiResult.model_name} ({aiResult.model_version})
+            </Text>
+          </View>
+        )}
       </ScrollView>
 
-      {/* Bottom save bar */}
-      <View style={styles.saveBar}>
+      {/* Fixed Bottom Save Action */}
+      <View style={styles.bottomBar}>
         <Button
           label="Save to Wardrobe"
           onPress={handleSave}
-          loading={state === "saving"}
-          disabled={state === "saving"}
+          loading={saving}
+          disabled={saving}
+          variant="primary"
+          size="lg"
+          fullWidth
+          style={styles.primaryBtn}
+          testID="save-bottom-btn"
         />
       </View>
-    </View>
+    </SafeAreaView>
   );
 }
 
-// ── Styles ──
-
 const styles = StyleSheet.create({
-  container: {
+  safe: {
     flex: 1,
     backgroundColor: colors.background,
   },
-  scrollContent: {
-    padding: spacing.lg,
-    paddingBottom: 100, // room for save bar
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: spacing.xl,
+    paddingVertical: spacing.md,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.border,
   },
-  image: {
+  headerTitle: {
+    ...typography.h3,
+    color: colors.textPrimary,
+  },
+  saveHeaderLabel: {
+    ...typography.caption,
+    fontWeight: "600",
+    color: colors.accent,
+  },
+  scrollContent: {
+    padding: spacing.xl,
+    paddingBottom: 100,
+  },
+  errorWrapper: {
+    marginBottom: spacing.md,
+  },
+  imageCard: {
     width: "100%",
     aspectRatio: 1,
-    borderRadius: borderRadius.lg,
+    borderRadius: radius.md,
     backgroundColor: colors.surface,
+    overflow: "hidden",
     marginBottom: spacing.xl,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  heroImage: {
+    width: "100%",
+    height: "100%",
   },
   sectionTitle: {
-    fontSize: fontSize.lg,
-    fontWeight: fontWeight.bold,
-    color: colors.text,
-    marginBottom: spacing.xs,
+    ...typography.h2,
+    color: colors.textPrimary,
+    marginBottom: spacing.xxs,
   },
   sectionSubtitle: {
-    fontSize: fontSize.sm,
+    ...typography.body,
     color: colors.textSecondary,
     marginBottom: spacing.lg,
     lineHeight: 20,
   },
   metadataBox: {
     backgroundColor: colors.surface,
-    borderRadius: borderRadius.md,
+    borderRadius: radius.sm,
     padding: spacing.md,
     marginTop: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
   metadataText: {
-    fontSize: fontSize.xs,
-    color: colors.textTertiary,
+    ...typography.caption,
+    fontSize: 11,
+    color: colors.textSecondary,
     textAlign: "center",
   },
-  saveBar: {
+  bottomBar: {
     position: "absolute",
     bottom: 0,
     left: 0,
     right: 0,
-    padding: spacing.lg,
-    paddingBottom: spacing.xxl,
-    backgroundColor: colors.background,
-    borderTopWidth: 1,
-    borderTopColor: colors.borderLight,
-  },
-  // Error screen
-  errorContainer: {
-    flex: 1,
-    justifyContent: "center",
     padding: spacing.xl,
-    gap: spacing.lg,
     backgroundColor: colors.background,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.border,
   },
-  errorTitle: {
-    fontSize: fontSize.xl,
-    fontWeight: fontWeight.bold,
-    textAlign: "center",
-    color: colors.text,
-  },
-  errorActions: {
-    gap: spacing.md,
-    marginTop: spacing.sm,
+  primaryBtn: {
+    backgroundColor: colors.textPrimary,
+    borderRadius: radius.full,
   },
 });

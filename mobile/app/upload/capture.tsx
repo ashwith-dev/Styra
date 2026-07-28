@@ -1,31 +1,43 @@
 import { useCallback, useEffect, useState } from "react";
 import {
-  View,
-  Text,
-  Image,
-  StyleSheet,
-  ScrollView,
   BackHandler,
+  Image,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import { router, useNavigation } from "expo-router";
-import * as api from "../../lib/api";
-import { useImagePicker } from "../../hooks/useImagePicker";
-import { Button, LoadingOverlay, ErrorMessage } from "../../components/ui";
-import { getUserFacingMessage, AppError } from "../../lib/errors";
-import { colors, fontSize, fontWeight, spacing, borderRadius } from "../../lib/theme";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { Ionicons } from "@expo/vector-icons";
+import * as api from "@/lib/api";
+import { getUserFacingMessage } from "@/lib/errors";
+import { useImagePicker } from "@/hooks/useImagePicker";
+import { Button, Card, ErrorMessage, LoadingOverlay } from "@/components/ui";
+import { colors, radius, spacing, typography } from "@/theme";
 
 type ScreenState = "select" | "preview" | "analyzing" | "error";
 
+/**
+ * CaptureScreen: Single screen managing internal UI state transitions.
+ *
+ * Flow:
+ *   No Image Selected (select)
+ *   → Choose Camera / Gallery
+ *   → Image Preview (preview)
+ *   → Analyze Clothing (analyzing)
+ *   → Navigate to Review (/upload/review)
+ */
 export default function CaptureScreen() {
   const { image, processing, takePhoto, pickFromGallery, reset } = useImagePicker();
   const [state, setState] = useState<ScreenState>("select");
   const [error, setError] = useState<string | null>(null);
 
-  // Block leaving the screen while analysis is in flight, so the navigation
-  // push to /upload/review can't fire after the user has backed out.
   const navigation = useNavigation();
   const analyzing = state === "analyzing";
 
+  // Prevent backing out while analysis API is in flight
   useEffect(() => {
     navigation.setOptions({
       gestureEnabled: !analyzing,
@@ -39,6 +51,13 @@ export default function CaptureScreen() {
     return () => sub.remove();
   }, [analyzing]);
 
+  // Sync state when image changes
+  useEffect(() => {
+    if (image && state === "select") {
+      setState("preview");
+    }
+  }, [image, state]);
+
   const handleAnalyze = useCallback(async () => {
     if (!image) return;
     setState("analyzing");
@@ -46,6 +65,7 @@ export default function CaptureScreen() {
 
     try {
       const result = await api.analyzeClothing(image.uri);
+      // Navigation is performed by the screen component
       router.push({
         pathname: "/upload/review",
         params: {
@@ -55,14 +75,7 @@ export default function CaptureScreen() {
         },
       });
     } catch (err: unknown) {
-      const msg = getUserFacingMessage(err);
-
-      // Show specific message for validation failures
-      if (err instanceof AppError && err.statusCode === 400) {
-        setError(msg);
-      } else {
-        setError(msg);
-      }
+      setError(getUserFacingMessage(err));
       setState("error");
     }
   }, [image]);
@@ -78,140 +91,210 @@ export default function CaptureScreen() {
     setError(null);
   }, [reset]);
 
-  // Show error state
-  if (state === "error") {
-    return (
-      <View style={styles.container}>
-        <View style={styles.errorContainer}>
-          <Text style={styles.errorTitle}>Analysis Failed</Text>
-          <ErrorMessage message={error || "Something went wrong."} />
-          <View style={styles.errorActions}>
-            <Button label="Try Again" onPress={handleRetry} />
-            <Button label="Choose a Different Photo" onPress={handleCancel} variant="outline" />
-          </View>
-        </View>
-      </View>
-    );
-  }
+  const handleClose = useCallback(() => {
+    reset();
+    router.back();
+  }, [reset]);
 
   return (
-    <View style={styles.container}>
-      <LoadingOverlay visible={state === "analyzing"} />
+    <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
+      <LoadingOverlay visible={analyzing} />
 
+      {/* Screen Header */}
+      <View style={styles.header}>
+        <TouchableOpacity
+          onPress={handleClose}
+          disabled={analyzing}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          accessibilityRole="button"
+          accessibilityLabel="Close upload"
+        >
+          <Ionicons name="close" size={24} color={colors.textPrimary} />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle} accessibilityRole="header">
+          Add Clothing
+        </Text>
+        <View style={{ width: 24 }} />
+      </View>
+
+      {/* Main Content */}
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         bounces={false}
+        showsVerticalScrollIndicator={false}
       >
-        {image ? (
-          <Image source={{ uri: image.uri }} style={styles.preview} resizeMode="contain" />
+        {state === "error" ? (
+          <View style={styles.errorWrapper}>
+            <Text style={styles.errorTitle}>Analysis Failed</Text>
+            <ErrorMessage message={error || "Something went wrong."} />
+            <View style={styles.errorActions}>
+              <Button label="Try Again" onPress={handleRetry} variant="primary" fullWidth />
+              <Button
+                label="Choose a Different Photo"
+                onPress={handleCancel}
+                variant="outline"
+                fullWidth
+              />
+            </View>
+          </View>
+        ) : image ? (
+          <Card variant="flat" padding={0} style={styles.previewCard}>
+            <Image source={{ uri: image.uri }} style={styles.previewImage} resizeMode="contain" />
+          </Card>
         ) : (
-          <View style={styles.placeholder}>
-            <Text style={styles.placeholderIcon}>📸</Text>
-            <Text style={styles.placeholderTitle}>Add a Clothing Item</Text>
+          <View style={styles.placeholderContainer}>
+            <View style={styles.iconCircle}>
+              <Ionicons name="camera-outline" size={36} color={colors.textPrimary} />
+            </View>
+            <Text style={styles.placeholderTitle}>Add to Your Wardrobe</Text>
             <Text style={styles.placeholderSubtitle}>
-              Take a photo or choose one from your gallery.
+              Take a clean photo or pick an existing image from your gallery.
             </Text>
           </View>
         )}
       </ScrollView>
 
-      <View style={styles.actions}>
-        {image ? (
-          <>
-            <Button
-              label="Analyze Clothing"
-              onPress={handleAnalyze}
-              disabled={processing}
-              loading={processing}
-            />
-            <Button
-              label="Choose a Different Photo"
-              onPress={handleCancel}
-              variant="outline"
-            />
-          </>
-        ) : (
-          <>
-            <Button
-              label="Take Photo"
-              onPress={takePhoto}
-              loading={processing}
-              disabled={processing}
-            />
-            <Button
-              label="Choose from Gallery"
-              onPress={pickFromGallery}
-              variant="outline"
-              loading={processing}
-              disabled={processing}
-            />
-          </>
-        )}
-      </View>
-    </View>
+      {/* Action Bar */}
+      {state !== "error" && (
+        <View style={styles.actions}>
+          {image ? (
+            <>
+              <Button
+                label="Analyze Clothing"
+                onPress={handleAnalyze}
+                disabled={processing || analyzing}
+                loading={processing || analyzing}
+                variant="primary"
+                size="lg"
+                fullWidth
+                style={styles.primaryBtn}
+                testID="analyze-btn"
+              />
+              <Button
+                label="Choose a Different Photo"
+                onPress={handleCancel}
+                disabled={analyzing}
+                variant="outline"
+                size="lg"
+                fullWidth
+              />
+            </>
+          ) : (
+            <>
+              <Button
+                label="Take Photo"
+                onPress={takePhoto}
+                loading={processing}
+                disabled={processing}
+                variant="primary"
+                size="lg"
+                fullWidth
+                style={styles.primaryBtn}
+                testID="take-photo-btn"
+              />
+              <Button
+                label="Choose from Gallery"
+                onPress={pickFromGallery}
+                variant="outline"
+                size="lg"
+                fullWidth
+                loading={processing}
+                disabled={processing}
+                testID="choose-gallery-btn"
+              />
+            </>
+          )}
+        </View>
+      )}
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  safe: {
     flex: 1,
     backgroundColor: colors.background,
   },
-  scrollContent: {
-    flex: 1,
-    padding: spacing.lg,
-  },
-  preview: {
-    flex: 1,
-    borderRadius: borderRadius.lg,
-    backgroundColor: colors.surface,
-  },
-  placeholder: {
-    flex: 1,
-    borderRadius: borderRadius.lg,
-    backgroundColor: colors.surface,
-    justifyContent: "center",
+  header: {
+    flexDirection: "row",
     alignItems: "center",
-    borderWidth: 2,
+    justifyContent: "space-between",
+    paddingHorizontal: spacing.xl,
+    paddingVertical: spacing.md,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.border,
+  },
+  headerTitle: {
+    ...typography.h3,
+    color: colors.textPrimary,
+  },
+  scrollContent: {
+    flexGrow: 1,
+    padding: spacing.xl,
+    justifyContent: "center",
+  },
+  previewCard: {
+    width: "100%",
+    aspectRatio: 0.85,
+    borderRadius: radius.md,
+    overflow: "hidden",
+    backgroundColor: colors.surface,
+  },
+  previewImage: {
+    width: "100%",
+    height: "100%",
+  },
+  placeholderContainer: {
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: spacing.xxxl,
+    paddingHorizontal: spacing.xl,
+    borderRadius: radius.md,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
     borderColor: colors.border,
     borderStyle: "dashed",
-    padding: spacing.xxl,
   },
-  placeholderIcon: {
-    fontSize: 48,
+  iconCircle: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: colors.background,
+    alignItems: "center",
+    justifyContent: "center",
     marginBottom: spacing.lg,
   },
   placeholderTitle: {
-    fontSize: fontSize.lg,
-    fontWeight: fontWeight.semibold,
-    color: colors.text,
-    marginBottom: spacing.sm,
+    ...typography.h2,
+    color: colors.textPrimary,
+    textAlign: "center",
+    marginBottom: spacing.xs,
   },
   placeholderSubtitle: {
-    fontSize: fontSize.sm,
+    ...typography.body,
     color: colors.textSecondary,
     textAlign: "center",
-    lineHeight: 20,
+    lineHeight: 22,
   },
   actions: {
-    padding: spacing.lg,
-    gap: spacing.md,
-    paddingBottom: spacing.xxl,
-  },
-  errorContainer: {
-    flex: 1,
-    justifyContent: "center",
     padding: spacing.xl,
-    gap: spacing.lg,
+    gap: spacing.sm,
+  },
+  primaryBtn: {
+    backgroundColor: colors.textPrimary,
+    borderRadius: radius.full,
+  },
+  errorWrapper: {
+    alignItems: "center",
+    gap: spacing.md,
   },
   errorTitle: {
-    fontSize: fontSize.xl,
-    fontWeight: fontWeight.bold,
-    textAlign: "center",
-    color: colors.text,
+    ...typography.h2,
+    color: colors.textPrimary,
   },
   errorActions: {
-    gap: spacing.md,
-    marginTop: spacing.sm,
+    alignSelf: "stretch",
+    gap: spacing.sm,
+    marginTop: spacing.md,
   },
 });

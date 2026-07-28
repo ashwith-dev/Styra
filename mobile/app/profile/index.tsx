@@ -1,152 +1,135 @@
-import { useEffect, useState } from "react";
-import { View, Text, ScrollView, StyleSheet } from "react-native";
+import { useCallback, useState } from "react";
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { router } from "expo-router";
-import { useAuth } from "../../providers/AuthProvider";
-import { getCachedWardrobeCount, getCachedWardrobeCategoryCount } from "../../hooks/useWardrobe";
-import { getCachedRecommendations } from "../../hooks/useRecommendations";
-import { Button } from "../../components/ui";
-import { colors, fontSize, fontWeight, spacing, borderRadius, shadows } from "../../lib/theme";
-
-function StatCard({ label, value }: { label: string; value: string }) {
-  return (
-    <View style={styles.statCard}>
-      <Text style={styles.statValue}>{value}</Text>
-      <Text style={styles.statLabel}>{label}</Text>
-    </View>
-  );
-}
+import { SafeAreaView } from "react-native-safe-area-context";
+import { Ionicons } from "@expo/vector-icons";
+import Constants from "expo-constants";
+import { colors, spacing, typography } from "@/theme";
+import {
+  EditProfileModal,
+  ProfileHeaderCard,
+  ProfileStatsRow,
+  SETTINGS_SECTIONS,
+  SettingsSectionList,
+  useProfileData,
+} from "@/features/profile";
+import type { UserPreferences } from "@/features/profile";
 
 export default function ProfileScreen() {
-  const { user, signOut } = useAuth();
-  const [totalItems, setTotalItems] = useState(getCachedWardrobeCount());
-  const [categoryCount, setCategoryCount] = useState(getCachedWardrobeCategoryCount());
-  const [totalRecommendations, setTotalRecommendations] = useState(
-    getCachedRecommendations().length,
+  const { user, preferences, stats, preferenceState, error, actions } =
+    useProfileData();
+
+  const [modalVisible, setModalVisible] = useState(false);
+  const [editName, setEditName] = useState(user.name);
+  const [editAvatarUrl, setEditAvatarUrl] = useState(user.avatarUrl ?? "");
+  const [savingProfile, setSavingProfile] = useState(false);
+
+  const appVersion = Constants.expoConfig?.version ?? "1.0.0";
+
+  const handleOpenEdit = useCallback(() => {
+    setEditName(user.name);
+    setEditAvatarUrl(user.avatarUrl ?? "");
+    setModalVisible(true);
+  }, [user.name, user.avatarUrl]);
+
+  const handleSaveProfile = useCallback(async () => {
+    setSavingProfile(true);
+    const success = await actions.updateProfile({
+      name: editName,
+      avatarUrl: editAvatarUrl,
+    });
+    setSavingProfile(false);
+    if (success) {
+      setModalVisible(false);
+    }
+  }, [editName, editAvatarUrl, actions]);
+
+  const handleToggleNotification = useCallback(
+    (key: keyof UserPreferences["notifications"], val: boolean) => {
+      void actions.updatePreferences({
+        notifications: {
+          ...preferences.notifications,
+          [key]: val,
+        },
+      });
+    },
+    [preferences.notifications, actions],
   );
 
-  useEffect(() => {
-    setTotalItems(getCachedWardrobeCount());
-    setCategoryCount(getCachedWardrobeCategoryCount());
-    setTotalRecommendations(getCachedRecommendations().length);
-  }, []);
-
-  const displayName =
-    (user?.user_metadata?.name as string | undefined) ??
-    user?.email?.split("@")[0] ??
-    "User";
-  const displayEmail = user?.email ?? "";
-  const avatarInitial = displayName.charAt(0).toUpperCase();
-
   return (
-    <ScrollView
-      style={styles.container}
-      contentContainerStyle={styles.content}
-    >
-      {/* Avatar + Name + Email */}
-      <View style={styles.profileHeader}>
-        <View style={styles.avatar}>
-          <Text style={styles.avatarText}>{avatarInitial}</Text>
-        </View>
-        <Text style={styles.name}>{displayName}</Text>
-        <Text style={styles.email}>{displayEmail}</Text>
+    <SafeAreaView style={styles.safe} edges={["top"]}>
+      {/* Header */}
+      <View style={styles.header}>
+        <TouchableOpacity
+          onPress={() => router.back()}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          accessibilityRole="button"
+          accessibilityLabel="Go back"
+        >
+          <Ionicons name="arrow-back" size={22} color={colors.textPrimary} />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle} accessibilityRole="header">
+          Profile & Settings
+        </Text>
+        <View style={{ width: 22 }} />
       </View>
 
-      {/* Wardrobe Stats */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Wardrobe</Text>
-        <View style={styles.statsRow}>
-          <StatCard label="Items" value={String(totalItems)} />
-          <StatCard label="Categories" value={String(categoryCount)} />
-          <StatCard label="Outfits" value={String(totalRecommendations)} />
-        </View>
-      </View>
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Profile Header Card */}
+        <ProfileHeaderCard user={user} onEditProfile={handleOpenEdit} />
 
-      {/* Actions */}
-      <View style={styles.actions}>
-        <Button
-          label="Settings"
-          onPress={() => router.push("/settings")}
-          variant="outline"
+        {/* Wardrobe & Looks Stats Breakdown */}
+        <ProfileStatsRow stats={stats} />
+
+        {/* Data-Driven Settings Sections List */}
+        <SettingsSectionList
+          sections={SETTINGS_SECTIONS}
+          preferences={preferences}
+          onToggleNotification={handleToggleNotification}
+          appVersion={appVersion}
+          onSignOut={actions.signOut}
         />
-        <Button label="Sign Out" onPress={signOut} variant="primary" />
-      </View>
-    </ScrollView>
+      </ScrollView>
+
+      {/* Presentation-only Edit Profile Modal */}
+      <EditProfileModal
+        visible={modalVisible}
+        name={editName}
+        avatarUrl={editAvatarUrl}
+        saving={savingProfile}
+        error={error}
+        onChangeName={setEditName}
+        onChangeAvatarUrl={setEditAvatarUrl}
+        onSave={handleSaveProfile}
+        onClose={() => setModalVisible(false)}
+      />
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  safe: {
     flex: 1,
     backgroundColor: colors.background,
   },
-  content: {
-    padding: spacing.xl,
-    gap: spacing.xl,
-  },
-  profileHeader: {
-    alignItems: "center",
-    paddingTop: 60,
-    paddingBottom: spacing.lg,
-    gap: spacing.sm,
-  },
-  avatar: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: colors.surface,
-    borderWidth: 2,
-    borderColor: colors.border,
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: spacing.sm,
-  },
-  avatarText: {
-    fontSize: fontSize.xxl,
-    fontWeight: fontWeight.bold,
-    color: colors.textSecondary,
-  },
-  name: {
-    fontSize: fontSize.xl,
-    fontWeight: fontWeight.bold,
-    color: colors.text,
-  },
-  email: {
-    fontSize: fontSize.sm,
-    color: colors.textSecondary,
-  },
-  section: {
-    gap: spacing.md,
-  },
-  sectionTitle: {
-    fontSize: fontSize.md,
-    fontWeight: fontWeight.semibold,
-    color: colors.textSecondary,
-    textTransform: "uppercase",
-  },
-  statsRow: {
+  header: {
     flexDirection: "row",
-    gap: spacing.md,
-  },
-  statCard: {
-    flex: 1,
-    backgroundColor: colors.surface,
-    borderRadius: borderRadius.lg,
-    padding: spacing.lg,
     alignItems: "center",
-    ...shadows.sm,
+    justifyContent: "space-between",
+    paddingHorizontal: spacing.xl,
+    paddingVertical: spacing.md,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.border,
   },
-  statValue: {
-    fontSize: fontSize.xxl,
-    fontWeight: fontWeight.bold,
-    color: colors.text,
+  headerTitle: {
+    ...typography.h3,
+    color: colors.textPrimary,
   },
-  statLabel: {
-    fontSize: fontSize.xs,
-    color: colors.textSecondary,
-    marginTop: spacing.xs,
-  },
-  actions: {
-    gap: spacing.md,
-    marginTop: spacing.lg,
+  scrollContent: {
+    padding: spacing.xl,
+    paddingBottom: spacing.massive,
   },
 });

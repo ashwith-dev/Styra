@@ -1,26 +1,38 @@
 import { useCallback, useMemo } from "react";
-import {
-  View,
-  Text,
-  FlatList,
-  ActivityIndicator,
-  StyleSheet,
-  RefreshControl,
-} from "react-native";
+import { StyleSheet, View } from "react-native";
 import { router, useFocusEffect } from "expo-router";
-import { useWardrobe } from "../../hooks/useWardrobe";
-import { useAuth } from "../../providers/AuthProvider";
-import { Button, ErrorMessage } from "../../components/ui";
-import { SearchBar } from "../../components/ui/SearchBar";
-import { CategoryFilter } from "../../components/wardrobe/CategoryFilter";
-import { ClothingCard } from "../../components/wardrobe/ClothingCard";
-import { colors, fontSize, fontWeight, spacing } from "../../lib/theme";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { useWardrobe } from "@/hooks/useWardrobe";
+import { useAuth } from "@/providers/AuthProvider";
+import { ErrorMessage, SearchBar } from "@/components/ui";
+import { colors, spacing } from "@/theme";
+import {
+  AddItemFAB,
+  CategoryFilter,
+  ClothingGrid,
+  WardrobeEmptyState,
+  WardrobeHeader,
+  WardrobeLoadingSkeleton,
+} from "@/features/wardrobe";
 
-const NUM_COLUMNS = 2;
-
+/**
+ * Wardrobe main screen.
+ *
+ * Layout:
+ *   SafeAreaView
+ *     WardrobeHeader     — title, subtitle, item count
+ *     SearchBar          — live client-side search
+ *     WardrobeCategoryFilter — horizontal category chips
+ *     [Loading]          — WardrobeLoadingSkeleton
+ *     [Error]            — ErrorMessage + retry
+ *     [Empty]            — WardrobeEmptyState
+ *     [Grid]             — ClothingGrid (2-col, pull-to-refresh)
+ *   AddItemFAB           — fixed bottom-right
+ */
 export default function WardrobeScreen() {
   const {
     items,
+    allItems,
     loading,
     error,
     searchQuery,
@@ -30,173 +42,123 @@ export default function WardrobeScreen() {
     refresh,
     confirmDelete,
   } = useWardrobe();
+
   const { signOut } = useAuth();
 
-  // Refresh on mount and whenever the screen regains focus (after save,
-  // edit, or delete flows navigate back here)
+  // Refresh whenever the screen regains focus (after add/edit/delete flows)
   useFocusEffect(
     useCallback(() => {
-      refresh();
+      void refresh();
     }, [refresh]),
   );
 
-  // ── Header (memoised to prevent FlatList from remounting it on scroll) ──
+  const handleAddItem = useCallback(() => {
+    router.push("/upload/capture");
+  }, []);
 
+  const handleItemPress = useCallback((id: string) => {
+    router.push(`/items/${id}`);
+  }, []);
+
+  const handleClearFilters = useCallback(() => {
+    setSearchQuery("");
+    setCategoryFilter("");
+  }, [setSearchQuery, setCategoryFilter]);
+
+  const isFiltered = Boolean(searchQuery || categoryFilter);
+
+  // ── Memoised sticky list header ──
   const ListHeader = useMemo(
     () => (
       <View>
-        <View style={styles.header}>
-          <Text style={styles.title}>My Wardrobe</Text>
-          <View style={styles.headerRight}>
-            <Button label="Outfits" onPress={() => router.push("/recommendations")} variant="ghost" />
-            <Button label="+ Add" onPress={() => router.push("/upload/capture")} variant="ghost" />
-            <Button label="Sign Out" onPress={signOut} variant="ghost" />
-          </View>
-        </View>
-        <SearchBar value={searchQuery} onChangeText={setSearchQuery} />
-        <CategoryFilter selected={categoryFilter} onSelect={setCategoryFilter} />
+        <WardrobeHeader
+          itemCount={allItems.length}
+          onSignOut={signOut}
+        />
+        <SearchBar
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+          placeholder="Search wardrobe..."
+          style={styles.searchBar}
+          testID="wardrobe-search"
+        />
+        <CategoryFilter
+          selected={categoryFilter}
+          onSelect={setCategoryFilter}
+          testID="wardrobe-category-filter"
+        />
       </View>
     ),
-    [searchQuery, categoryFilter, signOut, setSearchQuery, setCategoryFilter],
+    [searchQuery, categoryFilter, allItems.length, signOut, setSearchQuery, setCategoryFilter],
   );
 
-  // ── Loading (initial) ──
-
-  if (loading && items.length === 0 && !error) {
+  // ── Initial loading ──
+  if (loading && allItems.length === 0 && !error) {
     return (
-      <View style={styles.container}>
+      <SafeAreaView style={styles.safe} edges={["top"]}>
         {ListHeader}
-        <View style={styles.centered}>
-          <ActivityIndicator size="large" color={colors.primary} />
-        </View>
-      </View>
+        <WardrobeLoadingSkeleton />
+      </SafeAreaView>
     );
   }
 
-  // ── Error (initial) ──
-
-  if (error && items.length === 0) {
+  // ── Initial error ──
+  if (error && allItems.length === 0) {
     return (
-      <View style={styles.container}>
+      <SafeAreaView style={styles.safe} edges={["top"]}>
         {ListHeader}
         <View style={styles.centered}>
           <ErrorMessage message={error} onRetry={refresh} />
         </View>
-      </View>
+      </SafeAreaView>
     );
   }
 
-  // ── Empty ──
-
+  // ── Empty (no items OR no filtered results) ──
   if (!loading && items.length === 0) {
     return (
-      <View style={styles.container}>
+      <SafeAreaView style={styles.safe} edges={["top"]}>
         {ListHeader}
-        <View style={styles.centered}>
-          {searchQuery || categoryFilter ? (
-            <>
-              <Text style={styles.emptyTitle}>No matching items</Text>
-              <Text style={styles.emptySubtitle}>
-                Try a different search or filter.
-              </Text>
-              <Button
-                label="Clear Filters"
-                onPress={() => {
-                  setSearchQuery("");
-                  setCategoryFilter("");
-                }}
-              />
-            </>
-          ) : (
-            <>
-              <Text style={styles.emptyTitle}>Your wardrobe is empty</Text>
-              <Text style={styles.emptySubtitle}>
-                Take a photo of your first clothing item to get started.
-              </Text>
-              <Button
-                label="Add First Item"
-                onPress={() => router.push("/upload/capture")}
-              />
-            </>
-          )}
-        </View>
-      </View>
+        <WardrobeEmptyState
+          isFiltered={isFiltered}
+          onClearFilters={handleClearFilters}
+          onAddItem={handleAddItem}
+        />
+        <AddItemFAB onPress={handleAddItem} />
+      </SafeAreaView>
     );
   }
 
   // ── Grid ──
-
   return (
-    <View style={styles.container}>
-      <FlatList
-        data={items}
-        numColumns={NUM_COLUMNS}
-        keyExtractor={(item) => item.id}
+    <SafeAreaView style={styles.safe} edges={["top"]}>
+      <ClothingGrid
+        items={items}
+        loading={loading}
+        onRefresh={refresh}
+        onPressItem={handleItemPress}
+        onLongPressItem={confirmDelete}
         ListHeaderComponent={ListHeader}
-        contentContainerStyle={styles.gridContent}
-        columnWrapperStyle={styles.row}
-        refreshControl={
-          <RefreshControl refreshing={loading} onRefresh={refresh} tintColor={colors.primary} />
-        }
-        renderItem={({ item }) => (
-          <ClothingCard
-            item={item}
-            onPress={() => router.push(`/items/${item.id}`)}
-            onLongPress={() => confirmDelete(item.id)}
-          />
-        )}
+        testID="wardrobe-grid"
       />
-    </View>
+      <AddItemFAB onPress={handleAddItem} />
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  safe: {
     flex: 1,
     backgroundColor: colors.background,
+  },
+  searchBar: {
+    marginHorizontal: spacing.xl,
+    marginBottom: spacing.xs,
   },
   centered: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
     padding: spacing.xl,
-    gap: spacing.lg,
-  },
-  header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingHorizontal: spacing.lg,
-    paddingTop: 60,
-    paddingBottom: spacing.sm,
-  },
-  title: {
-    fontSize: fontSize.xl,
-    fontWeight: fontWeight.bold,
-    color: colors.text,
-  },
-  headerRight: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.xs,
-  },
-  gridContent: {
-    paddingBottom: spacing.xxl,
-  },
-  row: {
-    justifyContent: "space-between",
-    paddingHorizontal: spacing.md,
-  },
-  emptyTitle: {
-    fontSize: fontSize.lg,
-    fontWeight: fontWeight.semibold,
-    color: colors.text,
-    textAlign: "center",
-  },
-  emptySubtitle: {
-    fontSize: fontSize.sm,
-    color: colors.textSecondary,
-    textAlign: "center",
-    lineHeight: 20,
   },
 });

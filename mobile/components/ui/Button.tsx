@@ -3,6 +3,7 @@ import {
   TouchableOpacity,
   Text,
   ActivityIndicator,
+  View,
   StyleSheet,
   type ViewStyle,
 } from "react-native";
@@ -35,7 +36,7 @@ const paddingMap: Record<ButtonSize, number> = {
   lg: spacing.xl,
 };
 
-export const Button = forwardRef<TouchableOpacity, ButtonProps>(function Button(
+export const Button = forwardRef<View, ButtonProps>(function Button(
   {
     label,
     onPress,

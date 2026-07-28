@@ -2,15 +2,14 @@ import { Stack } from "expo-router";
 import { ErrorBoundary } from "../../components/ui/ErrorBoundary";
 
 /**
- * Upload stack navigator.
+ * Profile stack navigator layout.
  * Custom STYRA header chrome rendered by screens directly.
  */
-export default function UploadLayout() {
+export default function ProfileLayout() {
   return (
     <ErrorBoundary>
       <Stack screenOptions={{ headerShown: false }}>
-        <Stack.Screen name="capture" />
-        <Stack.Screen name="review" />
+        <Stack.Screen name="index" />
       </Stack>
     </ErrorBoundary>
   );
