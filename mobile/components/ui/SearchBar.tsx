@@ -1,30 +1,48 @@
-import { TextInput, View, StyleSheet, TouchableOpacity, Text } from "react-native";
-import { colors, fontSize, spacing, borderRadius } from "../../lib/theme";
+import { forwardRef } from "react";
+import {
+  TextInput,
+  View,
+  StyleSheet,
+  TouchableOpacity,
+  Text,
+  type ViewStyle,
+} from "react-native";
+import { colors, spacing, radius, typography } from "@/theme";
 
 interface SearchBarProps {
   value: string;
   onChangeText: (text: string) => void;
   placeholder?: string;
+  accessibilityLabel?: string;
+  testID?: string;
+  style?: ViewStyle;
 }
 
-export function SearchBar({
-  value,
-  onChangeText,
-  placeholder = "Search your wardrobe...",
-}: SearchBarProps) {
+export const SearchBar = forwardRef<TextInput, SearchBarProps>(function SearchBar(
+  {
+    value,
+    onChangeText,
+    placeholder = "Search...",
+    accessibilityLabel = "Search",
+    testID,
+    style,
+  },
+  ref,
+) {
   return (
-    <View style={styles.container}>
-      <Text style={styles.icon} accessibilityElementsHidden>🔍</Text>
+    <View testID={testID} style={[styles.container, style]}>
+      <Text style={styles.icon}>{"\u{1F50D}"}</Text>
       <TextInput
+        ref={ref}
         style={styles.input}
         value={value}
         onChangeText={onChangeText}
         placeholder={placeholder}
-        placeholderTextColor={colors.textTertiary}
+        placeholderTextColor={colors.textSecondary}
         autoCapitalize="none"
         autoCorrect={false}
         returnKeyType="search"
-        accessibilityLabel="Search wardrobe"
+        accessibilityLabel={accessibilityLabel}
       />
       {value.length > 0 && (
         <TouchableOpacity
@@ -39,34 +57,36 @@ export function SearchBar({
       )}
     </View>
   );
-}
+});
 
 const styles = StyleSheet.create({
   container: {
     flexDirection: "row",
     alignItems: "center",
-    marginHorizontal: spacing.lg,
+    marginHorizontal: spacing.md,
     marginBottom: spacing.sm,
-    borderRadius: borderRadius.lg,
+    borderRadius: radius.md,
     backgroundColor: colors.surface,
-    paddingHorizontal: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingHorizontal: spacing.sm,
     height: 44,
   },
   icon: {
-    fontSize: fontSize.md,
-    marginRight: spacing.sm,
+    fontSize: 16,
+    marginRight: spacing.xs,
   },
   input: {
+    ...typography.body,
     flex: 1,
-    fontSize: fontSize.md,
-    color: colors.text,
+    color: colors.textPrimary,
     height: "100%",
   },
   clear: {
-    padding: spacing.xs,
+    padding: spacing.xxs,
   },
   clearText: {
-    fontSize: fontSize.md,
-    color: colors.textTertiary,
+    fontSize: 14,
+    color: colors.textSecondary,
   },
 });
