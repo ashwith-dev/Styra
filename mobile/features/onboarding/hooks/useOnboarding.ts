@@ -6,6 +6,7 @@ import {
   getOnboardingState,
   saveOnboardingState,
 } from "@/lib/storage/onboarding";
+import { updateUserPreferences } from "@/repositories/profileRepository";
 import { TOTAL_ONBOARDING_STEPS } from "../config";
 import type {
   OnboardingSelections,
@@ -55,6 +56,19 @@ export function useOnboarding(): OnboardingViewModel {
       mounted = false;
     };
   }, [userId]);
+
+  const syncOnboardingToPreferences = useCallback(async (selections: OnboardingSelections) => {
+    try {
+      await updateUserPreferences({
+        lifestyle: selections.lifestyle ? String(selections.lifestyle) : undefined,
+        styles: selections.preferredStyles || [],
+        favoriteColors: selections.preferredColors || [],
+        fitPreference: selections.preferredFit ? String(selections.preferredFit) : undefined,
+      });
+    } catch {
+      // Non-fatal if sync fails during onboarding
+    }
+  }, []);
 
   const updateAndPersist = useCallback(
     async (updater: (prev: OnboardingState) => OnboardingState) => {
@@ -181,6 +195,7 @@ export function useOnboarding(): OnboardingViewModel {
         ),
       }));
     } else {
+      await syncOnboardingToPreferences(state.selections);
       await updateAndPersist((prev) => ({
         ...prev,
         completed: true,
@@ -188,7 +203,7 @@ export function useOnboarding(): OnboardingViewModel {
       }));
       router.replace("/home");
     }
-  }, [state.currentStep, updateAndPersist]);
+  }, [state.currentStep, state.selections, updateAndPersist, syncOnboardingToPreferences]);
 
   const prevStep = useCallback(() => {
     if (state.currentStep > 1) {
@@ -199,10 +214,6 @@ export function useOnboarding(): OnboardingViewModel {
     }
   }, [state.currentStep, updateAndPersist]);
 
-  /**
-   * Skip ONLY the current step/question and move to the next onboarding screen.
-   * Does NOT complete onboarding or navigate to Home.
-   */
   const skipOnboarding = useCallback(async () => {
     if (state.currentStep < 7) {
       void updateAndPersist((prev) => ({
@@ -212,17 +223,15 @@ export function useOnboarding(): OnboardingViewModel {
     }
   }, [state.currentStep, updateAndPersist]);
 
-  /**
-   * Called on Step 7 (Final Screen): Marks onboarding as completed and navigates to upload flow.
-   */
   const addFirstItemAndComplete = useCallback(async () => {
+    await syncOnboardingToPreferences(state.selections);
     await updateAndPersist((prev) => ({
       ...prev,
       completed: true,
       completedSteps: [1, 2, 3, 4, 5, 6, 7],
     }));
     router.push("/upload/capture");
-  }, [updateAndPersist]);
+  }, [state.selections, updateAndPersist, syncOnboardingToPreferences]);
 
   const resetOnboarding = useCallback(async () => {
     await clearOnboardingState(userId);

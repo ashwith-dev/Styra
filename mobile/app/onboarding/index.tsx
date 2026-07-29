@@ -82,6 +82,7 @@ export default function OnboardingScreen() {
       {currentStep === 7 && (
         <Step7Ready
           onAddFirstItem={actions.addFirstItemAndComplete}
+          onGoToHome={actions.nextStep}
           onBack={actions.prevStep}
         />
       )}

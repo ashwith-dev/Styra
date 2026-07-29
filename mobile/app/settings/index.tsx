@@ -13,7 +13,11 @@ import { router } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import Constants from "expo-constants";
-import { BottomNavBar } from "@/components/ui";
+import {
+  BottomNavBar,
+  DeleteAccountModal,
+  SignOutModal,
+} from "@/components/ui";
 import { colors, radius, spacing, typography } from "@/theme";
 import {
   EditProfileModal,
@@ -25,12 +29,16 @@ import {
   SettingsRow,
   SettingsSectionCard,
 } from "@/features/settings";
+import { supabase } from "@/lib/supabase";
 
 export default function SettingsScreen() {
   const { user, actions } = useProfileData();
 
   // Modals state
   const [editProfileVisible, setEditProfileVisible] = useState(false);
+  const [signOutModalVisible, setSignOutModalVisible] = useState(false);
+  const [deleteAccountModalVisible, setDeleteAccountModalVisible] = useState(false);
+
   const [editName, setEditName] = useState(user.name);
   const [editAvatarUrl, setEditAvatarUrl] = useState(user.avatarUrl ?? "");
   const [savingProfile, setSavingProfile] = useState(false);
@@ -50,43 +58,36 @@ export default function SettingsScreen() {
     }
   }, [editName, editAvatarUrl, actions]);
 
-  // Sign Out Handler with Confirmation Alert
-  const handleSignOut = useCallback(() => {
-    Alert.alert(
-      "Sign Out?",
-      "Are you sure you want to sign out of your account?",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Sign Out",
-          style: "destructive",
-          onPress: async () => {
-            await actions.signOut();
-            router.replace("/auth/login");
-          },
-        },
-      ],
-    );
+  // Sign Out Handler (Confirmed from Custom Modal)
+  const handleConfirmSignOut = useCallback(async () => {
+    setSignOutModalVisible(false);
+    await actions.signOut();
+    router.replace("/auth/login");
   }, [actions]);
 
-  // Delete Account Handler with Destructive Confirmation Alert
-  const handleDeleteAccount = useCallback(() => {
-    Alert.alert(
-      "Delete Account?",
-      "This action is permanent and cannot be undone. All your wardrobe, saved looks, and profile data will be permanently deleted.",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Delete Account",
-          style: "destructive",
-          onPress: async () => {
-            Alert.alert("Account Deleted", "Your account and data have been permanently removed.");
-            await actions.signOut();
-            router.replace("/auth/login");
-          },
-        },
-      ],
-    );
+  // Delete Account Handler (Confirmed from Custom Modal)
+  const handleConfirmDeleteAccount = useCallback(async () => {
+    setDeleteAccountModalVisible(false);
+    try {
+      const { data: authData } = await supabase.auth.getUser();
+      const userId = authData?.user?.id;
+      if (userId) {
+        // Cascade delete all user records in Supabase tables
+        await supabase.from("clothing_items").delete().eq("user_id", userId);
+        await supabase.from("saved_looks").delete().eq("user_id", userId);
+        await supabase.from("outfit_history").delete().eq("user_id", userId);
+        await supabase.from("user_preferences").delete().eq("user_id", userId);
+        await supabase.from("user_statistics").delete().eq("user_id", userId);
+        await supabase.from("notifications").delete().eq("user_id", userId);
+        await supabase.from("feedback").delete().eq("user_id", userId);
+        await supabase.from("users").delete().eq("id", userId);
+      }
+    } catch {
+      // Best effort data cleanup
+    }
+
+    await actions.signOut();
+    router.replace("/auth/login");
   }, [actions]);
 
   // Open External URLs safely
@@ -218,7 +219,7 @@ export default function SettingsScreen() {
           {/* Action Buttons: Sign Out & Delete Account */}
           <View style={styles.actionsGroup}>
             <TouchableOpacity
-              onPress={handleSignOut}
+              onPress={() => setSignOutModalVisible(true)}
               style={styles.signOutBtn}
               activeOpacity={0.8}
               accessibilityRole="button"
@@ -228,7 +229,7 @@ export default function SettingsScreen() {
             </TouchableOpacity>
 
             <TouchableOpacity
-              onPress={handleDeleteAccount}
+              onPress={() => setDeleteAccountModalVisible(true)}
               style={styles.deleteAccountBtn}
               activeOpacity={0.8}
               accessibilityRole="button"
@@ -258,6 +259,20 @@ export default function SettingsScreen() {
         onChangeAvatarUrl={setEditAvatarUrl}
         onSave={handleSaveProfile}
         onClose={() => setEditProfileVisible(false)}
+      />
+
+      {/* Custom Blurred Backdrop Sign Out Modal */}
+      <SignOutModal
+        visible={signOutModalVisible}
+        onConfirm={handleConfirmSignOut}
+        onClose={() => setSignOutModalVisible(false)}
+      />
+
+      {/* Custom Blurred Backdrop Delete Account Modal */}
+      <DeleteAccountModal
+        visible={deleteAccountModalVisible}
+        onConfirm={handleConfirmDeleteAccount}
+        onClose={() => setDeleteAccountModalVisible(false)}
       />
     </SafeAreaView>
   );

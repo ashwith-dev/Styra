@@ -13,10 +13,15 @@ import { OnboardingHeader } from "./OnboardingHeader";
 
 interface Step7ReadyProps {
   onAddFirstItem: () => void;
+  onGoToHome: () => void;
   onBack: () => void;
 }
 
-export function Step7Ready({ onAddFirstItem, onBack }: Step7ReadyProps) {
+export function Step7Ready({
+  onAddFirstItem,
+  onGoToHome,
+  onBack,
+}: Step7ReadyProps) {
   return (
     <View style={styles.container}>
       <OnboardingHeader currentStep={7} onBack={onBack} title="Curated" />
@@ -59,17 +64,30 @@ export function Step7Ready({ onAddFirstItem, onBack }: Step7ReadyProps) {
             ))}
           </View>
 
-          {/* Add My First Item CTA Button */}
-          <TouchableOpacity
-            onPress={onAddFirstItem}
-            style={styles.addBtn}
-            activeOpacity={0.88}
-            accessibilityRole="button"
-            accessibilityLabel="Add My First Item"
-          >
-            <Text style={styles.addBtnText}>Add My First Item</Text>
-            <Ionicons name="add" size={18} color={colors.surface} />
-          </TouchableOpacity>
+          {/* Action Buttons: Add First Item & Go To Home */}
+          <View style={styles.buttonsColumn}>
+            <TouchableOpacity
+              onPress={onAddFirstItem}
+              style={styles.addBtn}
+              activeOpacity={0.88}
+              accessibilityRole="button"
+              accessibilityLabel="Add My First Item"
+            >
+              <Text style={styles.addBtnText}>Add My First Item</Text>
+              <Ionicons name="add" size={18} color={colors.surface} />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={onGoToHome}
+              style={styles.homeBtn}
+              activeOpacity={0.8}
+              accessibilityRole="button"
+              accessibilityLabel="Go to Home Dashboard"
+            >
+              <Text style={styles.homeBtnText}>Go to Home Dashboard</Text>
+              <Ionicons name="arrow-forward" size={16} color={colors.textPrimary} />
+            </TouchableOpacity>
+          </View>
         </View>
       </ScrollView>
     </View>
@@ -87,7 +105,7 @@ const styles = StyleSheet.create({
     gap: spacing.md,
   },
   heroCard: {
-    height: 320,
+    height: 280,
     borderRadius: 28,
     overflow: "hidden",
     position: "relative",
@@ -182,19 +200,39 @@ const styles = StyleSheet.create({
     borderRadius: 2,
     backgroundColor: colors.textPrimary,
   },
+  buttonsColumn: {
+    gap: spacing.sm,
+  },
   addBtn: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: spacing.xs,
-    height: 54,
+    height: 52,
     borderRadius: radius.full,
     backgroundColor: colors.textPrimary,
   },
   addBtnText: {
     ...typography.body,
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: "600",
     color: colors.surface,
+  },
+  homeBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: spacing.xs,
+    height: 50,
+    borderRadius: radius.full,
+    backgroundColor: "#F4F1EA",
+    borderWidth: 1,
+    borderColor: "#E5E1D8",
+  },
+  homeBtnText: {
+    ...typography.body,
+    fontSize: 15,
+    fontWeight: "600",
+    color: colors.textPrimary,
   },
 });

@@ -2,13 +2,15 @@
   "expo": {
     "name": "Wardrobe",
     "slug": "clothing-app",
-    "version": "0.1.0",
+    "version": "1.0.0",
     "orientation": "portrait",
     "scheme": "wardrobe",
-    "platforms": ["ios", "android"],
+    "platforms": [
+      "ios",
+      "android"
+    ],
     "ios": {
-      "supportsTablet": false,
-      "bundleIdentifier": "com.wardrobe.app",
+      "supportsTablet": true,
       "infoPlist": {
         "NSCameraUsageDescription": "Wardrobe needs camera access to take photos of your clothing items.",
         "NSPhotoLibraryUsageDescription": "Wardrobe needs gallery access to add your clothing items."
@@ -16,7 +18,13 @@
     },
     "android": {
       "package": "com.wardrobe.app",
-      "permissions": ["CAMERA", "READ_EXTERNAL_STORAGE", "WRITE_EXTERNAL_STORAGE"]
+      "permissions": [
+        "CAMERA",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE"
+      ],
+      "enableProguardInReleaseBuilds": false,
+      "extraProguardRules": "-keep public class com.horcrux.svg.** {*;}"
     },
     "plugins": [
       [
@@ -26,7 +34,8 @@
           "cameraPermission": "Allow Wardrobe to access your camera to take photos of clothing items."
         }
       ],
-      "expo-router"
+      "expo-router",
+      "expo-asset"
     ]
   }
 }
