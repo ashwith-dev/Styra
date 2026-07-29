@@ -85,6 +85,9 @@ class PipelineService:
         uploaded: list[str] = []
 
         # ── 1. Validation stage ────────────────────────────────────
+        logger.info(
+            "Pipeline [%s]: starting validation (%d bytes)", token, len(image_bytes)
+        )
         t0 = time.perf_counter()
         try:
             passed, reasons = await asyncio.to_thread(
@@ -92,6 +95,9 @@ class PipelineService:
             )
         except Exception as exc:
             dt = (time.perf_counter() - t0) * 1000
+            logger.warning(
+                "Pipeline [%s]: validation failed (%.0fms): %s", token, dt, exc
+            )
             metrics.append(
                 StageMetrics(
                     stage="validation",
@@ -129,6 +135,11 @@ class PipelineService:
         metrics.append(
             StageMetrics(stage="validation", status="success", duration_ms=dt)
         )
+        logger.info(
+            "Pipeline [%s]: validation passed (%.0fms), starting segmentation",
+            token,
+            dt,
+        )
 
         # ── 2. Segmentation stage ──────────────────────────────────
         t0 = time.perf_counter()
@@ -142,8 +153,16 @@ class PipelineService:
                     stage="segmentation", status="success", duration_ms=dt
                 )
             )
+            logger.info(
+                "Pipeline [%s]: segmentation complete (%.0fms), uploading to storage",
+                token,
+                dt,
+            )
         except Exception as exc:
             dt = (time.perf_counter() - t0) * 1000
+            logger.warning(
+                "Pipeline [%s]: segmentation failed (%.0fms): %s", token, dt, exc
+            )
             metrics.append(
                 StageMetrics(
                     stage="segmentation",
@@ -161,6 +180,9 @@ class PipelineService:
             )
 
         # ── 3. Upload original + segmented + thumbnail ──────────────
+        logger.info(
+            "Pipeline [%s]: starting storage uploads", token
+        )
         t0 = time.perf_counter()
         try:
             original = await asyncio.to_thread(
@@ -190,8 +212,16 @@ class PipelineService:
             metrics.append(
                 StageMetrics(stage="storage", status="success", duration_ms=dt)
             )
+            logger.info(
+                "Pipeline [%s]: storage complete (%.0fms), starting extraction",
+                token,
+                dt,
+            )
         except Exception as exc:
             dt = (time.perf_counter() - t0) * 1000
+            logger.warning(
+                "Pipeline [%s]: storage failed (%.0fms): %s", token, dt, exc
+            )
             metrics.append(
                 StageMetrics(
                     stage="storage",
@@ -210,6 +240,7 @@ class PipelineService:
             )
 
         # ── 4. Extraction stage (already async) ────────────────────
+        logger.info("Pipeline [%s]: starting extraction", token)
         t0 = time.perf_counter()
         try:
             attributes = await self._extractor.extract(
@@ -221,8 +252,16 @@ class PipelineService:
                     stage="extraction", status="success", duration_ms=dt
                 )
             )
+            logger.info(
+                "Pipeline [%s]: extraction complete (%.0fms), pipeline done",
+                token,
+                dt,
+            )
         except Exception as exc:
             dt = (time.perf_counter() - t0) * 1000
+            logger.warning(
+                "Pipeline [%s]: extraction failed (%.0fms): %s", token, dt, exc
+            )
             metrics.append(
                 StageMetrics(
                     stage="extraction",

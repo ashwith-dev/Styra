@@ -58,7 +58,7 @@ async def analyze_clothing(
             },
         )
 
-    await asyncio.to_thread(store_pipeline_result, result, user_id)
+    asyncio.create_task(asyncio.to_thread(store_pipeline_result, result, user_id))
 
     return AnalyzeClothingResponse(
         pipeline_token=result.pipeline_token,

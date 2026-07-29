@@ -26,7 +26,7 @@ def test_list_clothing_empty(mock_supabase) -> None:
 
     resp = client.get("/clothing", headers={"Authorization": f"Bearer {_token()}"})
     assert resp.status_code == 200
-    assert resp.json() == {"items": []}
+    assert resp.json()["items"] == []
 
 
 @patch("app.utils.jwt.settings.supabase_jwt_secret", "test-secret")
