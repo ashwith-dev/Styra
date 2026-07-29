@@ -1,12 +1,14 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Alert } from "react-native";
 import type { ClothingItemBrief, ClothingItemDetail } from "../lib/types";
-import * as api from "../lib/api";
 import { AppError } from "../lib/errors";
+import * as wardrobeRepo from "../repositories/wardrobeRepository";
 
-// Module-level cache so other screens (e.g. Profile) can read wardrobe
-// counts without instantiating a full hook and triggering an API call.
 let _cachedWardrobeItems: ClothingItemBrief[] = [];
+
+export function getCachedWardrobeItems(): ClothingItemBrief[] {
+  return _cachedWardrobeItems;
+}
 
 export function getCachedWardrobeCount(): number {
   return _cachedWardrobeItems.length;
@@ -30,21 +32,41 @@ export function useWardrobe() {
   const [searchQuery, setSearchQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("");
 
-  // ── Fetch ──
+  const abortControllerRef = useRef<AbortController | null>(null);
+
+  // ── Fetch via WardrobeRepository ──
 
   const refresh = useCallback(async () => {
+    // Abort previous pending refresh request
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
     setLoading(true);
     setError(null);
     try {
-      const data = await api.listClothing();
+      const { items: data } = await wardrobeRepo.getWardrobeItems(controller.signal);
       _cachedWardrobeItems = data;
       setItems(data);
     } catch (err) {
+      if ((err as Error)?.name === "CanceledError" || (err as Error)?.name === "AbortError") {
+        return; // Ignore aborted requests
+      }
       const msg = err instanceof AppError ? err.message : "Failed to load wardrobe";
       setError(msg);
     } finally {
       setLoading(false);
     }
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
   }, []);
 
   // ── Search + filter (client-side) ──
@@ -79,20 +101,17 @@ export function useWardrobe() {
   // ── Delete (optimistic) ──
 
   const removeItem = useCallback(async (id: string) => {
-    // Optimistic removal
     setItems((prev) => prev.filter((i) => i.id !== id));
+    _cachedWardrobeItems = _cachedWardrobeItems.filter((i) => i.id !== id);
 
     try {
-      await api.deleteClothingItem(id);
+      await wardrobeRepo.removeClothingItem(id);
     } catch (err) {
-      // Revert on failure
       const msg = err instanceof AppError ? err.message : "Failed to remove item";
       Alert.alert("Error", msg);
       await refresh();
     }
   }, [refresh]);
-
-  // ── Confirm-and-delete helper ──
 
   const confirmDelete = useCallback(
     (id: string) => {
@@ -107,8 +126,6 @@ export function useWardrobe() {
     },
     [removeItem],
   );
-
-  // ── Update item in local state after edit ──
 
   const updateItem = useCallback((id: string, detail: ClothingItemDetail) => {
     setItems((prev) =>

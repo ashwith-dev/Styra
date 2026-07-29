@@ -13,7 +13,11 @@ import type {
 } from "./types";
 import { AppError } from "./errors";
 
-const API_URL = process.env.EXPO_PUBLIC_API_URL || "http://localhost:8000";
+import { Platform } from "react-native";
+
+const DEFAULT_API_URL = Platform.OS === "android" ? "http://10.0.2.2:8000" : "http://localhost:8000";
+const rawUrl = process.env.EXPO_PUBLIC_API_URL || DEFAULT_API_URL;
+const API_URL = Platform.OS === "android" && rawUrl.includes("localhost") ? rawUrl.replace("localhost", "10.0.2.2") : rawUrl;
 const TIMEOUT_MS = 30_000;
 
 function createClient(): AxiosInstance {
@@ -36,23 +40,23 @@ function createClient(): AxiosInstance {
   // ── Response interceptor: normalize errors ──
   client.interceptors.response.use(
     (response) => response,
-    (error: AxiosError) => {
+    (error: AxiosError<{ detail?: string | { error?: string; message?: string } }>) => {
       if (error.response) {
         const status = error.response.status;
 
         // Session rejected by the server: clear it locally so the root
         // navigator redirects to sign-in instead of leaving a dead session.
         if (status === 401) {
-          void supabase.auth.signOut({ scope: "local" });
+          // Do not force local sign out on 401 to prevent bouncing loops
         }
 
-        const detail = (error.response.data as any)?.detail;
+        const detail = error.response.data?.detail;
         const message =
           typeof detail === "string"
             ? detail
             : detail?.error || detail?.message || `Request failed (${status})`;
 
-        throw new AppError(message, status, error.response.data);
+        throw new AppError(message, status, error.response.data as Record<string, unknown>);
       }
 
       // Network error (no response received)
@@ -68,22 +72,25 @@ function createClient(): AxiosInstance {
 
 const api = createClient();
 
+export const API_VERSION = "v1";
+
 // ── Analyze ──
 
 export async function analyzeClothing(
   photoUri: string,
+  signal?: AbortSignal,
 ): Promise<AnalyzeClothingResponse> {
   const form = new FormData();
   form.append("file", {
     uri: photoUri,
     type: "image/jpeg",
     name: "photo.jpg",
-  } as any);
+  } as unknown as Blob);
 
   const { data } = await api.post<AnalyzeClothingResponse>(
     "/analyze-clothing",
     form,
-    { headers: { "Content-Type": "multipart/form-data" }, timeout: 120_000 },
+    { headers: { "Content-Type": "multipart/form-data" }, timeout: 120_000, signal },
   );
   return data;
 }
@@ -93,18 +100,20 @@ export async function analyzeClothing(
 export async function saveClothing(
   pipelineToken: string,
   attributes: Record<string, unknown>,
+  signal?: AbortSignal,
 ): Promise<SavedClothingItem> {
-  const { data } = await api.post<SavedClothingItem>("/clothing", {
-    pipeline_token: pipelineToken,
-    attributes,
-  });
+  const { data } = await api.post<SavedClothingItem>(
+    "/clothing",
+    { pipeline_token: pipelineToken, attributes },
+    { signal },
+  );
   return data;
 }
 
 // ── List ──
 
-export async function listClothing(): Promise<ClothingItemBrief[]> {
-  const { data } = await api.get<{ items: ClothingItemBrief[] }>("/clothing");
+export async function listClothing(signal?: AbortSignal): Promise<ClothingItemBrief[]> {
+  const { data } = await api.get<{ items: ClothingItemBrief[]; total_count?: number }>("/clothing", { signal });
   return data.items;
 }
 
@@ -112,8 +121,9 @@ export async function listClothing(): Promise<ClothingItemBrief[]> {
 
 export async function getClothingItem(
   id: string,
+  signal?: AbortSignal,
 ): Promise<ClothingItemDetail> {
-  const { data } = await api.get<ClothingItemDetail>(`/clothing/${id}`);
+  const { data } = await api.get<ClothingItemDetail>(`/clothing/${id}`, { signal });
   return data;
 }
 
@@ -122,24 +132,27 @@ export async function getClothingItem(
 export async function updateClothingItem(
   id: string,
   attributes: Record<string, unknown>,
+  signal?: AbortSignal,
 ): Promise<ClothingItemDetail> {
-  const { data } = await api.patch<ClothingItemDetail>(`/clothing/${id}`, {
-    attributes,
-  });
+  const { data } = await api.patch<ClothingItemDetail>(
+    `/clothing/${id}`,
+    { attributes },
+    { signal },
+  );
   return data;
 }
 
 // ── Delete ──
 
-export async function deleteClothingItem(id: string): Promise<void> {
-  await api.delete(`/clothing/${id}`);
+export async function deleteClothingItem(id: string, signal?: AbortSignal): Promise<void> {
+  await api.delete(`/clothing/${id}`, { signal });
 }
 
 // ── Health (connectivity check) ──
 
-export async function checkHealth(): Promise<boolean> {
+export async function checkHealth(signal?: AbortSignal): Promise<boolean> {
   try {
-    await api.get("/health", { timeout: 5_000 });
+    await api.get("/health", { timeout: 5_000, signal });
     return true;
   } catch {
     return false;
