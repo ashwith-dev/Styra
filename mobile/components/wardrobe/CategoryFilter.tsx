@@ -1,76 +1,63 @@
 import { memo } from "react";
-import { Text, TouchableOpacity, ScrollView, StyleSheet } from "react-native";
-import { colors, fontSize, fontWeight, spacing, borderRadius } from "../../lib/theme";
+import { ScrollView, StyleSheet } from "react-native";
+import { Chip } from "@/components/ui";
+import { spacing } from "@/theme";
 
+/**
+ * Category keys match the backend's `category.value` attribute exactly.
+ * Keeping this colocated here avoids an unnecessary cross-feature import.
+ */
 const CATEGORIES = [
   { key: "", label: "All" },
   { key: "top", label: "Tops" },
   { key: "bottom", label: "Bottoms" },
-  { key: "dress", label: "Dresses" },
   { key: "outerwear", label: "Outerwear" },
-  { key: "footwear", label: "Footwear" },
+  { key: "footwear", label: "Shoes" },
   { key: "accessory", label: "Accessories" },
-];
+  { key: "dress", label: "Dresses" },
+  { key: "other", label: "Others" },
+] as const;
 
 interface CategoryFilterProps {
   selected: string;
   onSelect: (key: string) => void;
+  testID?: string;
 }
 
-export const CategoryFilter = memo(function CategoryFilter({ selected, onSelect }: CategoryFilterProps) {
+/**
+ * Horizontally scrolling category filter strip.
+ * Composes the existing Chip UI component — no standalone chip implementation.
+ */
+export const CategoryFilter = memo(function CategoryFilter({
+  selected,
+  onSelect,
+  testID,
+}: CategoryFilterProps) {
   return (
     <ScrollView
       horizontal
       showsHorizontalScrollIndicator={false}
       contentContainerStyle={styles.scroll}
+      testID={testID}
+      accessibilityRole="tablist"
     >
-      {CATEGORIES.map((cat) => {
-        const active = cat.key === selected;
-        return (
-          <TouchableOpacity
-            key={cat.key}
-            style={[styles.chip, active && styles.chipActive]}
-            onPress={() => onSelect(cat.key)}
-            activeOpacity={0.7}
-            accessibilityRole="button"
-            accessibilityLabel={cat.label}
-            accessibilityState={{ selected: active }}
-          >
-            <Text style={[styles.chipText, active && styles.chipTextActive]}>
-              {cat.label}
-            </Text>
-          </TouchableOpacity>
-        );
-      })}
+      {CATEGORIES.map((cat) => (
+        <Chip
+          key={cat.key}
+          label={cat.label}
+          selected={cat.key === selected}
+          onPress={() => onSelect(cat.key)}
+          testID={`category-${cat.key || "all"}`}
+        />
+      ))}
     </ScrollView>
   );
 });
 
 const styles = StyleSheet.create({
   scroll: {
-    paddingHorizontal: spacing.lg,
-    gap: spacing.sm,
+    paddingHorizontal: spacing.xl,
     paddingVertical: spacing.sm,
-  },
-  chip: {
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.sm,
-    borderRadius: borderRadius.xl,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.borderLight,
-    minHeight: 44,
-  },
-  chipActive: {
-    backgroundColor: colors.primary,
-    borderColor: colors.primary,
-  },
-  chipText: {
-    fontSize: fontSize.sm,
-    fontWeight: fontWeight.medium,
-    color: colors.textSecondary,
-  },
-  chipTextActive: {
-    color: "#fff",
+    gap: spacing.xs,
   },
 });

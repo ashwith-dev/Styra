@@ -5,6 +5,7 @@ interface SectionHeaderProps {
   title: string;
   subtitle?: string;
   action?: React.ReactNode;
+  testID?: string;
   style?: ViewStyle;
 }
 
@@ -12,10 +13,11 @@ export function SectionHeader({
   title,
   subtitle,
   action,
+  testID,
   style,
 }: SectionHeaderProps) {
   return (
-    <View style={[styles.container, style]}>
+    <View testID={testID} style={[styles.container, style]}>
       <View style={styles.textGroup}>
         <Text style={styles.title}>{title}</Text>
         {subtitle && <Text style={styles.subtitle}>{subtitle}</Text>}
