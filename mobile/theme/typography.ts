@@ -1,16 +1,23 @@
-import type { TextStyle } from "react-native";
+import { Platform, type TextStyle } from "react-native";
 
-const headingFontFamily: TextStyle["fontFamily"] = "Playfair Display";
+const headingFontFamily: TextStyle["fontFamily"] = "serif";
 const bodyFontFamily: TextStyle["fontFamily"] = "Inter";
 const monoFontFamily: TextStyle["fontFamily"] = "SF Mono";
 
 /**
  * Type-safe text style presets.
- * Spreading these into a StyleSheet.create or inline style is safe —
- * React Native ignores extra keys not in TextStyle.
+ * High-contrast editorial serif for brand headers and luxury styling.
  */
 
 export const typography = {
+  brandLogo: {
+    fontFamily: Platform.OS === "ios" ? "Georgia" : "serif",
+    fontSize: 26,
+    fontWeight: "800",
+    letterSpacing: 4,
+    textTransform: "uppercase",
+    color: "#000000",
+  },
   display: {
     fontFamily: headingFontFamily,
     fontSize: 36,

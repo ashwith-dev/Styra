@@ -6,9 +6,11 @@ interface AuthContextValue {
   session: Session | null;
   user: User | null;
   loading: boolean;
-  signUp: (email: string, password: string) => Promise<{ error: AuthError | null }>;
-  signIn: (email: string, password: string) => Promise<{ error: AuthError | null }>;
+  signUp: (email: string, password: string, name?: string) => Promise<{ user: User | null; error: AuthError | null }>;
+  signIn: (email: string, password: string) => Promise<{ user: User | null; error: AuthError | null }>;
   signOut: () => Promise<void>;
+  /** Sends a password-reset email via Supabase Auth */
+  resetPassword: (email: string) => Promise<{ error: AuthError | null }>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -38,22 +40,56 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => listener.subscription.unsubscribe();
   }, []);
 
-  const signUp = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signUp({ email, password });
-    return { error };
+  const signUp = async (email: string, password: string, name?: string) => {
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            full_name: name,
+            name: name,
+            first_name: name ? name.split(" ")[0] : undefined,
+          },
+        },
+      });
+      return { user: data.user, error };
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Network request failed. Please check your connection.";
+      return { user: null, error: new Error(message) as unknown as AuthError };
+    }
   };
 
   const signIn = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    return { error };
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      return { user: data.user, error };
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Network request failed. Please check your connection.";
+      return { user: null, error: new Error(message) as unknown as AuthError };
+    }
   };
 
   const signOut = async () => {
-    await supabase.auth.signOut();
+    try {
+      await supabase.auth.signOut();
+    } catch {
+      // Non-fatal: session will be stale but sign-out is best-effort
+    }
+  };
+
+  const resetPassword = async (email: string) => {
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email);
+      return { error };
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Network request failed. Please check your connection.";
+      return { user: null, error: new Error(message) as unknown as AuthError };
+    }
   };
 
   return (
-    <AuthContext.Provider value={{ session, user: session?.user ?? null, loading, signUp, signIn, signOut }}>
+    <AuthContext.Provider value={{ session, user: session?.user ?? null, loading, signUp, signIn, signOut, resetPassword }}>
       {children}
     </AuthContext.Provider>
   );
