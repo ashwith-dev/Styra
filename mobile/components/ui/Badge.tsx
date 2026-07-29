@@ -1,5 +1,5 @@
 import { View, Text, StyleSheet, type ViewStyle } from "react-native";
-import { colors, spacing, radius, typography } from "@/theme";
+import { colors, spacing, radius } from "@/theme";
 
 type BadgeVariant = "default" | "success" | "warning" | "error";
 type BadgeSize = "sm" | "md";
@@ -20,6 +20,7 @@ interface BadgeProps {
   label: string;
   variant?: BadgeVariant;
   size?: BadgeSize;
+  testID?: string;
   style?: ViewStyle;
 }
 
@@ -27,6 +28,7 @@ export function Badge({
   label,
   variant = "default",
   size = "sm",
+  testID,
   style,
 }: BadgeProps) {
   const colorset = variantColors[variant];
@@ -34,6 +36,7 @@ export function Badge({
 
   return (
     <View
+      testID={testID}
       style={[
         styles.badge,
         {

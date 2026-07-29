@@ -8,6 +8,7 @@ interface EmptyStateProps {
   description: string;
   actionLabel?: string;
   onAction?: () => void;
+  testID?: string;
   style?: ViewStyle;
 }
 
@@ -17,10 +18,11 @@ export function EmptyState({
   description,
   actionLabel,
   onAction,
+  testID,
   style,
 }: EmptyStateProps) {
   return (
-    <View style={[styles.container, style]}>
+    <View testID={testID} style={[styles.container, style]}>
       <Text style={styles.icon}>{icon}</Text>
       <Text style={styles.title}>{title}</Text>
       <Text style={styles.description}>{description}</Text>

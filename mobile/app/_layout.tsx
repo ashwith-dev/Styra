@@ -24,6 +24,7 @@ function RootNavigator() {
   return (
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen name="auth" redirect={!!session} />
+      <Stack.Screen name="onboarding" redirect={!session} />
       <Stack.Screen name="home" redirect={!session} />
       <Stack.Screen name="wardrobe" redirect={!session} />
       <Stack.Screen name="looks" redirect={!session} />

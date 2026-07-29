@@ -1,14 +1,16 @@
-import { useState } from "react";
-import { View, Text, TextInput, StyleSheet } from "react-native";
-import { colors, fontSize, fontWeight, borderRadius, spacing } from "../../lib/theme";
+import { View, Text, StyleSheet } from "react-native";
+import { Input } from "@/components/ui/Input";
+import { colors, radius, spacing, typography } from "@/theme";
 
 interface AttributeFieldProps {
   label: string;
   value: string;
-  confidence: number;
+  confidence?: number;
   onChangeText: (text: string) => void;
   editable?: boolean;
   error?: string;
+  multiline?: boolean;
+  testID?: string;
 }
 
 export function AttributeField({
@@ -18,31 +20,43 @@ export function AttributeField({
   onChangeText,
   editable = true,
   error,
+  multiline,
+  testID,
 }: AttributeFieldProps) {
-  const [focused, setFocused] = useState(false);
+  const showConfidence = confidence != null && confidence > 0;
+  const confidencePercent = showConfidence ? Math.round(confidence * 100) : 0;
 
-  const confidenceLabel = confidence >= 0.9 ? "High" : confidence >= 0.6 ? "Medium" : "Low";
-  const confidenceColor = confidence >= 0.9 ? "#22C55E" : confidence >= 0.6 ? "#F59E0B" : "#EF4444";
+  const confidenceLabel =
+    confidencePercent >= 90 ? "High" : confidencePercent >= 60 ? "Medium" : "Low";
+  const confidenceColor =
+    confidencePercent >= 90
+      ? colors.success
+      : confidencePercent >= 60
+      ? colors.warning
+      : colors.error;
 
   return (
     <View style={styles.wrapper}>
       <View style={styles.header}>
         <Text style={styles.label}>{label}</Text>
-        <View style={[styles.confidenceBadge, { backgroundColor: confidenceColor + "20" }]}>
-          <Text style={[styles.confidenceText, { color: confidenceColor }]}>
-            {confidenceLabel} {Math.round(confidence * 100)}%
-          </Text>
-        </View>
+        {showConfidence && (
+          <View style={[styles.confidenceBadge, { backgroundColor: confidenceColor + "20" }]}>
+            <Text style={[styles.confidenceText, { color: confidenceColor }]}>
+              {confidenceLabel} {confidencePercent}%
+            </Text>
+          </View>
+        )}
       </View>
 
       {editable ? (
-        <TextInput
-          style={[styles.input, focused && styles.inputFocused, error && styles.inputError]}
+        <Input
           value={value}
           onChangeText={onChangeText}
-          onFocus={() => setFocused(true)}
-          onBlur={() => setFocused(false)}
-          placeholderTextColor={colors.textTertiary}
+          error={error}
+          multiline={multiline}
+          numberOfLines={multiline ? 3 : 1}
+          placeholder={`Enter ${label.toLowerCase()}...`}
+          testID={testID}
         />
       ) : (
         <View style={styles.readonly}>
@@ -50,18 +64,23 @@ export function AttributeField({
         </View>
       )}
 
-      <View style={styles.barTrack}>
-        <View style={[styles.barFill, { width: `${Math.round(confidence * 100)}%`, backgroundColor: confidenceColor }]} />
-      </View>
-
-      {error && <Text style={styles.error}>{error}</Text>}
+      {showConfidence && (
+        <View style={styles.barTrack}>
+          <View
+            style={[
+              styles.barFill,
+              { width: `${confidencePercent}%`, backgroundColor: confidenceColor },
+            ]}
+          />
+        </View>
+      )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   wrapper: {
-    marginBottom: spacing.lg,
+    marginBottom: spacing.md,
   },
   header: {
     flexDirection: "row",
@@ -70,58 +89,42 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xs,
   },
   label: {
-    fontSize: fontSize.sm,
-    fontWeight: fontWeight.semibold,
-    color: colors.text,
+    ...typography.caption,
+    fontWeight: "600",
+    color: colors.textPrimary,
     textTransform: "capitalize",
   },
   confidenceBadge: {
     paddingHorizontal: spacing.sm,
     paddingVertical: 2,
-    borderRadius: borderRadius.sm,
+    borderRadius: radius.sm,
   },
   confidenceText: {
-    fontSize: fontSize.xs,
-    fontWeight: fontWeight.semibold,
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: borderRadius.md,
-    padding: spacing.md,
-    fontSize: fontSize.md,
-    backgroundColor: colors.background,
-    color: colors.text,
-  },
-  inputFocused: {
-    borderColor: colors.primary,
-    borderWidth: 2,
-  },
-  inputError: {
-    borderColor: colors.error,
+    ...typography.caption,
+    fontSize: 11,
+    fontWeight: "600",
   },
   readonly: {
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    borderRadius: radius.sm,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
   readonlyText: {
-    fontSize: fontSize.md,
-    color: colors.text,
+    ...typography.body,
+    color: colors.textPrimary,
   },
   barTrack: {
     height: 3,
-    backgroundColor: colors.surface,
-    borderRadius: 2,
+    backgroundColor: colors.border,
+    borderRadius: radius.full,
     marginTop: spacing.xs,
     overflow: "hidden",
   },
   barFill: {
     height: "100%",
-    borderRadius: 2,
-  },
-  error: {
-    fontSize: fontSize.xs,
-    color: colors.error,
-    marginTop: spacing.xs,
+    borderRadius: radius.full,
   },
 });

@@ -7,6 +7,7 @@ interface LoadingSkeletonProps {
   width?: number | string;
   height?: number;
   borderRadius?: number;
+  testID?: string;
   style?: ViewStyle;
 }
 
@@ -14,10 +15,12 @@ export function LoadingSkeleton({
   width = "100%",
   height = 16,
   borderRadius = radius.sm,
+  testID,
   style,
 }: LoadingSkeletonProps) {
   return (
     <View
+      testID={testID}
       style={[
         { width: width as any, height, borderRadius, backgroundColor: PULSE_COLOR },
         style,
@@ -27,9 +30,9 @@ export function LoadingSkeleton({
 }
 
 /** Pre-composed skeleton blocks for common layouts. */
-export function LoadingSkeletonCard({ style }: { style?: ViewStyle }) {
+export function LoadingSkeletonCard({ testID, style }: { testID?: string; style?: ViewStyle }) {
   return (
-    <View style={[styles.card, style]}>
+    <View testID={testID} style={[styles.card, style]}>
       <LoadingSkeleton height={200} borderRadius={radius.md} />
       <View style={styles.cardBody}>
         <LoadingSkeleton width="60%" height={18} />
@@ -41,13 +44,15 @@ export function LoadingSkeletonCard({ style }: { style?: ViewStyle }) {
 
 export function LoadingSkeletonRow({
   lines = 3,
+  testID,
   style,
 }: {
   lines?: number;
+  testID?: string;
   style?: ViewStyle;
 }) {
   return (
-    <View style={[styles.row, style]}>
+    <View testID={testID} style={[styles.row, style]}>
       {Array.from({ length: lines }).map((_, i) => (
         <LoadingSkeleton
           key={i}
