@@ -49,6 +49,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           data: {
             full_name: name,
             name: name,
+            username: name ? name.split(" ")[0] : email.split("@")[0],
             first_name: name ? name.split(" ")[0] : undefined,
           },
         },
