@@ -85,7 +85,7 @@ export function useSignUpForm() {
       const email = state.email.trim();
       const password = state.password;
 
-      const { error } = await signUp(email, password);
+      const { error } = await signUp(email, password, state.name.trim());
 
       if (error) {
         setState((prev) => ({ ...prev, loading: false, submitError: error.message }));

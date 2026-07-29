@@ -1,34 +1,18 @@
-import { useCallback, useMemo } from "react";
+import { useCallback, useState } from "react";
 import { StyleSheet, View } from "react-native";
 import { router, useFocusEffect } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useWardrobe } from "@/hooks/useWardrobe";
 import { useAuth } from "@/providers/AuthProvider";
-import { ErrorMessage, SearchBar } from "@/components/ui";
+import { BottomNavBar, ErrorMessage, SearchBar } from "@/components/ui";
 import { colors, spacing } from "@/theme";
 import {
-  AddItemFAB,
-  CategoryFilter,
-  ClothingGrid,
-  WardrobeEmptyState,
-  WardrobeHeader,
+  EmptyWardrobeView,
+  PopulatedWardrobeView,
   WardrobeLoadingSkeleton,
+  WardrobeScreenHeader,
 } from "@/features/wardrobe";
 
-/**
- * Wardrobe main screen.
- *
- * Layout:
- *   SafeAreaView
- *     WardrobeHeader     — title, subtitle, item count
- *     SearchBar          — live client-side search
- *     WardrobeCategoryFilter — horizontal category chips
- *     [Loading]          — WardrobeLoadingSkeleton
- *     [Error]            — ErrorMessage + retry
- *     [Empty]            — WardrobeEmptyState
- *     [Grid]             — ClothingGrid (2-col, pull-to-refresh)
- *   AddItemFAB           — fixed bottom-right
- */
 export default function WardrobeScreen() {
   const {
     items,
@@ -37,22 +21,21 @@ export default function WardrobeScreen() {
     error,
     searchQuery,
     setSearchQuery,
-    categoryFilter,
-    setCategoryFilter,
     refresh,
     confirmDelete,
   } = useWardrobe();
 
-  const { signOut } = useAuth();
+  const { user } = useAuth();
+  const [showSearch, setShowSearch] = useState(false);
 
-  // Refresh whenever the screen regains focus (after add/edit/delete flows)
+  // Auto-refresh when screen gains focus (e.g. after uploading clothing)
   useFocusEffect(
     useCallback(() => {
       void refresh();
     }, [refresh]),
   );
 
-  const handleAddItem = useCallback(() => {
+  const handleAddClothing = useCallback(() => {
     router.push("/upload/capture");
   }, []);
 
@@ -60,88 +43,72 @@ export default function WardrobeScreen() {
     router.push(`/items/${id}`);
   }, []);
 
-  const handleClearFilters = useCallback(() => {
-    setSearchQuery("");
-    setCategoryFilter("");
-  }, [setSearchQuery, setCategoryFilter]);
+  const toggleSearch = useCallback(() => {
+    setShowSearch((prev) => !prev);
+  }, []);
 
-  const isFiltered = Boolean(searchQuery || categoryFilter);
+  // Format display name for Avatar
+  const rawName =
+    user?.user_metadata?.full_name ||
+    user?.user_metadata?.name ||
+    user?.user_metadata?.first_name;
 
-  // ── Memoised sticky list header ──
-  const ListHeader = useMemo(
-    () => (
-      <View>
-        <WardrobeHeader
-          itemCount={allItems.length}
-          onSignOut={signOut}
-        />
-        <SearchBar
-          value={searchQuery}
-          onChangeText={setSearchQuery}
-          placeholder="Search wardrobe..."
-          style={styles.searchBar}
-          testID="wardrobe-search"
-        />
-        <CategoryFilter
-          selected={categoryFilter}
-          onSelect={setCategoryFilter}
-          testID="wardrobe-category-filter"
-        />
-      </View>
-    ),
-    [searchQuery, categoryFilter, allItems.length, signOut, setSearchQuery, setCategoryFilter],
-  );
+  const userName = rawName
+    ? String(rawName)
+    : user?.email
+    ? user.email.split("@")[0]
+    : "Alex";
 
-  // ── Initial loading ──
-  if (loading && allItems.length === 0 && !error) {
-    return (
-      <SafeAreaView style={styles.safe} edges={["top"]}>
-        {ListHeader}
-        <WardrobeLoadingSkeleton />
-      </SafeAreaView>
-    );
-  }
+  const userAvatar = user?.user_metadata?.avatar_url ?? null;
 
-  // ── Initial error ──
-  if (error && allItems.length === 0) {
-    return (
-      <SafeAreaView style={styles.safe} edges={["top"]}>
-        {ListHeader}
-        <View style={styles.centered}>
-          <ErrorMessage message={error} onRetry={refresh} />
-        </View>
-      </SafeAreaView>
-    );
-  }
-
-  // ── Empty (no items OR no filtered results) ──
-  if (!loading && items.length === 0) {
-    return (
-      <SafeAreaView style={styles.safe} edges={["top"]}>
-        {ListHeader}
-        <WardrobeEmptyState
-          isFiltered={isFiltered}
-          onClearFilters={handleClearFilters}
-          onAddItem={handleAddItem}
-        />
-        <AddItemFAB onPress={handleAddItem} />
-      </SafeAreaView>
-    );
-  }
-
-  // ── Grid ──
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
-      <ClothingGrid
-        items={items}
-        loading={loading}
-        onRefresh={refresh}
-        onPressItem={handleItemPress}
-        onLongPressItem={confirmDelete}
-        ListHeaderComponent={ListHeader}
-        testID="wardrobe-grid"
-      />
-      <AddItemFAB onPress={handleAddItem} />
+      <View style={styles.container}>
+        {/* Header: STYRA Logo + Search Icon + Profile Avatar */}
+        <WardrobeScreenHeader
+          userAvatar={userAvatar}
+          userName={userName}
+          onSearchPress={toggleSearch}
+        />
+
+        {/* Optional Search Bar Toggle */}
+        {showSearch && (
+          <View style={styles.searchContainer}>
+            <SearchBar
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              placeholder="Search wardrobe..."
+              autoFocus
+              testID="wardrobe-search-input"
+            />
+          </View>
+        )}
+
+        {/* Main Content: Automatic Switching between Empty & Populated Wardrobe States */}
+        {loading && allItems.length === 0 && !error ? (
+          <WardrobeLoadingSkeleton />
+        ) : error && allItems.length === 0 ? (
+          <View style={styles.centered}>
+            <ErrorMessage message={error} onRetry={refresh} />
+          </View>
+        ) : allItems.length === 0 ? (
+          /* STATE 1: EMPTY WARDROBE (IMAGE 1) */
+          <EmptyWardrobeView onAddClothing={handleAddClothing} />
+        ) : (
+          /* STATE 2: WARDROBE WITH CLOTHES (IMAGE 2) */
+          <PopulatedWardrobeView
+            items={items}
+            allItems={allItems}
+            loading={loading}
+            onRefresh={refresh}
+            onPressItem={handleItemPress}
+            onLongPressItem={confirmDelete}
+          />
+        )}
+
+        {/* Floating Bottom Navigation Bar */}
+        <BottomNavBar activeTab="wardrobe" />
+      </View>
     </SafeAreaView>
   );
 }
@@ -151,9 +118,13 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
   },
-  searchBar: {
-    marginHorizontal: spacing.xl,
-    marginBottom: spacing.xs,
+  container: {
+    flex: 1,
+    position: "relative",
+  },
+  searchContainer: {
+    paddingHorizontal: spacing.xl,
+    marginBottom: spacing.sm,
   },
   centered: {
     flex: 1,

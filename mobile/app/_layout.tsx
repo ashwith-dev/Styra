@@ -32,7 +32,7 @@ function RootNavigator() {
       <Stack.Screen name="upload" redirect={!session} />
       <Stack.Screen name="items" redirect={!session} />
       <Stack.Screen name="profile" redirect={!session} />
-      <Stack.Screen name="settings" redirect={!session} />
+      <Stack.Screen name="settings/index" redirect={!session} />
       <Stack.Screen name="+not-found" />
     </Stack>
   );

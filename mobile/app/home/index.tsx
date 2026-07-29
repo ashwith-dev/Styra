@@ -1,13 +1,12 @@
 import { useCallback } from "react";
 import {
-  RefreshControl,
   ScrollView,
   StyleSheet,
   View,
 } from "react-native";
 import { router, useFocusEffect } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { ErrorMessage } from "@/components/ui/ErrorMessage";
+import { BottomNavBar } from "@/components/ui/BottomNavBar";
 import { LoadingSkeletonCard } from "@/components/ui/LoadingSkeleton";
 import { colors, spacing } from "@/theme";
 import {
@@ -54,89 +53,83 @@ export default function HomeScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
-      <ScrollView
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl
-            refreshing={loading}
-            onRefresh={refresh}
-            tintColor={colors.textSecondary}
-          />
-        }
-      >
-        {/* Header */}
-        <HomeHeader
-          userName={user.name}
-          userAvatar={user.avatar}
-          greetingTime={user.greetingTime}
-          onSignOut={user.signOut}
-        />
-
-        {/* Quick Actions (Show on unlocked home or secondary header) */}
-        {wardrobeValidation.isUnlocked && (
-          <HomeQuickActions
-            onAddClothing={handleAddClothing}
-            onViewWardrobe={handleViewWardrobe}
-          />
-        )}
-
-        {/* Loading / Error States */}
-        {loading && stats.totalItems === 0 && !error ? (
-          <View style={styles.skeletonPadding}>
-            <LoadingSkeletonCard />
-          </View>
-        ) : error && stats.totalItems === 0 ? (
-          <View style={styles.centered}>
-            <ErrorMessage message={error} onRetry={refresh} />
-          </View>
-        ) : stats.totalItems === 0 ? (
-          /* SCREEN 1: EMPTY WARDROBE DASHBOARD */
-          <EmptyWardrobeDashboard
+      <View style={styles.contentContainer}>
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
+          {/* Header */}
+          <HomeHeader
             userName={user.name}
-            onAddClothing={handleAddClothing}
+            userAvatar={user.avatar}
+            greetingTime={user.greetingTime}
+            onSignOut={user.signOut}
           />
-        ) : !wardrobeValidation.isUnlocked ? (
-          /* SCREEN 2: INSUFFICIENT WARDROBE DASHBOARD (NOT ENOUGH ITEMS) */
-          <InsufficientWardrobeDashboard
-            topsCount={wardrobeValidation.topsCount}
-            requiredTops={wardrobeValidation.requiredTops}
-            bottomsCount={wardrobeValidation.bottomsCount}
-            requiredBottoms={wardrobeValidation.requiredBottoms}
-            topsProgress={wardrobeValidation.topsProgress}
-            bottomsProgress={wardrobeValidation.bottomsProgress}
-            recentItems={recentItems}
-            onAddClothing={handleAddClothing}
-            onItemPress={handleItemPress}
-            onViewWardrobe={handleViewWardrobe}
-          />
-        ) : (
-          /* UNLOCKED HOME DASHBOARD (2+ Tops & 2+ Bottoms) */
-          <>
-            {/* Recent Clothing Strip */}
-            <RecentClothingStrip
-              items={recentItems}
+
+          {/* Quick Actions (Show when wardrobe is unlocked) */}
+          {wardrobeValidation.isUnlocked && (
+            <HomeQuickActions
+              onAddClothing={handleAddClothing}
+              onViewWardrobe={handleViewWardrobe}
+            />
+          )}
+
+          {/* Loading Skeleton */}
+          {loading && stats.totalItems === 0 && !error ? (
+            <View style={styles.skeletonPadding}>
+              <LoadingSkeletonCard />
+            </View>
+          ) : stats.totalItems === 0 ? (
+            /* SCREEN 1: LUXURY EMPTY WARDROBE DASHBOARD */
+            <EmptyWardrobeDashboard
+              userName={user.name}
+              onAddClothing={handleAddClothing}
+            />
+          ) : !wardrobeValidation.isUnlocked ? (
+            /* SCREEN 2: INSUFFICIENT WARDROBE DASHBOARD (NOT ENOUGH ITEMS) */
+            <InsufficientWardrobeDashboard
+              topsCount={wardrobeValidation.topsCount}
+              requiredTops={wardrobeValidation.requiredTops}
+              bottomsCount={wardrobeValidation.bottomsCount}
+              requiredBottoms={wardrobeValidation.requiredBottoms}
+              topsProgress={wardrobeValidation.topsProgress}
+              bottomsProgress={wardrobeValidation.bottomsProgress}
+              recentItems={recentItems}
+              onAddClothing={handleAddClothing}
               onItemPress={handleItemPress}
-              onItemLongPress={confirmDelete}
-              onViewAll={handleViewWardrobe}
+              onViewWardrobe={handleViewWardrobe}
             />
+          ) : (
+            /* UNLOCKED HOME DASHBOARD (2+ Tops & 2+ Bottoms) */
+            <>
+              {/* Recent Clothing Strip */}
+              <RecentClothingStrip
+                items={recentItems}
+                onItemPress={handleItemPress}
+                onItemLongPress={confirmDelete}
+                onViewAll={handleViewWardrobe}
+              />
 
-            {/* Wardrobe Statistics */}
-            <HomeWardrobeStats
-              totalItems={stats.totalItems}
-              categoryCount={stats.categoryCount}
-              topCategory={stats.topCategory}
-            />
+              {/* Wardrobe Statistics */}
+              <HomeWardrobeStats
+                totalItems={stats.totalItems}
+                categoryCount={stats.categoryCount}
+                topCategory={stats.topCategory}
+              />
 
-            {/* AI Outfit Features & Presentation Placeholders */}
-            <HomePlaceholders
-              weather={HOME_CONFIG.weather}
-              todayOutfit={HOME_CONFIG.todayOutfit}
-              aiTeaser={HOME_CONFIG.aiTeaser}
-            />
-          </>
-        )}
-      </ScrollView>
+              {/* AI Outfit Features & Presentation Placeholders */}
+              <HomePlaceholders
+                weather={HOME_CONFIG.weather}
+                todayOutfit={HOME_CONFIG.todayOutfit}
+                aiTeaser={HOME_CONFIG.aiTeaser}
+              />
+            </>
+          )}
+        </ScrollView>
+
+        {/* Floating Bottom Navigation Bar */}
+        <BottomNavBar activeTab="home" />
+      </View>
     </SafeAreaView>
   );
 }
@@ -146,15 +139,15 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
   },
+  contentContainer: {
+    flex: 1,
+    position: "relative",
+  },
   scrollContent: {
-    paddingBottom: spacing.massive,
+    paddingBottom: 110,
   },
   skeletonPadding: {
     paddingHorizontal: spacing.xl,
     marginBottom: spacing.xl,
-  },
-  centered: {
-    padding: spacing.xl,
-    alignItems: "center",
   },
 });

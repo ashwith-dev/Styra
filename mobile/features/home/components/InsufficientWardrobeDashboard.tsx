@@ -79,6 +79,24 @@ export function InsufficientWardrobeDashboard({
     outputRange: ["0%", "100%"],
   });
 
+  const getItemImage = (item: ClothingItemBrief): string | null => {
+    return item.thumbnail_url || item.segmented_image_url || item.original_image_url || null;
+  };
+
+  const getItemTitle = (item: ClothingItemBrief): string => {
+    const attrs = item.attributes || {};
+    const typeVal = typeof attrs.type === "object" && attrs.type ? (attrs.type as any).value : attrs.type;
+    const catVal = typeof attrs.category === "object" && attrs.category ? (attrs.category as any).value : attrs.category;
+    return String(typeVal || catVal || "Clothing Item");
+  };
+
+  const getItemSub = (item: ClothingItemBrief): string => {
+    const attrs = item.attributes || {};
+    const colorVal = typeof attrs.color === "object" && attrs.color ? (attrs.color as any).value : attrs.color;
+    const catVal = typeof attrs.category === "object" && attrs.category ? (attrs.category as any).value : attrs.category;
+    return String(colorVal || catVal || "Item");
+  };
+
   return (
     <Animated.View
       style={[
@@ -183,36 +201,41 @@ export function InsufficientWardrobeDashboard({
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.itemsScrollContent}
           >
-            {recentItems.map((item) => (
-              <TouchableOpacity
-                key={item.id}
-                onPress={() => onItemPress(item.id)}
-                style={styles.itemCard}
-                activeOpacity={0.85}
-              >
-                <View style={styles.itemImageContainer}>
-                  {item.imageUrl ? (
-                    <Image
-                      source={{ uri: item.imageUrl }}
-                      style={styles.itemImage}
-                      resizeMode="cover"
-                    />
-                  ) : (
-                    <Ionicons
-                      name="shirt-outline"
-                      size={28}
-                      color="#A09D96"
-                    />
-                  )}
-                </View>
-                <Text style={styles.itemName} numberOfLines={1}>
-                  {item.name || item.type || item.category || "Clothing Item"}
-                </Text>
-                <Text style={styles.itemMeta} numberOfLines={1}>
-                  {item.color || item.category || "Item"}
-                </Text>
-              </TouchableOpacity>
-            ))}
+            {recentItems.map((item) => {
+              const imgUrl = getItemImage(item);
+              const title = getItemTitle(item);
+              const sub = getItemSub(item);
+              return (
+                <TouchableOpacity
+                  key={item.id}
+                  onPress={() => onItemPress(item.id)}
+                  style={styles.itemCard}
+                  activeOpacity={0.85}
+                >
+                  <View style={styles.itemImageContainer}>
+                    {imgUrl ? (
+                      <Image
+                        source={{ uri: imgUrl }}
+                        style={styles.itemImage}
+                        resizeMode="cover"
+                      />
+                    ) : (
+                      <Ionicons
+                        name="shirt-outline"
+                        size={28}
+                        color="#A09D96"
+                      />
+                    )}
+                  </View>
+                  <Text style={styles.itemName} numberOfLines={1}>
+                    {title}
+                  </Text>
+                  <Text style={styles.itemMeta} numberOfLines={1}>
+                    {sub}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
           </ScrollView>
         </View>
       )}

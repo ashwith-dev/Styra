@@ -13,6 +13,7 @@ interface SearchBarProps {
   value: string;
   onChangeText: (text: string) => void;
   placeholder?: string;
+  autoFocus?: boolean;
   accessibilityLabel?: string;
   testID?: string;
   style?: ViewStyle;
@@ -23,6 +24,7 @@ export const SearchBar = forwardRef<TextInput, SearchBarProps>(function SearchBa
     value,
     onChangeText,
     placeholder = "Search...",
+    autoFocus = false,
     accessibilityLabel = "Search",
     testID,
     style,
@@ -41,6 +43,7 @@ export const SearchBar = forwardRef<TextInput, SearchBarProps>(function SearchBa
         placeholderTextColor={colors.textSecondary}
         autoCapitalize="none"
         autoCorrect={false}
+        autoFocus={autoFocus}
         returnKeyType="search"
         accessibilityLabel={accessibilityLabel}
       />

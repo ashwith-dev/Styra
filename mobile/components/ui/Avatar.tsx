@@ -1,4 +1,12 @@
-import { View, Text, Image, StyleSheet, type ViewStyle, type ImageStyle } from "react-native";
+import {
+  Image,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+  type ImageStyle,
+  type ViewStyle,
+} from "react-native";
 import { colors, typography } from "@/theme";
 
 type AvatarSize = "sm" | "md" | "lg" | "xl";
@@ -30,6 +38,7 @@ interface AvatarProps {
   size?: AvatarSize;
   testID?: string;
   style?: ViewStyle;
+  onPress?: () => void;
 }
 
 export function Avatar({
@@ -38,28 +47,19 @@ export function Avatar({
   size = "md",
   testID,
   style,
+  onPress,
 }: AvatarProps) {
   const dimension = sizeMap[size];
   const half = dimension / 2;
 
-  if (uri) {
-    const imageStyle: ImageStyle = {
-      width: dimension,
-      height: dimension,
-      borderRadius: half,
-    };
-
-    return (
-      <Image
-        testID={testID}
-        source={{ uri }}
-        style={[imageStyle, style as ImageStyle]}
-        accessibilityLabel={name ? `${name}'s avatar` : "Avatar"}
-      />
-    );
-  }
-
-  return (
+  const content = uri ? (
+    <Image
+      testID={testID}
+      source={{ uri }}
+      style={[{ width: dimension, height: dimension, borderRadius: half }, style as ImageStyle]}
+      accessibilityLabel={name ? `${name}'s avatar` : "Avatar"}
+    />
+  ) : (
     <View
       testID={testID}
       style={[
@@ -77,6 +77,21 @@ export function Avatar({
       </Text>
     </View>
   );
+
+  if (onPress) {
+    return (
+      <TouchableOpacity
+        onPress={onPress}
+        activeOpacity={0.8}
+        accessibilityRole="button"
+        accessibilityLabel={name ? `Open profile for ${name}` : "Open profile"}
+      >
+        {content}
+      </TouchableOpacity>
+    );
+  }
+
+  return content;
 }
 
 const styles = StyleSheet.create({

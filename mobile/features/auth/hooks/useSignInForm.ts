@@ -1,6 +1,8 @@
 import { useRef, useState } from "react";
 import type { TextInput } from "react-native";
+import { router } from "expo-router";
 import { useAuth } from "@/providers/AuthProvider";
+import { saveOnboardingState } from "@/lib/storage/onboarding";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -24,7 +26,7 @@ const INITIAL: State = {
 
 /**
  * Encapsulates all state, validation, and submission logic for the Sign In form.
- * Keeps the screen component purely presentational.
+ * Existing users signing in bypass onboarding completely and go directly to /home.
  */
 export function useSignInForm() {
   const { signIn } = useAuth();
@@ -69,16 +71,34 @@ export function useSignInForm() {
     setState((prev) => ({ ...prev, loading: true, submitError: null }));
 
     try {
-      const { error } = await signIn(state.email.trim(), state.password);
-      setState((prev) => ({ ...prev, loading: false }));
+      const { user, error } = await signIn(state.email.trim(), state.password);
 
       if (error) {
+        setState((prev) => ({ ...prev, loading: false }));
         const message = error.message.toLowerCase().includes("invalid login credentials")
           ? "Incorrect email or password. Please try again."
           : error.message;
         setState((prev) => ({ ...prev, submitError: message }));
+      } else {
+        setState((prev) => ({ ...prev, loading: false }));
+
+        // Existing user signing in: Automatically mark onboarding as completed for this user
+        if (user?.id) {
+          await saveOnboardingState(user.id, {
+            currentStep: 7,
+            totalSteps: 7,
+            completedSteps: [1, 2, 3, 4, 5, 6, 7],
+            completed: true,
+            selections: {
+              preferredStyles: [],
+              preferredColors: [],
+            },
+          });
+        }
+
+        // Navigate directly to Home screen
+        router.replace("/home");
       }
-      // On success, session updates → RootNavigator handles redirect automatically
     } catch (err) {
       const message = err instanceof Error ? err.message : "Network request failed. Please check your connection.";
       setState((prev) => ({ ...prev, loading: false, submitError: message }));

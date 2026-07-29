@@ -15,3 +15,4 @@ export { LoadingOverlay } from "./LoadingOverlay";
 export { ErrorMessage } from "./ErrorMessage";
 export { ErrorBoundary } from "./ErrorBoundary";
 export { CachedImage } from "./CachedImage";
+export { BottomNavBar } from "./BottomNavBar";

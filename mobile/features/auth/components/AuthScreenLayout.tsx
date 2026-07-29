@@ -8,7 +8,7 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { colors, spacing, typography } from "@/theme";
+import { colors, spacing } from "@/theme";
 
 interface AuthScreenLayoutProps {
   /** Screen content rendered below the brand mark */
@@ -19,7 +19,7 @@ interface AuthScreenLayoutProps {
 
 /**
  * Shared full-screen wrapper for all auth screens.
- * Handles safe area, keyboard avoidance, and the STYRA brand mark.
+ * Handles safe area, keyboard avoidance, and the high-contrast serif STYRA brand mark.
  */
 export function AuthScreenLayout({
   children,
@@ -75,9 +75,11 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xxl,
   },
   brand: {
-    ...typography.h1,
-    letterSpacing: 6,
+    fontFamily: Platform.OS === "ios" ? "Georgia" : "serif",
+    fontSize: 32,
+    fontWeight: "800",
+    letterSpacing: 4,
     textTransform: "uppercase",
-    color: colors.textPrimary,
+    color: "#000000",
   },
 });
