@@ -28,3 +28,5 @@ export { SelectionModal } from "./components/SelectionModal";
 export { ColorSelectionModal } from "./components/ColorSelectionModal";
 export { HeightWeightRulerModal } from "./components/HeightWeightRulerModal";
 export { SizeMultiSelectionModal } from "./components/SizeMultiSelectionModal";
+export { formatPreferenceLabel, resolveColorHex } from "./utils/preferenceUtils";
+

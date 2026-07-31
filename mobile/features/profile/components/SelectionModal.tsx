@@ -35,10 +35,12 @@ export function SelectionModal({
   onClose,
 }: SelectionModalProps) {
   const isSelected = (val: string) => {
+    const norm = (s: string) => s.toLowerCase().replace(/_/g, " ").trim();
+    const target = norm(val);
     if (Array.isArray(selectedValue)) {
-      return selectedValue.includes(val);
+      return selectedValue.some((item) => norm(item) === target);
     }
-    return selectedValue === val;
+    return selectedValue ? norm(selectedValue) === target : false;
   };
 
   return (

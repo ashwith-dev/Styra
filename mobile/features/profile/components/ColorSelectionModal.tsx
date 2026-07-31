@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Modal,
   Pressable,
@@ -10,6 +10,7 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { MAIN_COLOR_OPTIONS, PREDEFINED_SHADES_CATEGORIES } from "@/features/onboarding/config";
+import { resolveColorHex } from "@/features/profile/utils/preferenceUtils";
 import { colors, radius, spacing, typography } from "@/theme";
 
 interface ColorSelectionModalProps {
@@ -25,15 +26,24 @@ export function ColorSelectionModal({
   onSave,
   onClose,
 }: ColorSelectionModalProps) {
-  const [currentSelected, setCurrentSelected] = useState<string[]>(selectedColors || []);
+  const [currentSelected, setCurrentSelected] = useState<string[]>(() =>
+    (selectedColors || []).map((c) => resolveColorHex(c)),
+  );
 
   // Synchronize when modal opens
+  useEffect(() => {
+    if (visible) {
+      setCurrentSelected((selectedColors || []).map((c) => resolveColorHex(c)));
+    }
+  }, [visible, selectedColors]);
+
   const handleToggleColor = (hex: string) => {
     setCurrentSelected((prev) => {
-      if (prev.includes(hex)) {
-        return prev.filter((c) => c !== hex);
+      const normalizedHex = resolveColorHex(hex);
+      if (prev.includes(normalizedHex)) {
+        return prev.filter((c) => c !== normalizedHex);
       }
-      return [...prev, hex];
+      return [...prev, normalizedHex];
     });
   };
 

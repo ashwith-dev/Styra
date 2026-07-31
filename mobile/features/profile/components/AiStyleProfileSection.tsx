@@ -2,6 +2,7 @@ import { Platform, StyleSheet, Switch, Text, TouchableOpacity, View } from "reac
 import { Ionicons } from "@expo/vector-icons";
 import { colors, radius, spacing, typography } from "@/theme";
 import type { UserPreferences } from "../types/profile";
+import { formatPreferenceLabel, resolveColorHex } from "../utils/preferenceUtils";
 
 interface AiStyleProfileSectionProps {
   preferences: UserPreferences;
@@ -40,7 +41,7 @@ export function AiStyleProfileSection({
           {preferences.styles && preferences.styles.length > 0 ? (
             preferences.styles.map((style, idx) => (
               <View key={idx} style={styles.chip}>
-                <Text style={styles.chipText}>{style}</Text>
+                <Text style={styles.chipText}>{formatPreferenceLabel(style, "style")}</Text>
               </View>
             ))
           ) : (
@@ -71,16 +72,25 @@ export function AiStyleProfileSection({
           style={styles.colorsRow}
         >
           {preferences.favoriteColors && preferences.favoriteColors.length > 0 ? (
-            preferences.favoriteColors.map((colorHex, idx) => (
-              <View
-                key={idx}
-                style={[
-                  styles.colorCircle,
-                  { backgroundColor: colorHex },
-                  colorHex === "#FFFFFF" && styles.whiteColorCircleBorder,
-                ]}
-              />
-            ))
+            preferences.favoriteColors.map((colorInput, idx) => {
+              const hex = resolveColorHex(colorInput);
+              const isWhiteOrLight =
+                hex.toUpperCase() === "#FFFFFF" ||
+                hex.toUpperCase() === "#FAF9F6" ||
+                hex.toUpperCase() === "#F8F9FA" ||
+                hex.toUpperCase() === "#FFFDD0" ||
+                hex.toUpperCase() === "#FFFFF0";
+              return (
+                <View
+                  key={idx}
+                  style={[
+                    styles.colorCircle,
+                    { backgroundColor: hex },
+                    isWhiteOrLight && styles.whiteColorCircleBorder,
+                  ]}
+                />
+              );
+            })
           ) : (
             <View style={styles.emptyChip}>
               <Text style={styles.emptyChipText}>+ Select favourite colours</Text>
@@ -106,7 +116,9 @@ export function AiStyleProfileSection({
             !preferences.fitPreference && styles.unselectedText,
           ]}
         >
-          {preferences.fitPreference || "Not Selected"}
+          {preferences.fitPreference
+            ? formatPreferenceLabel(preferences.fitPreference, "fit")
+            : "Not Selected"}
         </Text>
       </TouchableOpacity>
 
@@ -127,7 +139,9 @@ export function AiStyleProfileSection({
             !preferences.lifestyle && styles.unselectedText,
           ]}
         >
-          {preferences.lifestyle || "Not Selected"}
+          {preferences.lifestyle
+            ? formatPreferenceLabel(preferences.lifestyle, "lifestyle")
+            : "Not Selected"}
         </Text>
       </TouchableOpacity>
 

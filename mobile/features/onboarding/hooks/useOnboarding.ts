@@ -7,6 +7,7 @@ import {
   saveOnboardingState,
 } from "@/lib/storage/onboarding";
 import { updateUserPreferences } from "@/repositories/profileRepository";
+import { resolveColorHex } from "@/features/profile/utils/preferenceUtils";
 import { TOTAL_ONBOARDING_STEPS } from "../config";
 import type {
   OnboardingSelections,
@@ -59,10 +60,11 @@ export function useOnboarding(): OnboardingViewModel {
 
   const syncOnboardingToPreferences = useCallback(async (selections: OnboardingSelections) => {
     try {
+      const resolvedColors = (selections.preferredColors || []).map((c) => resolveColorHex(c));
       await updateUserPreferences({
         lifestyle: selections.lifestyle ? String(selections.lifestyle) : undefined,
         styles: selections.preferredStyles || [],
-        favoriteColors: selections.preferredColors || [],
+        favoriteColors: resolvedColors,
         fitPreference: selections.preferredFit ? String(selections.preferredFit) : undefined,
       });
     } catch {
@@ -75,10 +77,11 @@ export function useOnboarding(): OnboardingViewModel {
       setState((prev) => {
         const next = updater(prev);
         void saveOnboardingState(userId, next);
+        void syncOnboardingToPreferences(next.selections);
         return next;
       });
     },
-    [userId],
+    [userId, syncOnboardingToPreferences],
   );
 
   const selectLifestyle = useCallback(
