@@ -8,7 +8,10 @@ DEFAULT_PAGE_SIZE = 50
 # Image validation thresholds
 # ---------------------------------------------------------------------------
 MIN_RESOLUTION = 500       # minimum pixels per side
-LAPLACIAN_THRESHOLD = 30.0  # lower = blurrier
+# Floor for catastrophically blurry images only. Laplacian variance is
+# content-dependent: clean product photos on plain backgrounds legitimately
+# score ~3-5, so a high threshold false-rejects valid clothing photos.
+LAPLACIAN_THRESHOLD = 2.0  # lower = blurrier
 MIN_BRIGHTNESS = 20         # 0–255 gray scale
 MAX_BRIGHTNESS = 240
 MIN_ASPECT_RATIO = 0.25

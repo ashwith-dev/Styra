@@ -16,7 +16,7 @@ from app.errors import (
 )
 from app.services.pipeline_service import PipelineService
 from app.services.validation.image_validator import ImageValidator
-from app.services.segmentation.rmbg_segmenter import RMBGSegmenter
+from app.services.segmentation.rembg_segmenter import RembgSegmenter
 from app.services.extraction.qwen_extractor import QwenExtractor
 from app.services.storage_service import StorageService
 
@@ -32,7 +32,7 @@ def _build_pipeline() -> PipelineService | None:
     try:
         return PipelineService(
             validator=ImageValidator(),
-            segmenter=RMBGSegmenter(),
+            segmenter=RembgSegmenter(),
             extractor=QwenExtractor(),
             storage=StorageService(),
         )
@@ -61,10 +61,11 @@ app = FastAPI(
 )
 
 # ── Middleware ──
+cors_origins = [o.strip() for o in settings.cors_origins.split(",") if o.strip()]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.cors_origins.split(","),
-    allow_credentials=True,
+    allow_origins=cors_origins,
+    allow_credentials="*" not in cors_origins,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -85,3 +86,9 @@ app.include_router(health_router, tags=["Health"])
 app.include_router(clothing_router, tags=["Clothing"])
 app.include_router(analyze_router, tags=["Pipeline"])
 app.include_router(recs_router, tags=["Recommendations"])
+
+
+if __name__ == "__main__":
+    import uvicorn
+
+    uvicorn.run("app.main:app", host=settings.host, port=settings.port)
