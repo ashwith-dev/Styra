@@ -1,7 +1,7 @@
-"""Tests for QwenExtractor: schema mapping, error handling, edge cases.
+"""Tests for GeminiExtractor: schema mapping, error handling, edge cases.
 
 The actual HTTP API is never called — tests exercise ``_map_to_schema``
-and ``_parse_model_output`` with synthetic inputs.
+and response decoding with synthetic inputs.
 """
 
 import json
@@ -69,7 +69,7 @@ def test_map_full_response() -> None:
     assert len(result.occasion) == 1
     assert result.brand is None
     assert result.description == "A navy blue cotton t-shirt."
-    assert result.model_name == "Qwen2.5-VL-3B-Instruct"
+    assert result.model_name == "qwen2.5-vl"
 
 
 def test_map_partial_response() -> None:
@@ -127,59 +127,6 @@ def test_unknown_category_gets_lowered_confidence() -> None:
     result = extractor()._map_to_schema(raw)
     assert result.category.value == "underwear"
     assert result.category.confidence == 0.5  # capped
-
-
-# ===================================================================
-# Pipe outputs (together.ai response wrapper)
-# ===================================================================
-
-def test_parse_standard_response() -> None:
-    """Standard Together AI response shape."""
-    data = {
-        "choices": [
-            {
-                "message": {
-                    "content": json.dumps({"category": "top", "type": "shirt", "color": "red"}),
-                }
-            }
-        ]
-    }
-    parsed = extractor()._parse_model_output(data)
-    assert parsed == {"category": "top", "type": "shirt", "color": "red"}
-
-
-def test_parse_empty_choices_raises() -> None:
-    data = {"choices": []}
-    with pytest.raises(ExtractionError, match="empty choices"):
-        extractor()._parse_model_output(data)
-
-
-def test_parse_missing_choices_raises() -> None:
-    data = {"foo": "bar"}
-    with pytest.raises(ExtractionError, match="missing 'choices'"):
-        extractor()._parse_model_output(data)
-
-
-def test_parse_missing_message_raises() -> None:
-    data = {"choices": [{"foo": "bar"}]}
-    with pytest.raises(ExtractionError, match="Cannot extract content"):
-        extractor()._parse_model_output(data)
-
-
-def test_parse_empty_content_raises() -> None:
-    data = {"choices": [{"message": {"content": ""}}]}
-    with pytest.raises(ExtractionError, match="empty content"):
-        extractor()._parse_model_output(data)
-
-
-def test_parse_malformed_json_raises() -> None:
-    data = {
-        "choices": [
-            {"message": {"content": "this is not json"}},
-        ]
-    }
-    with pytest.raises(ExtractionError, match="unparseable JSON"):
-        extractor()._parse_model_output(data)
 
 
 # ===================================================================
