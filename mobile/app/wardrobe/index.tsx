@@ -1,7 +1,8 @@
 import { useCallback, useState } from "react";
-import { StyleSheet, View } from "react-native";
+import { StyleSheet, TouchableOpacity, View } from "react-native";
 import { router, useFocusEffect } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { Ionicons } from "@expo/vector-icons";
 import { useWardrobe } from "@/hooks/useWardrobe";
 import { useAuth } from "@/providers/AuthProvider";
 import { BottomNavBar, ErrorMessage, SearchBar } from "@/components/ui";
@@ -92,10 +93,10 @@ export default function WardrobeScreen() {
             <ErrorMessage message={error} onRetry={refresh} />
           </View>
         ) : allItems.length === 0 ? (
-          /* STATE 1: EMPTY WARDROBE (IMAGE 1) */
+          /* STATE 1: EMPTY WARDROBE */
           <EmptyWardrobeView onAddClothing={handleAddClothing} />
         ) : (
-          /* STATE 2: WARDROBE WITH CLOTHES (IMAGE 2) */
+          /* STATE 2: WARDROBE WITH CLOTHES */
           <PopulatedWardrobeView
             items={items}
             allItems={allItems}
@@ -103,8 +104,21 @@ export default function WardrobeScreen() {
             onRefresh={refresh}
             onPressItem={handleItemPress}
             onLongPressItem={confirmDelete}
+            onAddClothing={handleAddClothing}
           />
         )}
+
+        {/* Floating Add Item FAB Button (Above Bottom NavBar) */}
+        <TouchableOpacity
+          style={styles.floatingAddBtn}
+          onPress={handleAddClothing}
+          activeOpacity={0.85}
+          accessibilityRole="button"
+          accessibilityLabel="Add Clothing Item"
+          testID="floating-add-btn"
+        >
+          <Ionicons name="add" size={30} color="#FFFFFF" />
+        </TouchableOpacity>
 
         {/* Floating Bottom Navigation Bar */}
         <BottomNavBar activeTab="wardrobe" />
@@ -131,5 +145,22 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     padding: spacing.xl,
+  },
+  floatingAddBtn: {
+    position: "absolute",
+    bottom: 96,
+    right: spacing.xl,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: colors.accent,
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#000000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 8,
+    zIndex: 1000,
   },
 });

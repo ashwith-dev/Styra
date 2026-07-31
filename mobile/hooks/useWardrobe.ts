@@ -3,6 +3,9 @@ import { Alert } from "react-native";
 import type { ClothingItemBrief, ClothingItemDetail } from "../lib/types";
 import { AppError } from "../lib/errors";
 import * as wardrobeRepo from "../repositories/wardrobeRepository";
+import * as wardrobeCache from "../lib/storage/wardrobeCache";
+import { isOnline } from "../lib/network/networkStatus";
+import * as api from "../lib/api";
 
 let _cachedWardrobeItems: ClothingItemBrief[] = [];
 
@@ -26,36 +29,66 @@ export function getCachedWardrobeCategoryCount(): number {
 }
 
 export function useWardrobe() {
-  const [items, setItems] = useState<ClothingItemBrief[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [items, setItems] = useState<ClothingItemBrief[]>(() => _cachedWardrobeItems);
+  const [loading, setLoading] = useState<boolean>(() => _cachedWardrobeItems.length === 0);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("");
 
   const abortControllerRef = useRef<AbortController | null>(null);
 
-  // ── Fetch via WardrobeRepository ──
+  // ── Load cached items instantly on mount ──
+  useEffect(() => {
+    let mounted = true;
+    void (async () => {
+      const cachedMeta = await wardrobeCache.getCachedWardrobe();
+      if (mounted) {
+        if (cachedMeta?.data) {
+          _cachedWardrobeItems = cachedMeta.data;
+          setItems(cachedMeta.data);
+        }
+        // Immediately turn off full-screen skeleton if cache checked
+        setLoading(false);
+      }
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
+  // ── Refresh / Stale-While-Revalidate Background Sync ──
   const refresh = useCallback(async () => {
-    // Abort previous pending refresh request
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
     }
     const controller = new AbortController();
     abortControllerRef.current = controller;
 
-    setLoading(true);
+    // Only show full skeleton if we have zero items in memory
+    if (_cachedWardrobeItems.length === 0) {
+      setLoading(true);
+    }
     setError(null);
+
+    if (!isOnline()) {
+      setLoading(false);
+      return;
+    }
+
     try {
-      const { items: data } = await wardrobeRepo.getWardrobeItems(controller.signal);
-      _cachedWardrobeItems = data;
-      setItems(data);
+      const remoteItems = await api.listClothing(controller.signal);
+      _cachedWardrobeItems = remoteItems;
+      setItems(remoteItems);
+      void wardrobeCache.setCachedWardrobe(remoteItems);
     } catch (err) {
       if ((err as Error)?.name === "CanceledError" || (err as Error)?.name === "AbortError") {
-        return; // Ignore aborted requests
+        return;
       }
-      const msg = err instanceof AppError ? err.message : "Failed to load wardrobe";
-      setError(msg);
+      // If we already have items displayed, do not show fatal error
+      if (_cachedWardrobeItems.length === 0) {
+        const msg = err instanceof AppError ? err.message : "Failed to load wardrobe";
+        setError(msg);
+      }
     } finally {
       setLoading(false);
     }
@@ -70,7 +103,6 @@ export function useWardrobe() {
   }, []);
 
   // ── Search + filter (client-side) ──
-
   const filteredItems = useMemo(() => {
     let result = items;
 
@@ -99,7 +131,6 @@ export function useWardrobe() {
   }, [items, categoryFilter, searchQuery]);
 
   // ── Delete (optimistic) ──
-
   const removeItem = useCallback(async (id: string) => {
     setItems((prev) => prev.filter((i) => i.id !== id));
     _cachedWardrobeItems = _cachedWardrobeItems.filter((i) => i.id !== id);

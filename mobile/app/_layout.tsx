@@ -22,7 +22,13 @@ function RootNavigator() {
   }
 
   return (
-    <Stack screenOptions={{ headerShown: false }}>
+    <Stack
+      screenOptions={{
+        headerShown: false,
+        animation: "fade",
+        animationDuration: 150,
+      }}
+    >
       <Stack.Screen name="auth" redirect={!!session} />
       <Stack.Screen name="onboarding" redirect={!session} />
       <Stack.Screen name="home" redirect={!session} />

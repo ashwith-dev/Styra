@@ -1,4 +1,5 @@
-import { StyleSheet, TouchableOpacity, View } from "react-native";
+import { useRef } from "react";
+import { Animated, StyleSheet, TouchableOpacity, View } from "react-native";
 import { router, usePathname } from "expo-router";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { colors, radius, spacing } from "@/theme";
@@ -22,26 +23,46 @@ export function BottomNavBar({ activeTab = "home" }: BottomNavBarProps) {
       ? "profile"
       : "home");
 
+  // Animated scale feedback for active tab item
+  const scaleAnim = useRef(new Animated.Value(1)).current;
+
   const handleNav = (tab: TabKey) => {
+    if (currentActive === tab) return;
+
+    // Trigger subtle spring animation feedback
+    Animated.sequence([
+      Animated.timing(scaleAnim, {
+        toValue: 0.92,
+        duration: 80,
+        useNativeDriver: true,
+      }),
+      Animated.spring(scaleAnim, {
+        toValue: 1,
+        friction: 4,
+        useNativeDriver: true,
+      }),
+    ]).start();
+
+    // Use router.replace for instant tab switching without pushing duplicate history stacks
     switch (tab) {
       case "home":
-        router.push("/home");
+        router.replace("/home");
         break;
       case "wardrobe":
-        router.push("/wardrobe");
+        router.replace("/wardrobe");
         break;
       case "looks":
-        router.push("/looks");
+        router.replace("/looks");
         break;
       case "profile":
-        router.push("/profile");
+        router.replace("/profile");
         break;
     }
   };
 
   return (
     <View style={styles.floatingContainer}>
-      <View style={styles.pillContainer}>
+      <Animated.View style={[styles.pillContainer, { transform: [{ scale: scaleAnim }] }]}>
         {/* Tab 1: Home */}
         <TouchableOpacity
           onPress={() => handleNav("home")}
@@ -60,7 +81,7 @@ export function BottomNavBar({ activeTab = "home" }: BottomNavBarProps) {
           </View>
         </TouchableOpacity>
 
-        {/* Tab 2: Your Wardrobe (Hanger Symbol matching Image 2) */}
+        {/* Tab 2: Your Wardrobe (Hanger Symbol) */}
         <TouchableOpacity
           onPress={() => handleNav("wardrobe")}
           style={styles.tabBtn}
@@ -113,7 +134,7 @@ export function BottomNavBar({ activeTab = "home" }: BottomNavBarProps) {
             />
           </View>
         </TouchableOpacity>
-      </View>
+      </Animated.View>
     </View>
   );
 }

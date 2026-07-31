@@ -1,4 +1,6 @@
 import axios, { AxiosError, type AxiosInstance } from "axios";
+import { Platform } from "react-native";
+import Constants from "expo-constants";
 import { supabase } from "./supabase";
 import type {
   AnalyzeClothingResponse,
@@ -13,12 +15,34 @@ import type {
 } from "./types";
 import { AppError } from "./errors";
 
-import { Platform } from "react-native";
+function resolveApiUrl(): string {
+  // Physical devices in Expo Go reach the dev machine over Wi-Fi via the
+  // packager host IP. This takes precedence: an env var pointing at
+  // localhost/10.0.2.2 is unreachable from a phone.
+  const hostUri = Constants.expoConfig?.hostUri || (Constants as unknown as Record<string, any>).manifest2?.extra?.expoGo?.debuggerHost;
+  if (hostUri) {
+    const hostIp = String(hostUri).split(":")[0];
+    if (hostIp && hostIp !== "localhost" && hostIp !== "127.0.0.1") {
+      return `http://${hostIp}:8000`;
+    }
+  }
 
-const DEFAULT_API_URL = Platform.OS === "android" ? "http://10.0.2.2:8000" : "http://localhost:8000";
-const rawUrl = process.env.EXPO_PUBLIC_API_URL || DEFAULT_API_URL;
-const API_URL = Platform.OS === "android" && rawUrl.includes("localhost") ? rawUrl.replace("localhost", "10.0.2.2") : rawUrl;
-const TIMEOUT_MS = 30_000;
+  if (process.env.EXPO_PUBLIC_API_URL) {
+    const envUrl = process.env.EXPO_PUBLIC_API_URL;
+    if (Platform.OS === "android" && envUrl.includes("localhost")) {
+      return envUrl.replace("localhost", "10.0.2.2");
+    }
+    return envUrl;
+  }
+
+  return Platform.OS === "android" ? "http://10.0.2.2:8000" : "http://localhost:8000";
+}
+
+const API_URL = resolveApiUrl();
+if (__DEV__) {
+  console.log(`[api] base URL: ${API_URL}`);
+}
+const TIMEOUT_MS = 60_000;
 
 function createClient(): AxiosInstance {
   const client = axios.create({
@@ -29,10 +53,14 @@ function createClient(): AxiosInstance {
 
   // ── Request interceptor: attach JWT ──
   client.interceptors.request.use(async (config) => {
-    const { data: sessionData } = await supabase.auth.getSession();
-    const token = sessionData.session?.access_token;
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData.session?.access_token;
+      if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+      }
+    } catch {
+      // Ignore auth error if session is missing
     }
     return config;
   });
@@ -43,12 +71,6 @@ function createClient(): AxiosInstance {
     (error: AxiosError<{ detail?: string | { error?: string; message?: string } }>) => {
       if (error.response) {
         const status = error.response.status;
-
-        // Session rejected by the server: clear it locally so the root
-        // navigator redirects to sign-in instead of leaving a dead session.
-        if (status === 401) {
-          // Do not force local sign out on 401 to prevent bouncing loops
-        }
 
         const detail = error.response.data?.detail;
         const message =
@@ -61,7 +83,7 @@ function createClient(): AxiosInstance {
 
       // Network error (no response received)
       throw new AppError(
-        "Unable to connect to the server. Please check your connection.",
+        "Unable to connect to the server. Please check your internet connection and try again.",
         0,
       );
     },
@@ -113,7 +135,7 @@ export async function saveClothing(
 // ── List ──
 
 export async function listClothing(signal?: AbortSignal): Promise<ClothingItemBrief[]> {
-  const { data } = await api.get<{ items: ClothingItemBrief[]; total_count?: number }>("/clothing", { signal });
+  const { data } = await api.get<{ items: ClothingItemBrief[]; total_count?: number }>("/clothing", { timeout: 5000, signal });
   return data.items;
 }
 
@@ -159,7 +181,7 @@ export async function checkHealth(signal?: AbortSignal): Promise<boolean> {
   }
 }
 
-// ── Outfit Recommendations (Phase 4A) ──
+// ── Outfit Recommendations ──
 
 export async function getOutfitRecommendations(params?: {
   occasion?: string;
