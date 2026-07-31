@@ -1,35 +1,67 @@
-import { forwardRef } from "react";
+import { forwardRef, useState } from "react";
 import {
-  TextInput,
-  Text,
-  View,
   StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
   type TextInputProps,
 } from "react-native";
-import { colors, spacing, radius, typography } from "@/theme";
+import { Ionicons } from "@expo/vector-icons";
+import { colors, radius, spacing, typography } from "@/theme";
 
 interface InputProps extends TextInputProps {
   label?: string;
   error?: string;
   hint?: string;
+  isPassword?: boolean;
 }
 
 export const Input = forwardRef<TextInput, InputProps>(function Input(
-  { label, error, hint, testID, style, ...rest },
+  { label, error, hint, isPassword, secureTextEntry, testID, style, ...rest },
   ref,
 ) {
+  const [showPassword, setShowPassword] = useState(false);
+  const passwordField = isPassword || secureTextEntry;
+
   return (
     <View style={styles.wrapper}>
       {label && <Text style={styles.label}>{label}</Text>}
-      <TextInput
-        ref={ref}
-        testID={testID}
-        style={[styles.input, error && styles.inputError, style]}
-        placeholderTextColor={colors.textSecondary}
-        autoCapitalize="none"
-        accessibilityLabel={label}
-        {...rest}
-      />
+
+      <View style={styles.inputContainer}>
+        <TextInput
+          ref={ref}
+          testID={testID}
+          style={[
+            styles.input,
+            error && styles.inputError,
+            passwordField && styles.inputWithIcon,
+            style,
+          ]}
+          placeholderTextColor={colors.textSecondary}
+          autoCapitalize="none"
+          accessibilityLabel={label}
+          secureTextEntry={passwordField ? !showPassword : secureTextEntry}
+          {...rest}
+        />
+
+        {passwordField && (
+          <TouchableOpacity
+            onPress={() => setShowPassword((prev) => !prev)}
+            style={styles.eyeBtn}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            accessibilityRole="button"
+            accessibilityLabel={showPassword ? "Hide password" : "Show password"}
+          >
+            <Ionicons
+              name={showPassword ? "eye-off-outline" : "eye-outline"}
+              size={20}
+              color="#7F7C76"
+            />
+          </TouchableOpacity>
+        )}
+      </View>
+
       {error && <Text style={styles.error}>{error}</Text>}
       {hint && !error && <Text style={styles.hint}>{hint}</Text>}
     </View>
@@ -46,6 +78,10 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
     marginBottom: spacing.xs,
   },
+  inputContainer: {
+    position: "relative",
+    justifyContent: "center",
+  },
   input: {
     ...typography.body,
     borderWidth: 1,
@@ -57,8 +93,18 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
     minHeight: 48,
   },
+  inputWithIcon: {
+    paddingRight: 48,
+  },
   inputError: {
     borderColor: colors.error,
+  },
+  eyeBtn: {
+    position: "absolute",
+    right: 14,
+    height: "100%",
+    justifyContent: "center",
+    alignItems: "center",
   },
   error: {
     ...typography.caption,

@@ -1,5 +1,6 @@
 import { Modal, Pressable, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { BlurView } from "expo-blur";
 import { colors, radius, spacing, typography } from "@/theme";
 
 interface DeleteAccountModalProps {
@@ -20,43 +21,47 @@ export function DeleteAccountModal({
       animationType="fade"
       onRequestClose={onClose}
     >
-      <Pressable style={styles.overlay} onPress={onClose}>
-        <Pressable style={styles.modalCard} onPress={(e) => e.stopPropagation()}>
-          {/* Warning Icon Header */}
-          <View style={styles.warningCircle}>
-            <Ionicons name="trash-outline" size={26} color="#D32F2F" />
-          </View>
+      <View style={styles.overlay}>
+        <BlurView intensity={40} tint="dark" style={StyleSheet.absoluteFill} />
 
-          {/* Title & Destructive Warning Message */}
-          <Text style={styles.title}>Delete Account?</Text>
-          <Text style={styles.message}>
-            This action is permanent and cannot be undone. All your wardrobe items, saved looks, preferences, and profile data will be permanently deleted.
-          </Text>
+        <Pressable style={styles.overlayPressable} onPress={onClose}>
+          <Pressable style={styles.modalCard} onPress={(e) => e.stopPropagation()}>
+            {/* Warning Icon Header */}
+            <View style={styles.warningCircle}>
+              <Ionicons name="trash-outline" size={26} color="#D32F2F" />
+            </View>
 
-          {/* Actions Column */}
-          <View style={styles.buttonColumn}>
-            <TouchableOpacity
-              onPress={onConfirm}
-              style={styles.deleteBtn}
-              activeOpacity={0.85}
-              accessibilityRole="button"
-              accessibilityLabel="Delete Account"
-            >
-              <Text style={styles.deleteBtnText}>Delete Account</Text>
-            </TouchableOpacity>
+            {/* Title & Destructive Warning Message */}
+            <Text style={styles.title}>Delete Account?</Text>
+            <Text style={styles.message}>
+              Are you sure you want to delete your account? All your saved clothes, outfits, preferences, and profile data will be permanently deleted.
+            </Text>
 
-            <TouchableOpacity
-              onPress={onClose}
-              style={styles.cancelBtn}
-              activeOpacity={0.7}
-              accessibilityRole="button"
-              accessibilityLabel="Cancel"
-            >
-              <Text style={styles.cancelBtnText}>Cancel</Text>
-            </TouchableOpacity>
-          </View>
+            {/* Actions Column */}
+            <View style={styles.buttonColumn}>
+              <TouchableOpacity
+                onPress={onConfirm}
+                style={styles.deleteBtn}
+                activeOpacity={0.85}
+                accessibilityRole="button"
+                accessibilityLabel="Delete Account"
+              >
+                <Text style={styles.deleteBtnText}>Delete</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={onClose}
+                style={styles.cancelBtn}
+                activeOpacity={0.7}
+                accessibilityRole="button"
+                accessibilityLabel="Cancel"
+              >
+                <Text style={styles.cancelBtnText}>Cancel</Text>
+              </TouchableOpacity>
+            </View>
+          </Pressable>
         </Pressable>
-      </Pressable>
+      </View>
     </Modal>
   );
 }
@@ -64,10 +69,16 @@ export function DeleteAccountModal({
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.6)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  overlayPressable: {
+    flex: 1,
+    width: "100%",
     justifyContent: "center",
     alignItems: "center",
     paddingHorizontal: spacing.xl,
+    backgroundColor: "rgba(0, 0, 0, 0.4)",
   },
   modalCard: {
     width: "100%",
