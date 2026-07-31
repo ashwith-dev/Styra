@@ -9,7 +9,7 @@ from unittest.mock import patch
 
 import cv2
 import numpy as np
-from PIL import Image
+from PIL import Image, ImageFilter
 
 from app.services.validation.image_validator import ImageValidator
 from app.services.validation.models import ValidationResult
@@ -192,6 +192,23 @@ def test_blurry_image_fails() -> None:
     passed, reasons = validator.validate(img)
     assert not passed
     assert any("blurry" in r for r in reasons)
+
+
+def test_soft_but_usable_image_passes() -> None:
+    """Slightly soft images (e.g. recompressed web photos) must pass.
+
+    Regression test: Laplacian variance is content-dependent — a clean,
+    slightly soft image scores ~4-5, far below a strict threshold, yet is
+    perfectly usable by the extraction model.
+    """
+    validator = ImageValidator()
+    rng = np.random.default_rng(11)
+    arr = (rng.random((800, 800, 3)) * 180 + 40).astype(np.uint8)
+    soft = Image.fromarray(arr).filter(ImageFilter.GaussianBlur(2))
+    buf = io.BytesIO()
+    soft.save(buf, format="JPEG", quality=70)
+    passed, reasons = validator.validate(buf.getvalue())
+    assert passed, reasons
 
 
 # ===================================================================

@@ -25,11 +25,39 @@ from app.utils.prompts import SYSTEM_PROMPT_STRUCTURED
 logger = logging.getLogger(__name__)
 
 _OPTIONAL_ATTRS = [
-    "pattern", "material", "style", "neckline",
-    "sleeve_length", "fit", "length", "closure",
+    "secondary_color",
+    "secondary_color_hex",
+    "size",
+    "pattern",
+    "material",
+    "style",
+    "neckline",
+    "sleeve_length",
+    "fit",
+    "length",
+    "dress_length",
+    "bottom_fit",
+    "waist_rise",
+    "heel_height",
+    "warmth",
+    "layer_type",
+    "transparency",
+    "stretch",
 ]
 
-_CATEGORIES = {"top", "bottom", "dress", "outerwear", "footwear", "accessory", "invalid"}
+_CATEGORIES = {
+    "top",
+    "bottom",
+    "dress",
+    "outerwear",
+    "suit",
+    "traditional",
+    "ethnic",
+    "activewear",
+    "footwear",
+    "accessory",
+    "invalid",
+}
 
 # OpenRouter 404s when a model has no live provider endpoints (all free
 # Qwen VL variants are currently decommissioned). Retry with verified-live

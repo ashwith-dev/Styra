@@ -1,16 +1,26 @@
-"""Tests for the DB-backed pipeline staging store (Supabase mocked)."""
+"""Tests for the pipeline staging store (Supabase mocked)."""
 
 from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 from app.models.pipeline import StageMetrics
 from app.services.pipeline_service import PipelineResult
+from app.services import pipeline_store
 from app.services.pipeline_store import (
     TTL,
     pop_pipeline_result,
     store_pipeline_result,
 )
+
+
+@pytest.fixture(autouse=True)
+def _clear_memory_store():
+    pipeline_store._memory_store.clear()
+    yield
+    pipeline_store._memory_store.clear()
 
 
 def _result() -> PipelineResult:
@@ -136,5 +146,53 @@ def test_pop_wrong_user_returns_none(mock_supabase) -> None:
 def test_pop_expired_token_returns_none(mock_supabase) -> None:
     expired = (datetime.now(timezone.utc) - TTL - timedelta(minutes=1)).isoformat()
     mock_supabase.return_value = _client_returning([_row(created_at=expired)])
+
+    assert pop_pipeline_result("tok-1", "user-1") is None
+
+
+@patch("app.services.pipeline_store.get_supabase")
+def test_store_swallows_supabase_failure_and_keeps_memory(mock_supabase) -> None:
+    """A missing pipeline_staging table (PGRST205) must not break staging."""
+    mock_supabase.return_value.table.return_value.insert.return_value.execute.side_effect = (
+        Exception("PGRST205: table not found")
+    )
+
+    store_pipeline_result(_result(), "user-1")
+
+    assert pipeline_store._memory_store["tok-1"][1] == "user-1"
+
+
+@patch("app.services.pipeline_store.get_supabase")
+def test_pop_returns_from_memory_without_supabase(mock_supabase) -> None:
+    client = _client_returning([])
+    client.table.return_value.insert.return_value.execute.side_effect = Exception(
+        "PGRST205: table not found"
+    )
+    mock_supabase.return_value = client
+    store_pipeline_result(_result(), "user-1")
+
+    staged = pop_pipeline_result("tok-1", "user-1")
+
+    assert staged is not None
+    assert staged.original_image_url == "https://x/o.png"
+    # memory hit: Supabase DELETE was never needed
+    mock_supabase.return_value.table.return_value.delete.assert_not_called()
+    # token consumed: a second pop finds nothing
+    assert pop_pipeline_result("tok-1", "user-1") is None
+
+
+@patch("app.services.pipeline_store.get_supabase")
+def test_pop_memory_entry_wrong_user_falls_through(mock_supabase) -> None:
+    mock_supabase.return_value = _client_returning([])
+    pipeline_store._memory_store["tok-1"] = (_result(), "user-1")
+
+    assert pop_pipeline_result("tok-1", "user-2") is None
+
+
+@patch("app.services.pipeline_store.get_supabase")
+def test_pop_supabase_failure_returns_none(mock_supabase) -> None:
+    mock_supabase.return_value.table.return_value.delete.return_value.eq.return_value.eq.return_value.execute.side_effect = (
+        Exception("PGRST205: table not found")
+    )
 
     assert pop_pipeline_result("tok-1", "user-1") is None
