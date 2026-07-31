@@ -85,7 +85,7 @@ export default function SignUp() {
           value={password}
           onChangeText={setPassword}
           error={passwordError ?? undefined}
-          secureTextEntry
+          isPassword
           autoComplete="new-password"
           returnKeyType="go"
           onSubmitEditing={handleSubmit}

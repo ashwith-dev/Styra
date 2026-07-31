@@ -14,21 +14,27 @@ import { Button, CachedImage, ErrorMessage, LoadingOverlay } from "@/components/
 import { colors, radius, spacing, typography } from "@/theme";
 import type { AIPipelineResult } from "@/lib/types";
 import { AttributeField } from "@/components/upload/AttributeField";
+import { AttributeSelectField } from "@/components/upload/AttributeSelectField";
 import { AttributeTags } from "@/components/upload/AttributeTags";
 import {
   DEFAULT_OCCASIONS,
   DEFAULT_SEASONS,
-  UPLOAD_SINGLE_ATTRS,
   useUploadState,
 } from "@/features/upload";
+import {
+  getActiveFieldsForCategory,
+  getCategoriesForWardrobeType,
+  getSubcategoriesForCategory,
+} from "@/features/upload/taxonomy";
+import { useProfileData } from "@/features/profile";
 
 /**
- * ReviewScreen: Displays detected AI attributes, supports editing, and saves to wardrobe.
- *
- * Cancellation behavior: Discards the draft state completely when leaving the screen
- * without saving. Only persists when explicitly tapping "Save to Wardrobe".
+ * ReviewScreen: Displays detected AI attributes, supports dynamic editing based on wardrobe type and category.
  */
 export default function ReviewScreen() {
+  const { preferences } = useProfileData();
+  const wardrobeType = preferences.wardrobeType || "mixed";
+
   const params = useLocalSearchParams<{
     pipelineToken: string;
     segmentedImageUrl: string;
@@ -49,12 +55,29 @@ export default function ReviewScreen() {
     saveError,
     saveDraft,
     resetDraft,
-    setSaveError,
   } = useUploadState({
     pipelineToken: params.pipelineToken,
     segmentedImageUrl: params.segmentedImageUrl,
     aiResult,
   });
+
+  const categoryValue = getValue("category") || "top";
+  const subcategoryValue = getValue("type") || "";
+
+  const activeFields = useMemo(
+    () => getActiveFieldsForCategory(categoryValue, subcategoryValue),
+    [categoryValue, subcategoryValue],
+  );
+
+  const categoryOptions = useMemo(
+    () => getCategoriesForWardrobeType(wardrobeType).map((c) => c.name),
+    [wardrobeType],
+  );
+
+  const subcategoryOptions = useMemo(
+    () => getSubcategoriesForCategory(categoryValue, wardrobeType),
+    [categoryValue, wardrobeType],
+  );
 
   const navigation = useNavigation();
 
@@ -75,7 +98,6 @@ export default function ReviewScreen() {
   const handleSave = useCallback(async () => {
     const success = await saveDraft();
     if (success) {
-      // Screen component manages navigation after successful save
       router.replace("/wardrobe");
     }
   }, [saveDraft]);
@@ -151,18 +173,75 @@ export default function ReviewScreen() {
           Review detected attributes and edit any field before saving.
         </Text>
 
-        {UPLOAD_SINGLE_ATTRS.map((field) => (
-          <AttributeField
-            key={field.key}
-            label={field.label}
-            value={getValue(field.key)}
-            confidence={getConfidence(field.key)}
-            onChangeText={(t) => setAttribute(field.key, t)}
-            error={errors[field.key]}
-            multiline={field.multiline}
-            testID={`field-${field.key}`}
-          />
-        ))}
+        {activeFields.map((field) => {
+          const val = getValue(field.key);
+          const conf = getConfidence(field.key);
+
+          if (field.key === "category") {
+            return (
+              <AttributeSelectField
+                key={field.key}
+                label={field.label}
+                value={val}
+                options={categoryOptions}
+                confidence={conf}
+                onSelect={(newCat) => {
+                  setAttribute("category", newCat);
+                  const newSubs = getSubcategoriesForCategory(newCat, wardrobeType);
+                  if (newSubs.length > 0) {
+                    setAttribute("type", newSubs[0]);
+                  }
+                }}
+                error={errors[field.key]}
+                testID={`field-${field.key}`}
+              />
+            );
+          }
+
+          if (field.key === "type") {
+            return (
+              <AttributeSelectField
+                key={field.key}
+                label={field.label}
+                value={val}
+                options={subcategoryOptions}
+                confidence={conf}
+                onSelect={(newType) => setAttribute("type", newType)}
+                error={errors[field.key]}
+                testID={`field-${field.key}`}
+              />
+            );
+          }
+
+          if (field.type === "text") {
+            return (
+              <AttributeField
+                key={field.key}
+                label={field.label}
+                value={val}
+                confidence={conf}
+                onChangeText={(t) => setAttribute(field.key, t)}
+                error={errors[field.key]}
+                multiline={field.key === "description"}
+                testID={`field-${field.key}`}
+              />
+            );
+          }
+
+          return (
+            <AttributeSelectField
+              key={field.key}
+              label={field.label}
+              value={val}
+              options={field.options}
+              type={field.type}
+              confidence={conf}
+              onSelect={(t) => setAttribute(field.key, t)}
+              error={errors[field.key]}
+              testID={`field-${field.key}`}
+            />
+          );
+        })}
 
         {/* Section: Season & Occasion */}
         <Text style={styles.sectionTitle}>Season & Occasion</Text>

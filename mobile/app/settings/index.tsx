@@ -29,6 +29,7 @@ import {
   SettingsRow,
   SettingsSectionCard,
 } from "@/features/settings";
+import { deleteUserAccount } from "@/lib/services/accountService";
 import { supabase } from "@/lib/supabase";
 
 export default function SettingsScreen() {
@@ -68,27 +69,16 @@ export default function SettingsScreen() {
   // Delete Account Handler (Confirmed from Custom Modal)
   const handleConfirmDeleteAccount = useCallback(async () => {
     setDeleteAccountModalVisible(false);
-    try {
-      const { data: authData } = await supabase.auth.getUser();
-      const userId = authData?.user?.id;
-      if (userId) {
-        // Cascade delete all user records in Supabase tables
-        await supabase.from("clothing_items").delete().eq("user_id", userId);
-        await supabase.from("saved_looks").delete().eq("user_id", userId);
-        await supabase.from("outfit_history").delete().eq("user_id", userId);
-        await supabase.from("user_preferences").delete().eq("user_id", userId);
-        await supabase.from("user_statistics").delete().eq("user_id", userId);
-        await supabase.from("notifications").delete().eq("user_id", userId);
-        await supabase.from("feedback").delete().eq("user_id", userId);
-        await supabase.from("users").delete().eq("id", userId);
-      }
-    } catch {
-      // Best effort data cleanup
-    }
+    const { data: authData } = await supabase.auth.getUser();
+    const userId = authData?.user?.id || user.id;
 
-    await actions.signOut();
+    if (userId) {
+      await deleteUserAccount(userId);
+    } else {
+      await actions.signOut();
+    }
     router.replace("/auth/login");
-  }, [actions]);
+  }, [user.id, actions]);
 
   // Open External URLs safely
   const handleOpenUrl = useCallback((url: string) => {
