@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import re
 
 from fastapi import APIRouter, Depends, HTTPException, status
 
@@ -15,6 +16,7 @@ from app.models.api_contract import (
 from app.services.supabase_client import get_supabase
 from app.services.pipeline_store import pop_pipeline_result
 from app.services.embedding.attribute_embedder import AttributeEmbedder
+from app.services.clothing_mapper import attributes_to_row, row_to_attributes
 
 logger = logging.getLogger(__name__)
 
@@ -22,9 +24,57 @@ router = APIRouter()
 
 _embedder = AttributeEmbedder()
 
+# Columns the insert can live without if the live table hasn't been
+# migrated yet (PostgREST PGRST204). Core columns never get dropped.
+_OPTIONAL_INSERT_COLUMNS = ("embedding", "attributes")
+
+_LIST_COLUMNS = (
+    "id, image_url, original_image_url, thumbnail_url, "
+    "category, subcategory, color, season, occasion, brand, "
+    "ai_tags, attributes, created_at"
+)
+
 
 def _to_pgvector(embedding: list[float] | None) -> str | None:
     return f"[{','.join(str(v) for v in embedding)}]" if embedding else None
+
+
+def _missing_column(exc: Exception) -> str | None:
+    """Extract the column name from a PostgREST missing-column error."""
+    match = re.search(r"Could not find the '(\w+)' column", str(exc))
+    return match.group(1) if match else None
+
+
+def _insert_item(supabase, data: dict):
+    """Insert into clothing_items, dropping a not-yet-migrated optional
+    column and retrying once when PostgREST rejects it (PGRST204)."""
+    try:
+        return supabase.table("clothing_items").insert(data).execute()
+    except Exception as exc:
+        column = _missing_column(exc)
+        if column not in _OPTIONAL_INSERT_COLUMNS:
+            raise
+        logger.warning(
+            "clothing_items.%s missing from schema cache; retrying insert without it",
+            column,
+        )
+        data = {k: v for k, v in data.items() if k != column}
+        return supabase.table("clothing_items").insert(data).execute()
+
+
+def _to_detail(r: dict) -> ClothingItemDetail:
+    return ClothingItemDetail(
+        id=r["id"],
+        original_image_url=r["original_image_url"],
+        segmented_image_url=r["image_url"],
+        thumbnail_url=r.get("thumbnail_url"),
+        attributes=row_to_attributes(r),
+        raw_pipeline_result=None,
+        pipeline_metrics=None,
+        status="completed",
+        created_at=r["created_at"],
+        updated_at=r["updated_at"],
+    )
 
 
 @router.post("/clothing", response_model=SaveClothingResponse, status_code=201)
@@ -44,51 +94,42 @@ async def save_clothing(
         )
 
     try:
-        supabase.table("profiles").upsert({"id": user_id}, on_conflict="id").execute()
+        supabase.table("users").upsert({"id": user_id}, on_conflict="id").execute()
     except Exception as exc:
-        logger.warning("Profile upsert warning: %s", exc)
+        logger.warning("User row upsert warning: %s", exc)
 
     data = {
         "user_id": user_id,
+        "image_url": staged.segmented_image_url,
         "original_image_url": staged.original_image_url,
-        "segmented_image_url": staged.segmented_image_url,
         "thumbnail_url": staged.thumbnail_url,
-        "attributes": body.attributes,
+        **attributes_to_row(body.attributes),
         "embedding": _to_pgvector(_embedder.embed_attributes(body.attributes)),
-        "raw_pipeline_result": (
-            staged.attributes.model_dump(mode="json")
-            if staged.attributes
-            else None
-        ),
-        "pipeline_metrics": {
-            m.stage: {"status": m.status, "duration_ms": m.duration_ms}
-            for m in staged.metrics
-        },
-        "status": "completed",
     }
 
     try:
-        resp = supabase.table("clothing_items").insert(data).execute()
-        if not resp.data:
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Failed to save clothing item",
-            )
-
-        row = resp.data[0]
-        return SaveClothingResponse(
-            id=row["id"],
-            original_image_url=row["original_image_url"],
-            segmented_image_url=row["segmented_image_url"],
-            thumbnail_url=row.get("thumbnail_url"),
-            attributes=row["attributes"],
-        )
+        resp = _insert_item(supabase, data)
     except Exception as exc:
         logger.error("Failed to insert clothing item: %s", exc)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to save item: {exc}",
         )
+
+    if not resp.data:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to save clothing item",
+        )
+
+    row = resp.data[0]
+    return SaveClothingResponse(
+        id=row["id"],
+        original_image_url=row["original_image_url"],
+        segmented_image_url=row["image_url"],
+        thumbnail_url=row.get("thumbnail_url"),
+        attributes=row_to_attributes(row),
+    )
 
 
 @router.get("/clothing", response_model=ListClothingResponse)
@@ -114,10 +155,7 @@ async def list_clothing(
 
         resp = (
             supabase.table("clothing_items")
-            .select(
-                "id, original_image_url, segmented_image_url, "
-                "thumbnail_url, attributes, status, created_at"
-            )
+            .select(_LIST_COLUMNS)
             .eq("user_id", user_id)
             .order("created_at", desc=True)
             .range(offset, offset + limit - 1)
@@ -128,10 +166,10 @@ async def list_clothing(
             ClothingItemBrief(
                 id=r["id"],
                 original_image_url=r["original_image_url"],
-                segmented_image_url=r["segmented_image_url"],
+                segmented_image_url=r["image_url"],
                 thumbnail_url=r.get("thumbnail_url"),
-                attributes=r["attributes"],
-                status=r["status"],
+                attributes=row_to_attributes(r),
+                status="completed",
                 created_at=r["created_at"],
             )
             for r in (resp.data or [])
@@ -160,19 +198,7 @@ async def get_clothing_item(
         if not resp.data:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
 
-        r = resp.data
-        return ClothingItemDetail(
-            id=r["id"],
-            original_image_url=r["original_image_url"],
-            segmented_image_url=r["segmented_image_url"],
-            thumbnail_url=r.get("thumbnail_url"),
-            attributes=r["attributes"],
-            raw_pipeline_result=r.get("raw_pipeline_result"),
-            pipeline_metrics=r.get("pipeline_metrics"),
-            status=r["status"],
-            created_at=r["created_at"],
-            updated_at=r["updated_at"],
-        )
+        return _to_detail(resp.data)
     except HTTPException:
         raise
     except Exception as exc:
@@ -192,7 +218,7 @@ async def update_clothing_item(
     try:
         resp = (
             supabase.table("clothing_items")
-            .update({"attributes": body.attributes})
+            .update(attributes_to_row(body.attributes))
             .eq("id", item_id)
             .eq("user_id", user_id)
             .execute()
@@ -200,19 +226,7 @@ async def update_clothing_item(
         if not resp.data:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
 
-        r = resp.data[0]
-        return ClothingItemDetail(
-            id=r["id"],
-            original_image_url=r["original_image_url"],
-            segmented_image_url=r["segmented_image_url"],
-            thumbnail_url=r.get("thumbnail_url"),
-            attributes=r["attributes"],
-            raw_pipeline_result=r.get("raw_pipeline_result"),
-            pipeline_metrics=r.get("pipeline_metrics"),
-            status=r["status"],
-            created_at=r["created_at"],
-            updated_at=r["updated_at"],
-        )
+        return _to_detail(resp.data[0])
     except HTTPException:
         raise
     except Exception as exc:

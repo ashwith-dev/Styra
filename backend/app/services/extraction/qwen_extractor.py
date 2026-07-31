@@ -1,7 +1,7 @@
-"""Clothing attribute extraction via Qwen2.5-VL (Together AI) with visual heuristic fallback.
+"""Clothing attribute extraction via Qwen2.5-VL (OpenRouter API) with visual heuristic fallback.
 
 Handles raw model I/O, JSON parsing, schema mapping, and confidence extraction.
-If Together AI API key is missing or request fails, falls back gracefully to
+If OpenRouter API key is missing or request fails, falls back gracefully to
 PIL-based visual color and category analysis to guarantee item recognition.
 """
 
@@ -31,32 +31,46 @@ _OPTIONAL_ATTRS = [
 
 _CATEGORIES = {"top", "bottom", "dress", "outerwear", "footwear", "accessory", "invalid"}
 
+# OpenRouter 404s when a model has no live provider endpoints (all free
+# Qwen VL variants are currently decommissioned). Retry with verified-live
+# vision models before degrading to the visual heuristic.
+_FALLBACK_MODELS = [
+    "qwen/qwen2.5-vl-72b-instruct",
+    "qwen/qwen3.7-flash",
+]
+
 
 class ExtractionError(Exception):
     """Raised when the model response cannot be mapped to a valid result."""
 
 
 class QwenExtractor(BaseAttributeExtractor):
-    """Extract clothing attributes via Together AI's hosted Qwen2.5-VL with fallback."""
+    """Extract clothing attributes via OpenRouter's hosted Qwen2.5-VL with fallback."""
 
-    MODEL_NAME = "Qwen2.5-VL-3B-Instruct"
-    MODEL_VERSION = "2025-07-01"
+    MODEL_NAME = "qwen2.5-vl"
+    MODEL_VERSION = "2025"
 
     def __init__(self) -> None:
-        self._api_key = settings.together_api_key
-        self._model = settings.qwen_model
+        self._api_key = settings.openrouter_api_key or settings.gemini_api_key
+        self._model = settings.qwen_model or _FALLBACK_MODELS[0]
         self._client = httpx.AsyncClient(timeout=60.0)
 
     # ------------------------------------------------------------------
     # Public API
     # ------------------------------------------------------------------
     async def extract(self, segmented_image_bytes: bytes) -> AIPipelineResult:
+        if not self._api_key:
+            logger.warning(
+                "OpenRouter API key missing in environment; using visual heuristic fallback"
+            )
+            return self._fallback_extract(segmented_image_bytes)
+
         try:
             raw = await self._call_model(segmented_image_bytes)
             return self._map_to_schema(raw)
         except Exception as exc:
             logger.warning(
-                "Together AI attribute extraction failed (%s); using visual heuristic fallback",
+                "OpenRouter Qwen2.5-VL extraction failed (%s); using visual heuristic fallback",
                 exc,
             )
             return self._fallback_extract(segmented_image_bytes)
@@ -68,22 +82,28 @@ class QwenExtractor(BaseAttributeExtractor):
         """Analyzes image aspect ratio and color palette using PIL to recognize item attributes."""
         try:
             img = Image.open(io.BytesIO(image_bytes)).convert("RGBA")
+
+            # Crop to the garment's bounding box so background that leaked
+            # outside the mask cannot skew the colour estimate.
+            bbox = img.getchannel("A").getbbox()
+            if bbox:
+                img = img.crop(bbox)
+
             width, height = img.size
             aspect = height / max(1, width)
 
-            # Downsample before pixel iteration — 40K pixels instead of 4M+
+            # Downsample before pixel iteration
             img_small = img.resize((200, 200), Image.LANCZOS)
 
-            # Extract non-transparent pixels to find dominant color
-            pixels = [
-                p[:3]
-                for p in img_small.getdata()
-                if len(p) < 4 or p[3] > 30
-            ]
+            # Only fully-opaque garment pixels: semi-transparent edge pixels
+            # are blended with the background, and a mean over them greys out
+            # dark garments. The per-channel median is robust to both.
+            pixels = [p[:3] for p in img_small.getdata() if p[3] > 128]
             if pixels:
-                avg_r = sum(p[0] for p in pixels) // len(pixels)
-                avg_g = sum(p[1] for p in pixels) // len(pixels)
-                avg_b = sum(p[2] for p in pixels) // len(pixels)
+                mid = len(pixels) // 2
+                avg_r = sorted(p[0] for p in pixels)[mid]
+                avg_g = sorted(p[1] for p in pixels)[mid]
+                avg_b = sorted(p[2] for p in pixels)[mid]
             else:
                 avg_r, avg_g, avg_b = 50, 50, 50
 
@@ -158,51 +178,80 @@ class QwenExtractor(BaseAttributeExtractor):
         return "Neutral"
 
     # ------------------------------------------------------------------
-    # Model I/O
+    # Model I/O via OpenRouter API
     # ------------------------------------------------------------------
     async def _call_model(self, image_bytes: bytes) -> dict[str, Any]:
-        """Post the image + prompt to Together AI and return the parsed JSON."""
+        """Post the image + prompt to OpenRouter API and return parsed JSON.
+
+        Retries with the fallback model strings when OpenRouter answers
+        404 (model alias not found) for the configured model.
+        """
         b64 = base64.b64encode(image_bytes).decode("utf-8")
         data_url = f"data:image/png;base64,{b64}"
 
-        payload = {
-            "model": self._model,
-            "messages": [
-                {
-                    "role": "user",
-                    "content": [
-                        {"type": "image_url", "image_url": {"url": data_url}},
-                        {"type": "text", "text": SYSTEM_PROMPT_STRUCTURED},
-                    ],
-                }
-            ],
-            "response_format": {"type": "json_object"},
-            "temperature": 0.1,
-            "max_tokens": 1024,
+        headers = {
+            "Authorization": f"Bearer {self._api_key}",
+            "HTTP-Referer": "https://styra.app",
+            "X-Title": "STYRA Wardrobe App",
+            "Content-Type": "application/json",
         }
 
-        try:
-            resp = await self._client.post(
-                "https://api.together.xyz/v1/chat/completions",
-                headers={
-                    "Authorization": f"Bearer {self._api_key}",
-                    "Content-Type": "application/json",
-                },
-                json=payload,
-            )
-        except httpx.RequestError as exc:
-            raise ExtractionError(f"API request failed: {exc}") from exc
+        models = [self._model] + [m for m in _FALLBACK_MODELS if m != self._model]
+        last_error: ExtractionError | None = None
 
-        try:
-            resp.raise_for_status()
-        except httpx.HTTPStatusError as exc:
-            body = exc.response.text[:500]
-            raise ExtractionError(
-                f"API returned {exc.response.status_code}: {body}"
-            ) from exc
+        for model in models:
+            payload = {
+                "model": model,
+                "messages": [
+                    {
+                        "role": "user",
+                        "content": [
+                            {"type": "image_url", "image_url": {"url": data_url}},
+                            {"type": "text", "text": SYSTEM_PROMPT_STRUCTURED},
+                        ],
+                    }
+                ],
+                "temperature": 0.1,
+                "max_tokens": 1024,
+            }
 
-        data = resp.json()
-        return self._parse_model_output(data)
+            try:
+                resp = await self._client.post(
+                    "https://openrouter.ai/api/v1/chat/completions",
+                    headers=headers,
+                    json=payload,
+                )
+            except httpx.RequestError as exc:
+                raise ExtractionError(f"OpenRouter API request failed: {exc}") from exc
+
+            if resp.status_code == 404:
+                logger.warning(
+                    "OpenRouter model %r returned 404; trying fallback model string",
+                    model,
+                )
+                last_error = ExtractionError(
+                    f"OpenRouter model not found (404): {model}"
+                )
+                continue
+
+            if resp.status_code == 429:
+                logger.warning(
+                    "OpenRouter rate-limited model %r (429) — free-tier quota "
+                    "likely exhausted; falling back to visual heuristic",
+                    model,
+                )
+
+            try:
+                resp.raise_for_status()
+            except httpx.HTTPStatusError as exc:
+                body = exc.response.text[:500]
+                raise ExtractionError(
+                    f"OpenRouter API returned {exc.response.status_code}: {body}"
+                ) from exc
+
+            return self._parse_model_output(resp.json())
+
+        raise last_error or ExtractionError("No Qwen model string succeeded")
 
     def _parse_model_output(self, data: dict[str, Any]) -> dict[str, Any]:
         try:
@@ -225,11 +274,21 @@ class QwenExtractor(BaseAttributeExtractor):
         if not content or not content.strip():
             raise ExtractionError("Model returned empty content")
 
+        # Strip markdown code blocks if model wrapped JSON in ```json ... ```
+        clean_content = content.strip()
+        if clean_content.startswith("```"):
+            lines = clean_content.split("\n")
+            if lines[0].startswith("```"):
+                lines = lines[1:]
+            if lines and lines[-1].startswith("```"):
+                lines = lines[:-1]
+            clean_content = "\n".join(lines).strip()
+
         try:
-            return json.loads(content)
+            return json.loads(clean_content)
         except json.JSONDecodeError as exc:
             raise ExtractionError(
-                f"Model returned unparseable JSON: {content[:300]}"
+                f"Model returned unparseable JSON: {clean_content[:300]}"
             ) from exc
 
     # ------------------------------------------------------------------
