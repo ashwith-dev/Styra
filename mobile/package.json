@@ -4,9 +4,9 @@
   "private": true,
   "main": "expo-router/entry",
   "scripts": {
-    "start": "expo start",
-    "ios": "expo start --ios",
-    "android": "expo start --android",
+    "start": "EXPO_NO_AUTO_UPDATE=1 expo start",
+    "ios": "EXPO_NO_AUTO_UPDATE=1 expo start --ios",
+    "android": "EXPO_NO_AUTO_UPDATE=1 expo start --android",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
     "test": "vitest run"
