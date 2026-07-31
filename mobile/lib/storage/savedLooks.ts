@@ -96,3 +96,12 @@ export async function deleteSavedLook(id: string): Promise<void> {
   const filtered = looks.filter((l) => l.id !== id);
   await saveSavedLooks(filtered);
 }
+
+export async function clearSavedLooks(): Promise<void> {
+  try {
+    await SecureStore.deleteItemAsync(SAVED_LOOKS_STORAGE_KEY);
+  } catch (err) {
+    console.error("Failed to clear saved looks from storage:", err);
+  }
+}
+

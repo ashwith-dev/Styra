@@ -23,6 +23,7 @@ export interface BodyProfile {
 }
 
 export interface UserPreferences {
+  wardrobeType?: "men" | "women" | "mixed";
   styles: string[];
   favoriteColors: string[];
   fitPreference: string;

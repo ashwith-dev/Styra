@@ -4,6 +4,7 @@ import type {
 } from "./types/profile";
 
 export const DEFAULT_PREFERENCES: UserPreferences = {
+  wardrobeType: "mixed",
   styles: [],
   favoriteColors: [],
   fitPreference: "",
