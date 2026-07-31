@@ -26,6 +26,32 @@ class StorageService:
             self._client = get_supabase()
         except Exception:
             self._client = None
+        if self._client:
+            self._ensure_buckets()
+
+    def _ensure_buckets(self) -> None:
+        """Auto-create any missing image buckets as public.
+
+        Without the buckets every upload silently degrades to a multi-MB
+        data-URI that the mobile app cannot render — so this runs at
+        startup and stays best-effort (service role can manage storage).
+        """
+        try:
+            existing = {b.name for b in self._client.storage.list_buckets()}
+            for bucket in (
+                settings.storage_bucket_originals,
+                settings.storage_bucket_segmented,
+                settings.storage_bucket_thumbnails,
+            ):
+                if bucket not in existing:
+                    self._client.storage.create_bucket(
+                        bucket, options={"public": True}
+                    )
+                    logger.info("Created missing public storage bucket %r", bucket)
+        except Exception:
+            logger.warning(
+                "Could not verify/create Supabase storage buckets", exc_info=True
+            )
 
     def upload_original(self, image_bytes: bytes) -> StoredImage:
         key = f"{uuid.uuid4().hex}.png"
@@ -38,7 +64,10 @@ class StorageService:
                 url = self._client.storage.from_(bucket).get_public_url(key)
                 return StoredImage(path=f"{bucket}/{key}", public_url=url)
         except Exception as exc:
-            logger.warning("Supabase storage upload_original failed (%s); using data-URI fallback", exc)
+            logger.error(
+                "Supabase storage upload_original failed (bucket=%r): %s; using data-URI fallback",
+                bucket, exc,
+            )
 
         b64 = base64.b64encode(image_bytes).decode("utf-8")
         data_url = f"data:image/png;base64,{b64}"
@@ -55,7 +84,10 @@ class StorageService:
                 url = self._client.storage.from_(bucket).get_public_url(key)
                 return StoredImage(path=f"{bucket}/{key}", public_url=url)
         except Exception as exc:
-            logger.warning("Supabase storage upload_segmented failed (%s); using data-URI fallback", exc)
+            logger.error(
+                "Supabase storage upload_segmented failed (bucket=%r): %s; using data-URI fallback",
+                bucket, exc,
+            )
 
         b64 = base64.b64encode(image_bytes).decode("utf-8")
         data_url = f"data:image/png;base64,{b64}"
@@ -93,7 +125,10 @@ class StorageService:
                 url = self._client.storage.from_(bucket).get_public_url(key)
                 return StoredImage(path=f"{bucket}/{key}", public_url=url)
         except Exception as exc:
-            logger.warning("Supabase storage upload_thumbnail failed (%s); using data-URI fallback", exc)
+            logger.error(
+                "Supabase storage upload_thumbnail failed (bucket=%r): %s; using data-URI fallback",
+                bucket, exc,
+            )
 
         b64 = base64.b64encode(thumb_bytes).decode("utf-8")
         data_url = f"data:image/png;base64,{b64}"
