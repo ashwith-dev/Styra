@@ -8,6 +8,7 @@ from fastapi.testclient import TestClient
 from jose import jwt as jose_jwt
 
 from app.main import app
+from app.utils.jwt import get_user_supabase
 
 client = TestClient(app)
 
@@ -18,11 +19,20 @@ def _token(secret: str = "test-secret") -> str:
     )
 
 
+def _override_user_client(mock: MagicMock):
+    app.dependency_overrides[get_user_supabase] = lambda: mock
+
+
+def teardown_module():
+    app.dependency_overrides.clear()
+
+
 @patch("app.utils.jwt.settings.supabase_jwt_secret", "test-secret")
-@patch("app.api.clothing.get_supabase")
-def test_list_clothing_empty(mock_supabase) -> None:
+def test_list_clothing_empty() -> None:
     """GET /clothing returns empty list when user has no items."""
-    eq = mock_supabase.return_value.table.return_value.select.return_value.eq.return_value
+    supabase = MagicMock()
+    _override_user_client(supabase)
+    eq = supabase.table.return_value.select.return_value.eq.return_value
     eq.execute.return_value.count = 0
     eq.order.return_value.range.return_value.execute.return_value.data = []
 
@@ -32,10 +42,11 @@ def test_list_clothing_empty(mock_supabase) -> None:
 
 
 @patch("app.utils.jwt.settings.supabase_jwt_secret", "test-secret")
-@patch("app.api.clothing.get_supabase")
-def test_list_clothing_maps_flat_row_to_contract(mock_supabase) -> None:
+def test_list_clothing_maps_flat_row_to_contract() -> None:
     """Flat DB columns are exposed as segmented_image_url + attributes object."""
-    eq = mock_supabase.return_value.table.return_value.select.return_value.eq.return_value
+    supabase = MagicMock()
+    _override_user_client(supabase)
+    eq = supabase.table.return_value.select.return_value.eq.return_value
     eq.execute.return_value.count = 1
     eq.order.return_value.range.return_value.execute.return_value.data = [
         {
@@ -71,7 +82,7 @@ def test_list_clothing_maps_flat_row_to_contract(mock_supabase) -> None:
 @patch("app.utils.jwt.settings.supabase_jwt_secret", "test-secret")
 @patch("app.api.clothing.pop_pipeline_result")
 @patch("app.api.clothing.get_supabase")
-def test_save_clothing_upserts_user_and_embeds(mock_supabase, mock_pop) -> None:
+def test_save_clothing_upserts_user_and_embeds(mock_admin, mock_pop) -> None:
     """POST /clothing guarantees the users row and stores flat columns plus
     an embedding so recommendations have something to match on."""
     mock_pop.return_value = SimpleNamespace(
@@ -82,12 +93,16 @@ def test_save_clothing_upserts_user_and_embeds(mock_supabase, mock_pop) -> None:
         metrics=[],
     )
 
+    admin_client = MagicMock(name="admin")
+    mock_admin.return_value = admin_client
+
+    user_client = MagicMock(name="user")
+    _override_user_client(user_client)
+
     users_table = MagicMock(name="users")
+    admin_client.table.side_effect = {"users": users_table}.get
     items_table = MagicMock(name="clothing_items")
-    mock_supabase.return_value.table.side_effect = {
-        "users": users_table,
-        "clothing_items": items_table,
-    }.get
+    user_client.table.side_effect = {"clothing_items": items_table}.get
     items_table.insert.return_value.execute.return_value.data = [
         {
             "id": "item-1",

@@ -24,7 +24,7 @@
         "READ_EXTERNAL_STORAGE",
         "WRITE_EXTERNAL_STORAGE"
       ],
-      "enableProguardInReleaseBuilds": false,
+      "enableProguardInReleaseBuilds": true,
       "extraProguardRules": "-keep public class com.horcrux.svg.** {*;}"
     },
     "plugins": [

@@ -6,8 +6,17 @@ from fastapi.testclient import TestClient
 from jose import jwt as jose_jwt
 
 from app.main import app
+from app.utils.jwt import get_user_supabase
 
 client = TestClient(app)
+
+
+def _override_user_client(mock: MagicMock):
+    app.dependency_overrides[get_user_supabase] = lambda: mock
+
+
+def teardown_module():
+    app.dependency_overrides.clear()
 
 
 def _token(secret: str = "test-jwt-secret") -> str:
@@ -40,10 +49,11 @@ def _item(
 
 
 @patch("app.utils.jwt.settings.supabase_jwt_secret", "test-jwt-secret")
-@patch("app.api.recommendations.get_supabase")
-def test_get_recommendations_empty_wardrobe(mock_supabase):
+def test_get_recommendations_empty_wardrobe():
     """Empty wardrobe returns 404."""
-    mock_supabase.return_value.table.return_value.select.return_value.eq.return_value.execute.return_value.data = None
+    supabase = MagicMock()
+    _override_user_client(supabase)
+    supabase.table.return_value.select.return_value.eq.return_value.execute.return_value.data = None
 
     resp = client.get(
         "/recommendations",
@@ -54,10 +64,11 @@ def test_get_recommendations_empty_wardrobe(mock_supabase):
 
 
 @patch("app.utils.jwt.settings.supabase_jwt_secret", "test-jwt-secret")
-@patch("app.api.recommendations.get_supabase")
-def test_get_recommendations_success(mock_supabase):
+def test_get_recommendations_success():
     """Returns recommendations for a wardrobe with enough items."""
-    mock_supabase.return_value.table.return_value.select.return_value.eq.return_value.execute.return_value.data = [
+    supabase = MagicMock()
+    _override_user_client(supabase)
+    supabase.table.return_value.select.return_value.eq.return_value.execute.return_value.data = [
         _item("t1", "top", color="navy", style="casual"),
         _item("t2", "top", color="white", style="casual"),
         _item("b1", "bottom", color="navy", style="casual"),
@@ -84,17 +95,17 @@ def test_get_recommendations_success(mock_supabase):
         "date_night", "travel", "gym", "ethnic",
     }
 
-    # Each outfit item has the right fields.
     for item in rec["outfit_items"]:
         assert "id" in item
         assert "attributes" in item
 
 
 @patch("app.utils.jwt.settings.supabase_jwt_secret", "test-jwt-secret")
-@patch("app.api.recommendations.get_supabase")
-def test_get_recommendations_with_occasion_filter(mock_supabase):
+def test_get_recommendations_with_occasion_filter():
     """Occasion filter only returns that outfit category."""
-    mock_supabase.return_value.table.return_value.select.return_value.eq.return_value.execute.return_value.data = [
+    supabase = MagicMock()
+    _override_user_client(supabase)
+    supabase.table.return_value.select.return_value.eq.return_value.execute.return_value.data = [
         _item("t1", "top"),
         _item("b1", "bottom"),
         _item("f1", "footwear"),
@@ -111,10 +122,11 @@ def test_get_recommendations_with_occasion_filter(mock_supabase):
 
 
 @patch("app.utils.jwt.settings.supabase_jwt_secret", "test-jwt-secret")
-@patch("app.api.recommendations.get_supabase")
-def test_get_recommendations_with_season_filter(mock_supabase):
+def test_get_recommendations_with_season_filter():
     """Season filter works without error."""
-    mock_supabase.return_value.table.return_value.select.return_value.eq.return_value.execute.return_value.data = [
+    supabase = MagicMock()
+    _override_user_client(supabase)
+    supabase.table.return_value.select.return_value.eq.return_value.execute.return_value.data = [
         _item("t1", "top", seasons=["summer"]),
         _item("b1", "bottom", seasons=["summer"]),
         _item("f1", "footwear", seasons=["summer"]),
@@ -128,10 +140,11 @@ def test_get_recommendations_with_season_filter(mock_supabase):
 
 
 @patch("app.utils.jwt.settings.supabase_jwt_secret", "test-jwt-secret")
-@patch("app.api.recommendations.get_supabase")
-def test_get_recommendations_with_combined_filters(mock_supabase):
+def test_get_recommendations_with_combined_filters():
     """Combined occasion + season filter."""
-    mock_supabase.return_value.table.return_value.select.return_value.eq.return_value.execute.return_value.data = [
+    supabase = MagicMock()
+    _override_user_client(supabase)
+    supabase.table.return_value.select.return_value.eq.return_value.execute.return_value.data = [
         _item("t1", "top", seasons=["summer"], occasions=["everyday"]),
         _item("b1", "bottom", seasons=["summer"], occasions=["everyday"]),
         _item("f1", "footwear", seasons=["summer"], occasions=["everyday"]),
@@ -148,10 +161,11 @@ def test_get_recommendations_with_combined_filters(mock_supabase):
 
 
 @patch("app.utils.jwt.settings.supabase_jwt_secret", "test-jwt-secret")
-@patch("app.api.recommendations.get_supabase")
-def test_get_recommendations_invalid_occasion(mock_supabase):
+def test_get_recommendations_invalid_occasion():
     """Invalid occasion returns 422."""
-    mock_supabase.return_value.table.return_value.select.return_value.eq.return_value.execute.return_value.data = [
+    supabase = MagicMock()
+    _override_user_client(supabase)
+    supabase.table.return_value.select.return_value.eq.return_value.execute.return_value.data = [
         _item("1", "top")
     ]
 
@@ -164,10 +178,11 @@ def test_get_recommendations_invalid_occasion(mock_supabase):
 
 
 @patch("app.utils.jwt.settings.supabase_jwt_secret", "test-jwt-secret")
-@patch("app.api.recommendations.get_supabase")
-def test_get_recommendations_invalid_season(mock_supabase):
+def test_get_recommendations_invalid_season():
     """Invalid season returns 422."""
-    mock_supabase.return_value.table.return_value.select.return_value.eq.return_value.execute.return_value.data = [
+    supabase = MagicMock()
+    _override_user_client(supabase)
+    supabase.table.return_value.select.return_value.eq.return_value.execute.return_value.data = [
         _item("1", "top")
     ]
 
@@ -180,10 +195,11 @@ def test_get_recommendations_invalid_season(mock_supabase):
 
 
 @patch("app.utils.jwt.settings.supabase_jwt_secret", "test-jwt-secret")
-@patch("app.api.recommendations.get_supabase")
-def test_get_recommendations_unauthenticated(mock_supabase):
+def test_get_recommendations_unauthenticated():
     """No token returns 401 or 403."""
-    mock_supabase.return_value.table.return_value.select.return_value.eq.return_value.execute.return_value.data = [
+    supabase = MagicMock()
+    _override_user_client(supabase)
+    supabase.table.return_value.select.return_value.eq.return_value.execute.return_value.data = [
         _item("1", "top")
     ]
 
