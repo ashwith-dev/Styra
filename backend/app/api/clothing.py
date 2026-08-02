@@ -3,6 +3,7 @@ import logging
 import re
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from supabase import Client
 
 from app.dependencies import get_current_user
 from app.models.api_contract import (
@@ -13,10 +14,12 @@ from app.models.api_contract import (
     ListClothingResponse,
     ClothingItemBrief,
 )
-from app.services.supabase_client import get_supabase
+from app.services.supabase_client import get_supabase, get_user_client
 from app.services.pipeline_store import pop_pipeline_result
 from app.services.embedding.attribute_embedder import AttributeEmbedder
 from app.services.clothing_mapper import attributes_to_row, row_to_attributes
+from app.utils.jwt import get_token, get_user_supabase
+from app.utils.attribute_validation import validate_attributes
 
 logger = logging.getLogger(__name__)
 
@@ -81,8 +84,19 @@ def _to_detail(r: dict) -> ClothingItemDetail:
 async def save_clothing(
     body: SaveClothingRequest,
     user_id: str = Depends(get_current_user),
+    supabase_admin: Client = Depends(get_user_supabase),
 ) -> SaveClothingResponse:
-    supabase = get_supabase()
+    admin = get_supabase()
+
+    validation_errors = validate_attributes(body.attributes)
+    if validation_errors:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={
+                "message": "Invalid attributes",
+                "errors": validation_errors,
+            },
+        )
 
     staged = await asyncio.to_thread(
         pop_pipeline_result, body.pipeline_token, user_id
@@ -94,7 +108,7 @@ async def save_clothing(
         )
 
     try:
-        supabase.table("users").upsert({"id": user_id}, on_conflict="id").execute()
+        admin.table("users").upsert({"id": user_id}, on_conflict="id").execute()
     except Exception as exc:
         logger.warning("User row upsert warning: %s", exc)
 
@@ -108,12 +122,12 @@ async def save_clothing(
     }
 
     try:
-        resp = _insert_item(supabase, data)
+        resp = _insert_item(supabase_admin, data)
     except Exception as exc:
         logger.error("Failed to insert clothing item: %s", exc)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to save item: {exc}",
+            detail="Failed to save item",
         )
 
     if not resp.data:
@@ -135,57 +149,52 @@ async def save_clothing(
 @router.get("/clothing", response_model=ListClothingResponse)
 async def list_clothing(
     user_id: str = Depends(get_current_user),
+    supabase: Client = Depends(get_user_supabase),
     limit: int = 1000,
     offset: int = 0,
 ) -> ListClothingResponse:
+    total_count = 0
     try:
-        supabase = get_supabase()
-
-        total_count = 0
-        try:
-            total_resp = (
-                supabase.table("clothing_items")
-                .select("id", count="exact")
-                .eq("user_id", user_id)
-                .execute()
-            )
-            total_count = total_resp.count if hasattr(total_resp, "count") and total_resp.count else 0
-        except Exception:
-            total_count = 0
-
-        resp = (
+        total_resp = (
             supabase.table("clothing_items")
-            .select(_LIST_COLUMNS)
+            .select("id", count="exact")
             .eq("user_id", user_id)
-            .order("created_at", desc=True)
-            .range(offset, offset + limit - 1)
             .execute()
         )
-
-        items = [
-            ClothingItemBrief(
-                id=r["id"],
-                original_image_url=r["original_image_url"],
-                segmented_image_url=r["image_url"],
-                thumbnail_url=r.get("thumbnail_url"),
-                attributes=row_to_attributes(r),
-                status="completed",
-                created_at=r["created_at"],
-            )
-            for r in (resp.data or [])
-        ]
-        return ListClothingResponse(items=items, total_count=total_count)
+        total_count = total_resp.count if hasattr(total_resp, "count") and total_resp.count else 0
     except Exception as exc:
-        logger.warning("list_clothing error (%s); returning empty wardrobe", exc)
-        return ListClothingResponse(items=[], total_count=0)
+        logger.warning("list_clothing count query failed (%s); continuing without total", exc)
+
+    resp = (
+        supabase.table("clothing_items")
+        .select(_LIST_COLUMNS)
+        .eq("user_id", user_id)
+        .order("created_at", desc=True)
+        .range(offset, offset + limit - 1)
+        .execute()
+    )
+
+    items = [
+        ClothingItemBrief(
+            id=r["id"],
+            original_image_url=r["original_image_url"],
+            segmented_image_url=r["image_url"],
+            thumbnail_url=r.get("thumbnail_url"),
+            attributes=row_to_attributes(r),
+            status="completed",
+            created_at=r["created_at"],
+        )
+        for r in (resp.data or [])
+    ]
+    return ListClothingResponse(items=items, total_count=total_count)
 
 
 @router.get("/clothing/{item_id}", response_model=ClothingItemDetail)
 async def get_clothing_item(
     item_id: str,
     user_id: str = Depends(get_current_user),
+    supabase: Client = Depends(get_user_supabase),
 ) -> ClothingItemDetail:
-    supabase = get_supabase()
     try:
         resp = (
             supabase.table("clothing_items")
@@ -202,9 +211,10 @@ async def get_clothing_item(
     except HTTPException:
         raise
     except Exception as exc:
+        logger.error("get_clothing_item failed: %s", exc)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(exc),
+            detail="Failed to retrieve item",
         )
 
 
@@ -213,8 +223,8 @@ async def update_clothing_item(
     item_id: str,
     body: UpdateClothingRequest,
     user_id: str = Depends(get_current_user),
+    supabase: Client = Depends(get_user_supabase),
 ) -> ClothingItemDetail:
-    supabase = get_supabase()
     try:
         resp = (
             supabase.table("clothing_items")
@@ -230,9 +240,10 @@ async def update_clothing_item(
     except HTTPException:
         raise
     except Exception as exc:
+        logger.error("update_clothing_item failed: %s", exc)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(exc),
+            detail="Failed to update item",
         )
 
 
@@ -240,8 +251,8 @@ async def update_clothing_item(
 async def delete_clothing_item(
     item_id: str,
     user_id: str = Depends(get_current_user),
+    supabase: Client = Depends(get_user_supabase),
 ) -> None:
-    supabase = get_supabase()
     try:
         resp = (
             supabase.table("clothing_items")
@@ -255,7 +266,8 @@ async def delete_clothing_item(
     except HTTPException:
         raise
     except Exception as exc:
+        logger.error("delete_clothing_item failed: %s", exc)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(exc),
+            detail="Failed to delete item",
         )
