@@ -24,7 +24,7 @@ interface LookFormProps {
 export function LookForm({
   values,
   onChangeField,
-  wardrobeItems,
+  wardrobeItems: _wardrobeItems,
   onSubmit,
   onOpenItemSelector,
   submitLabel,

@@ -1,7 +1,7 @@
 import { Platform, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-import { colors, spacing } from "@/theme";
+import { spacing } from "@/theme";
 
 export function ProfileTopHeader() {
   return (

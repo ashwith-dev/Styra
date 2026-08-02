@@ -8,7 +8,7 @@ import {
   View,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { colors, radius, spacing, typography } from "@/theme";
+import { colors, spacing, typography } from "@/theme";
 import { MAIN_COLOR_OPTIONS, STEP4_FABRIC_IMAGE } from "../config";
 import { MoreColoursModal } from "./MoreColoursModal";
 import { OnboardingFooter } from "./OnboardingFooter";

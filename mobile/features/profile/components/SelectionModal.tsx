@@ -30,7 +30,7 @@ export function SelectionModal({
   title,
   options,
   selectedValue,
-  isMultiSelect = false,
+  isMultiSelect: _isMultiSelect = false,
   onSelect,
   onClose,
 }: SelectionModalProps) {
