@@ -1,4 +1,3 @@
-import { AI_MODEL_VERSION } from "@/services/ai/aiModelConfig";
 import * as analysisService from "@/services/ai/clothingAnalysisService";
 import * as recommendationService from "@/services/ai/recommendationService";
 import * as insightsService from "@/services/ai/wardrobeInsightsService";
@@ -7,7 +6,6 @@ import * as aiCache from "@/lib/storage/aiCache";
 import type { ClothingItemBrief, OutfitRecommendationItem } from "@/lib/types";
 import type {
   AIRecommendationItemV1,
-  AIRecommendationV1,
   AIWardrobeInsightV1,
 } from "@/features/recommendations/types/ai";
 
@@ -88,7 +86,6 @@ export async function analyzeClothingImage(
 export async function computeWardrobeInsights(
   items: ClothingItemBrief[],
 ): Promise<AIWardrobeInsightV1> {
-  const cachedMeta = await aiCache.getInsightsCache();
   const insights = insightsService.generateWardrobeInsights(items);
   await aiCache.setInsightsCache(insights);
   return insights;

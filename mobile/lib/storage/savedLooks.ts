@@ -45,7 +45,7 @@ export async function saveSavedLooks(looks: SavedLook[]): Promise<void> {
     );
   } catch (err) {
     console.error("Failed to write saved looks to storage:", err);
-    throw new Error("Could not persist saved look.");
+    throw new Error("Could not persist saved look.", { cause: err });
   }
 }
 

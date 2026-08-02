@@ -4,39 +4,58 @@ import { clearSavedLooks } from "@/lib/storage/savedLooks";
 import { clearWardrobeCache } from "@/lib/storage/wardrobeCache";
 import { supabase } from "@/lib/supabase";
 
+// Tables confirmed in database migrations. Each deletion is best-effort
+// because the user may not have created records in every table.
+const USER_SCOPED_TABLES = [
+  "clothing_items",
+  "outfit_feedback",
+  "outfit_favorites",
+] as const;
+
+// Tables that may or may not exist depending on dashboard setup.
+const OPTIONAL_TABLES = [
+  "saved_looks",
+  "user_preferences",
+  "user_statistics",
+  "notifications",
+  "feedback",
+] as const;
+
 export async function deleteUserAccount(userId: string): Promise<boolean> {
   if (!userId) return false;
 
-  try {
-    // 1. Call RPC function to delete user from auth.users and public schema tables
-    const { error: rpcErr } = await supabase.rpc("delete_user_account");
-    if (rpcErr) {
-      console.warn("Supabase delete_user_account RPC notice:", rpcErr);
-      // Fallback manual table deletion
-      await supabase.from("clothing_items").delete().eq("user_id", userId);
-      await supabase.from("saved_looks").delete().eq("user_id", userId);
-      await supabase.from("outfit_history").delete().eq("user_id", userId);
-      await supabase.from("user_preferences").delete().eq("user_id", userId);
-      await supabase.from("user_statistics").delete().eq("user_id", userId);
-      await supabase.from("notifications").delete().eq("user_id", userId);
-      await supabase.from("feedback").delete().eq("user_id", userId);
-      await supabase.from("users").delete().eq("id", userId);
+  // 1. Delete records from all known user-scoped database tables
+  for (const table of USER_SCOPED_TABLES) {
+    try {
+      await supabase.from(table).delete().eq("user_id", userId);
+    } catch {
+      // Best-effort: table exists and user has records
     }
-  } catch (err) {
-    console.warn("Supabase database account deletion warning:", err);
   }
 
-  // 2. Clear all local device storage & caches
+  // 2. Delete from optional/legacy tables (may not exist)
+  for (const table of OPTIONAL_TABLES) {
+    try {
+      await supabase.from(table).delete().eq("user_id", userId);
+    } catch {
+      // Table may not exist — this is expected
+    }
+  }
+
+  // 3. Delete the profile row (public.profiles, created by DB trigger)
   try {
-    await clearPreferences();
-    await clearWardrobeCache();
-    await clearSavedLooks();
-    await clearOnboardingState(userId);
-  } catch (err) {
-    console.warn("Local storage cleanup warning:", err);
+    await supabase.from("profiles").delete().eq("id", userId);
+  } catch {
+    // Profiles row may already be cascade-deleted via auth.users
   }
 
-  // 3. Sign out user session
+  // 4. Clear all local device storage & caches
+  await clearPreferences().catch(() => {});
+  await clearWardrobeCache().catch(() => {});
+  await clearSavedLooks().catch(() => {});
+  await clearOnboardingState(userId).catch(() => {});
+
+  // 5. Sign out the user session
   try {
     await supabase.auth.signOut();
   } catch {

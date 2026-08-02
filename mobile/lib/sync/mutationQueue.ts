@@ -46,6 +46,37 @@ export async function enqueueOp(
   payload: Record<string, unknown>,
 ): Promise<SyncOperation> {
   const queue = await getQueue();
+
+  // Deduplicate: if an existing op matches type, priority, and primary key,
+  // replace it instead of appending a duplicate.
+  if (type === "UPDATE_PROFILE" || type === "UPDATE_PREFERENCES") {
+    const existingIdx = queue.findIndex((op) => op.type === type && op.priority === priority);
+    if (existingIdx !== -1) {
+      queue[existingIdx] = {
+        ...queue[existingIdx],
+        payload,
+        attempts: 0,
+        createdAt: new Date().toISOString(),
+      };
+      await saveQueue(queue);
+      return queue[existingIdx];
+    }
+  }
+
+  // For idempotent operations on the same resource, remove previous entry
+  if (type === "UPDATE_LOOK" || type === "DELETE_LOOK") {
+    const lookupId = payload.id as string | undefined;
+    if (lookupId) {
+      const filtered = queue.filter(
+        (op) => !(op.type === type && op.payload.id === lookupId),
+      );
+      if (filtered.length < queue.length) {
+        queue.length = 0;
+        queue.push(...filtered);
+      }
+    }
+  }
+
   const op: SyncOperation = {
     id: generateId(),
     type,

@@ -54,7 +54,7 @@ export async function updatePreferences(
     );
   } catch (err) {
     console.error("Failed to update user preferences in storage:", err);
-    throw new Error("Could not save preferences.");
+    throw new Error("Could not save preferences.", { cause: err });
   }
 
   return updated;

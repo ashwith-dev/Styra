@@ -1,12 +1,9 @@
 import type { ViewStyle } from "react-native";
-import { Platform } from "react-native";
 
 type Shadow = Pick<
   ViewStyle,
   "shadowColor" | "shadowOffset" | "shadowOpacity" | "shadowRadius" | "elevation"
 >;
-
-const iosOnly = Platform.OS === "ios";
 
 /**
  * Subtle, premium shadows. Android elevation kept low to avoid
