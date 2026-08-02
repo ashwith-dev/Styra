@@ -139,7 +139,26 @@ export default function SettingsScreen() {
                   "A password reset link will be sent to your registered email address.",
                   [
                     { text: "Cancel", style: "cancel" },
-                    { text: "Send Link", onPress: () => Alert.alert("Sent", "Check your email for instructions.") },
+                    {
+                      text: "Send Link",
+                      onPress: async () => {
+                        try {
+                          const email = user.email || "";
+                          if (!email) {
+                            Alert.alert("Error", "No email address found for this account.");
+                            return;
+                          }
+                          const { error } = await supabase.auth.resetPasswordForEmail(email);
+                          if (error) {
+                            Alert.alert("Error", error.message || "Failed to send reset email.");
+                          } else {
+                            Alert.alert("Sent", "Check your email for instructions to reset your password.");
+                          }
+                        } catch {
+                          Alert.alert("Error", "Failed to send password reset email. Please try again.");
+                        }
+                      },
+                    },
                   ],
                 )
               }

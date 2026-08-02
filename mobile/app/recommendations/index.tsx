@@ -21,13 +21,12 @@ import { LoadingSkeletonCard } from "@/components/ui/LoadingSkeleton";
 import { colors, radius, spacing, typography } from "@/theme";
 import {
   RECOMMENDATION_OCCASIONS,
-  RECOMMENDATION_SEASONS,
   useRecommendationsData,
 } from "@/features/recommendations";
 import type { AIRecommendationItemV1 } from "@/features/recommendations";
 
 export default function RecommendationsScreen() {
-  const { recommendations, aiState, occasion, season, error, actions } =
+  const { recommendations, aiState, occasion, season: _season, error, actions } =
     useRecommendationsData();
 
   useFocusEffect(
@@ -44,7 +43,7 @@ export default function RecommendationsScreen() {
     [actions],
   );
 
-  const handleSelectSeason = useCallback(
+  const _handleSelectSeason = useCallback(
     (val: string) => {
       actions.setSeason(val);
       void actions.fetchRecommendations({ season: val });

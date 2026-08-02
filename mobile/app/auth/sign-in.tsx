@@ -1,4 +1,3 @@
-import { useRef } from "react";
 import {
   Alert,
   StyleSheet,
@@ -6,7 +5,6 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import type { TextInput } from "react-native";
 import { router } from "expo-router";
 import { Button, Input } from "@/components/ui";
 import { colors, radius, spacing, typography } from "@/theme";

@@ -20,7 +20,7 @@ import { useSavedLooks } from "@/features/looks";
 
 export default function LookDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { looks, saveState, error, actions } = useSavedLooks();
+  const { saveState, error, actions } = useSavedLooks();
 
   const look = actions.getLookById(id);
 
