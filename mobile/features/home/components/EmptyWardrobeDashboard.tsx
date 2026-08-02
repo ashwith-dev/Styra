@@ -62,7 +62,7 @@ const EDUCATIONAL_FEATURES = [
 ];
 
 export function EmptyWardrobeDashboard({
-  userName,
+  userName: _userName,
   onAddClothing,
 }: EmptyWardrobeDashboardProps) {
   const fadeAnim = useRef(new Animated.Value(0)).current;

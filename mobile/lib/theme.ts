@@ -18,7 +18,7 @@
 
 import { colors as themeColors } from "../theme/colors";
 import { spacing as themeSpacing } from "../theme/spacing";
-import { typography, fontWeight } from "../theme/typography";
+import { fontWeight } from "../theme/typography";
 import { radius } from "../theme/radius";
 import { shadows } from "../theme/shadows";
 

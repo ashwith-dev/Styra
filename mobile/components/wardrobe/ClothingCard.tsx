@@ -3,7 +3,7 @@ import { Platform, StyleSheet, Text, TouchableOpacity, View } from "react-native
 import { Ionicons } from "@expo/vector-icons";
 import type { ClothingItemBrief } from "@/lib/types";
 import { CachedImage } from "@/components/ui";
-import { colors, radius, spacing, typography } from "@/theme";
+import { colors, spacing, typography } from "@/theme";
 
 interface ClothingCardProps {
   item: ClothingItemBrief;

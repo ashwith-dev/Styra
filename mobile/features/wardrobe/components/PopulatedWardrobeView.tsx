@@ -116,7 +116,7 @@ function matchesCategoryKey(item: ClothingItemBrief, categoryKey: string): boole
 }
 
 export function PopulatedWardrobeView({
-  items,
+  items: _items,
   allItems,
   loading,
   onRefresh,

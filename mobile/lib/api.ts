@@ -38,7 +38,9 @@ function resolveApiUrl(): string {
   return Platform.OS === "android" ? "http://10.0.2.2:8000" : "http://localhost:8000";
 }
 
-const API_URL = resolveApiUrl();
+export const API_VERSION = "v1";
+
+const API_URL = `${resolveApiUrl()}/${API_VERSION}`;
 if (__DEV__) {
   console.log(`[api] base URL: ${API_URL}`);
 }
@@ -93,8 +95,6 @@ function createClient(): AxiosInstance {
 }
 
 const api = createClient();
-
-export const API_VERSION = "v1";
 
 // ── Analyze ──
 
