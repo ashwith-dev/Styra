@@ -14,6 +14,8 @@ from app.errors import (
     pydantic_validation_handler,
     generic_exception_handler,
 )
+from app.middleware.rate_limit import rate_limit_middleware
+from app.middleware import correlation_id_middleware
 from app.services.pipeline_service import PipelineService
 from app.services.validation.image_validator import ImageValidator
 from app.services.segmentation.rembg_segmenter import RembgSegmenter
@@ -58,6 +60,7 @@ app = FastAPI(
     title="Clothing App API",
     version=settings.app_version,
     lifespan=lifespan,
+    max_request_body_size=settings.max_image_size_mb * 1024 * 1024,
 )
 
 # ── Middleware ──
@@ -69,6 +72,10 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Rate limiting — applied before routes
+app.middleware("http")(correlation_id_middleware)
+app.middleware("http")(rate_limit_middleware)
 
 # ── Exception handlers ──
 app.add_exception_handler(AppError, app_error_handler)
@@ -82,10 +89,10 @@ from app.api.clothing import router as clothing_router  # noqa: E402
 from app.api.analyze import router as analyze_router  # noqa: E402
 from app.api.recommendations import router as recs_router  # noqa: E402
 
-app.include_router(health_router, tags=["Health"])
-app.include_router(clothing_router, tags=["Clothing"])
-app.include_router(analyze_router, tags=["Pipeline"])
-app.include_router(recs_router, tags=["Recommendations"])
+app.include_router(health_router, prefix=settings.api_prefix, tags=["Health"])
+app.include_router(clothing_router, prefix=settings.api_prefix, tags=["Clothing"])
+app.include_router(analyze_router, prefix=settings.api_prefix, tags=["Pipeline"])
+app.include_router(recs_router, prefix=settings.api_prefix, tags=["Recommendations"])
 
 
 if __name__ == "__main__":
