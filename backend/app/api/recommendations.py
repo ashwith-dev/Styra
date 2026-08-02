@@ -1,6 +1,7 @@
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from supabase import Client
 
 from app.dependencies import get_current_user
 from app.models.api_contract import (
@@ -16,7 +17,7 @@ from app.models.api_contract import (
     OutfitFavoriteResponse,
 )
 from app.services.recommendations.engine import RecommendationEngine
-from app.services.supabase_client import get_supabase
+from app.utils.jwt import get_user_supabase
 
 router = APIRouter()
 
@@ -30,6 +31,7 @@ _recommendation_engine = RecommendationEngine()
 async def get_recommendations(
     body: RecommendationRequest,
     user_id: str = Depends(get_current_user),
+    supabase: Client = Depends(get_user_supabase),
 ) -> RecommendationResponse:
     """Find compatible clothing items from the same user's wardrobe.
 
@@ -37,8 +39,6 @@ async def get_recommendations(
     (e.g. tops go with bottoms, outerwear goes with everything) with matching
     style / season attributes.
     """
-    supabase = get_supabase()
-
     # 1. Fetch the source item to get its category and embedding
     source_resp = (
         supabase.table("clothing_items")
@@ -101,6 +101,7 @@ async def list_recommendations(
     occasion: Optional[str] = Query(None),
     season: Optional[str] = Query(None),
     user_id: str = Depends(get_current_user),
+    supabase: Client = Depends(get_user_supabase),
 ) -> OutfitRecommendationResponse:
     """Generate full outfit recommendations from the user's wardrobe.
 
@@ -110,8 +111,6 @@ async def list_recommendations(
       travel, gym, ethnic
     - ``season``: spring, summer, fall, winter
     """
-    supabase = get_supabase()
-
     wardrobe_resp = (
         supabase.table("clothing_items")
         .select("id, attributes, thumbnail_url, status")
@@ -200,6 +199,7 @@ def _compatible_categories(category: str) -> list[str]:
 async def submit_outfit_feedback(
     body: OutfitFeedbackRequest,
     user_id: str = Depends(get_current_user),
+    supabase: Client = Depends(get_user_supabase),
 ) -> OutfitFeedbackResponse:
     """Record like/dislike feedback for an outfit recommendation."""
     if body.feedback not in ("like", "dislike"):
@@ -208,25 +208,11 @@ async def submit_outfit_feedback(
             detail="Feedback must be 'like' or 'dislike'",
         )
 
-    supabase = get_supabase()
-
-    existing = (
-        supabase.table("outfit_feedback")
-        .select("id")
-        .eq("user_id", user_id)
-        .eq("outfit_id", body.outfit_id)
-        .execute()
-    )
-    if existing.data:
-        supabase.table("outfit_feedback").update({"feedback": body.feedback}).eq(
-            "id", existing.data[0]["id"]
-        ).execute()
-    else:
-        supabase.table("outfit_feedback").insert({
-            "user_id": user_id,
-            "outfit_id": body.outfit_id,
-            "feedback": body.feedback,
-        }).execute()
+    supabase.table("outfit_feedback").upsert({
+        "user_id": user_id,
+        "outfit_id": body.outfit_id,
+        "feedback": body.feedback,
+    }, on_conflict="user_id,outfit_id").execute()
 
     return OutfitFeedbackResponse(feedback=body.feedback)
 
@@ -238,10 +224,9 @@ async def submit_outfit_feedback(
 async def add_outfit_favorite(
     body: OutfitFavoriteRequest,
     user_id: str = Depends(get_current_user),
+    supabase: Client = Depends(get_user_supabase),
 ) -> OutfitFavoriteResponse:
     """Save an outfit recommendation as a favourite."""
-    supabase = get_supabase()
-
     existing = (
         supabase.table("outfit_favorites")
         .select("id")
@@ -280,10 +265,9 @@ async def add_outfit_favorite(
 async def remove_outfit_favorite(
     outfit_id: str,
     user_id: str = Depends(get_current_user),
+    supabase: Client = Depends(get_user_supabase),
 ) -> None:
     """Remove a saved outfit favourite."""
-    supabase = get_supabase()
-
     resp = (
         supabase.table("outfit_favorites")
         .delete()
@@ -305,10 +289,9 @@ async def remove_outfit_favorite(
 @router.get("/recommendations/favorites")
 async def list_outfit_favorites(
     user_id: str = Depends(get_current_user),
+    supabase: Client = Depends(get_user_supabase),
 ) -> list[dict]:
     """List all saved outfit favourites for the current user."""
-    supabase = get_supabase()
-
     resp = (
         supabase.table("outfit_favorites")
         .select("id, outfit_id, outfit_data, created_at")
@@ -327,10 +310,9 @@ async def list_outfit_favorites(
 async def check_outfit_favorite(
     outfit_id: str,
     user_id: str = Depends(get_current_user),
+    supabase: Client = Depends(get_user_supabase),
 ) -> dict:
     """Check if an outfit is saved as a favourite. Returns saved status."""
-    supabase = get_supabase()
-
     resp = (
         supabase.table("outfit_favorites")
         .select("id")
