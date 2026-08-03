@@ -49,6 +49,7 @@ async function syncPreferencesToSupabase(updates: Partial<UserPreferences>): Pro
   if (updates.lifestyle !== undefined) prefPayload.lifestyle = updates.lifestyle;
   if (updates.smartNotifications !== undefined) prefPayload.notifications_enabled = updates.smartNotifications;
   if (updates.temperatureUnit !== undefined) prefPayload.temperature_unit = updates.temperatureUnit;
+  if (updates.wardrobeType !== undefined) prefPayload.wardrobe_type = updates.wardrobeType;
 
   if (Object.keys(prefPayload).length > 0) {
     const { error: prefErr } = await supabase.from("user_preferences").upsert(
@@ -164,6 +165,7 @@ export async function fetchUserPreferences(): Promise<UserPreferences> {
 
     const mergedPrefs: UserPreferences = {
       ...localPrefs,
+      wardrobeType: prefRow?.wardrobe_type ?? localPrefs.wardrobeType ?? "mixed",
       styles: prefRow?.preferred_styles ?? localPrefs.styles,
       favoriteColors: prefRow?.favourite_colors ?? localPrefs.favoriteColors,
       fitPreference: prefRow?.fit_preference ?? localPrefs.fitPreference,
