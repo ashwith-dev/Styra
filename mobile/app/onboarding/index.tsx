@@ -7,6 +7,7 @@ import {
   Step4Colors,
   Step5Fit,
   Step6Notifications,
+  Step7WardrobeType,
   Step7Ready,
   useOnboarding,
 } from "@/features/onboarding";
@@ -80,6 +81,16 @@ export default function OnboardingScreen() {
       )}
 
       {currentStep === 7 && (
+        <Step7WardrobeType
+          selectedType={selections.wardrobeType}
+          onSelect={actions.selectWardrobeType}
+          onContinue={actions.nextStep}
+          onBack={actions.prevStep}
+          onSkip={actions.skipOnboarding}
+        />
+      )}
+
+      {currentStep === 8 && (
         <Step7Ready
           onAddFirstItem={actions.addFirstItemAndComplete}
           onGoToHome={actions.nextStep}

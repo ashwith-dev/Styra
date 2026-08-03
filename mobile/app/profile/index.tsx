@@ -218,6 +218,20 @@ export default function ProfileScreen() {
           });
           break;
 
+        case "wardrobeType":
+          setSelectionModalConfig({
+            visible: true,
+            title: "Select Wardrobe Type",
+            key: "wardrobeType",
+            options: [
+              { label: "Men's Wardrobe", value: "men" },
+              { label: "Women's Wardrobe", value: "women" },
+              { label: "Mixed / Unisex", value: "mixed" },
+            ],
+            selectedValue: preferences.wardrobeType || "mixed",
+          });
+          break;
+
         case "fitPreference":
           setSelectionModalConfig({
             visible: true,

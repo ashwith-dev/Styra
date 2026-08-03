@@ -6,7 +6,7 @@ import type {
   StyleOption,
 } from "./types/onboarding";
 
-export const TOTAL_ONBOARDING_STEPS = 7;
+export const TOTAL_ONBOARDING_STEPS = 8;
 
 export const LIFESTYLE_OPTIONS: LifestyleOption[] = [
   {
