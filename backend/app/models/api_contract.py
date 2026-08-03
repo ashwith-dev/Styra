@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Optional
 
 from app.services.extraction.base_attributes import AIPipelineResult
@@ -77,7 +77,7 @@ class UpdateClothingRequest(BaseModel):
 # ---------------------------------------------------------------------------
 class RecommendationRequest(BaseModel):
     clothing_item_id: str
-    limit: int = 4
+    limit: int = Field(default=4, ge=1, le=20)
 
 
 class RecommendationItem(BaseModel):

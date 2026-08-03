@@ -23,7 +23,9 @@ from app.services.recommendations.rules import (
     StyleCompatibility,
     _attr_value,
     _attr_confidence,
+    _canonical_category,
     _list_values,
+    _norm,
 )
 
 # How many items to consider per slot before generating combinations.
@@ -107,14 +109,16 @@ class RecommendationEngine:
 
     @staticmethod
     def _filter_usable(wardrobe: list[dict]) -> list[dict]:
-        """Remove items that are not 'completed' or lack a category."""
+        """Remove items that are not 'completed' or lack a usable category."""
         usable: list[dict] = []
         for item in wardrobe:
             if item.get("status") != "completed":
                 continue
             attrs = item.get("attributes") or {}
-            cat = _attr_value(attrs, "category")
-            if not cat or cat == "invalid":
+            raw_cat = _attr_value(attrs, "category")
+            if not raw_cat or _norm(raw_cat) == "invalid":
+                continue
+            if _canonical_category(raw_cat) is None:
                 continue
             usable.append(item)
         return usable
@@ -134,7 +138,9 @@ class RecommendationEngine:
             "outerwear": [], "footwear": [], "accessory": [],
         }
         for item in items:
-            cat = _attr_value(item.get("attributes", {}), "category")
+            cat = _canonical_category(
+                _attr_value(item.get("attributes", {}), "category")
+            )
             if cat in by_cat:
                 by_cat[cat].append(item)
         return by_cat
@@ -261,7 +267,7 @@ class RecommendationEngine:
         score = 0.5
 
         # Occasion fit.
-        item_occasions = _list_values(attrs, "occasion")
+        item_occasions = [_norm(o) for o in _list_values(attrs, "occasion")]
         target_occs = OCCASION_MAP.get(outfit_cat, [])
         if any(o in target_occs for o in item_occasions):
             score += 0.3
@@ -270,8 +276,8 @@ class RecommendationEngine:
 
         # Season fit.
         if season:
-            item_seasons = _list_values(attrs, "season")
-            if season in item_seasons:
+            item_seasons = [_norm(s) for s in _list_values(attrs, "season")]
+            if _norm(season) in item_seasons:
                 score += 0.2
 
         return score
@@ -302,16 +308,18 @@ class RecommendationEngine:
 
     @staticmethod
     def _item_style(item: dict) -> str:
-        return _attr_value(item.get("attributes", {}), "style") or "casual"
+        raw = _attr_value(item.get("attributes", {}), "style")
+        return _norm(raw) if raw else "casual"
 
     def _season_score(self, items: list[dict], season: Optional[str]) -> float:
         if not season:
             return 0.8  # neutral when no filter.
 
+        target = _norm(season)
         match_count = 0
         for item in items:
-            item_seasons = _list_values(item.get("attributes", {}), "season")
-            if season in item_seasons:
+            item_seasons = [_norm(s) for s in _list_values(item.get("attributes", {}), "season")]
+            if target in item_seasons:
                 match_count += 1
 
         return match_count / max(len(items), 1)
@@ -323,7 +331,7 @@ class RecommendationEngine:
 
         match_count = 0
         for item in items:
-            item_occs = _list_values(item.get("attributes", {}), "occasion")
+            item_occs = [_norm(o) for o in _list_values(item.get("attributes", {}), "occasion")]
             if any(o in target_occs for o in item_occs):
                 match_count += 1
 
@@ -336,7 +344,9 @@ class RecommendationEngine:
 
         item_cats = set()
         for item in items:
-            cat = _attr_value(item.get("attributes", {}), "category")
+            cat = _canonical_category(
+                _attr_value(item.get("attributes", {}), "category")
+            )
             if cat:
                 item_cats.add(cat)
 

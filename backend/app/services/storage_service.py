@@ -75,6 +75,28 @@ class StorageService:
         except Exception as exc:
             logger.warning("Failed to delete image %s: %s", path, exc)
 
+    def delete_by_public_url(self, url: str | None) -> None:
+        """Delete an object given its public URL.
+
+        Public URLs have the form
+        ``{supabase_url}/storage/v1/object/public/{bucket}/{key}``; anything
+        else is ignored. Failures are logged and swallowed — deleting the
+        database row must not fail because an object was already gone.
+        """
+        if not url:
+            return
+        marker = "/storage/v1/object/public/"
+        if marker not in url:
+            return
+        bucket_key = url.split(marker, 1)[1].split("?", 1)[0]
+        bucket, _, key = bucket_key.partition("/")
+        if not bucket or not key:
+            return
+        try:
+            self._client.storage.from_(bucket).remove([key])
+        except Exception as exc:
+            logger.warning("Failed to delete image %s/%s: %s", bucket, key, exc)
+
     def upload_thumbnail(self, image_bytes: bytes) -> StoredImage:
         img = Image.open(io.BytesIO(image_bytes))
         min_side = min(img.width, img.height)
@@ -94,3 +116,14 @@ class StorageService:
         )
         url = self._client.storage.from_(bucket).get_public_url(key)
         return StoredImage(path=f"{bucket}/{key}", public_url=url)
+
+
+_service: StorageService | None = None
+
+
+def get_storage_service() -> StorageService:
+    """Shared StorageService singleton (avoids re-listing buckets per call)."""
+    global _service
+    if _service is None:
+        _service = StorageService()
+    return _service

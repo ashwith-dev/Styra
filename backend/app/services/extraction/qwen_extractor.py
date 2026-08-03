@@ -79,7 +79,7 @@ class QwenExtractor(BaseAttributeExtractor):
     MODEL_VERSION = "2025"
 
     def __init__(self) -> None:
-        self._api_key = settings.openrouter_api_key or settings.gemini_api_key
+        self._api_key = settings.openrouter_api_key
         self._model = settings.qwen_model or _FALLBACK_MODELS[0]
         self._client = httpx.AsyncClient(timeout=60.0)
 

@@ -17,6 +17,10 @@ from app.models.api_contract import (
     OutfitFavoriteResponse,
 )
 from app.services.recommendations.engine import RecommendationEngine
+from app.services.recommendations.rules import (
+    CATEGORY_COMPATIBILITY,
+    _canonical_category,
+)
 from app.utils.jwt import get_user_supabase
 
 router = APIRouter()
@@ -45,7 +49,7 @@ async def get_recommendations(
         .select("id, attributes, embedding")
         .eq("id", body.clothing_item_id)
         .eq("user_id", user_id)
-        .single()
+        .maybe_single()
         .execute()
     )
     if not source_resp.data:
@@ -181,15 +185,10 @@ async def list_recommendations(
 
 
 def _compatible_categories(category: str) -> list[str]:
-    mapping = {
-        "top": ["bottom", "outerwear", "accessory"],
-        "bottom": ["top", "outerwear", "footwear", "accessory"],
-        "dress": ["outerwear", "footwear", "accessory"],
-        "outerwear": ["top", "bottom", "dress", "accessory"],
-        "footwear": ["bottom", "dress", "outerwear"],
-        "accessory": ["top", "bottom", "dress", "outerwear"],
-    }
-    return mapping.get(category, [])
+    canonical = _canonical_category(category)
+    if canonical is None:
+        return []
+    return CATEGORY_COMPATIBILITY.get(canonical, [])
 
 
 # ── POST /recommendations/feedback  — like/dislike an outfit ──

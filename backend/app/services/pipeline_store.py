@@ -1,11 +1,12 @@
 """Staging store for the two-phase analyze → save flow.
 
 Every staged result is kept in the module-level ``_memory_store`` first;
-the service-role-only ``pipeline_staging`` table (migration 003) is
+the service-role-only ``pipeline_staging`` table (migration 004) is
 written best-effort as a cross-process backup. If the Supabase insert
 fails (e.g. table missing, PGRST205) the warning is swallowed and
 staging continues in memory only. Every token is bound to the user who
-created it, and DB entries expire after ``TTL``.
+created it, and entries expire after ``TTL`` — in memory as well as in
+the database.
 """
 
 import logging
@@ -22,22 +23,43 @@ logger = logging.getLogger(__name__)
 TABLE = "pipeline_staging"
 TTL = timedelta(hours=1)
 
-# In-memory fallback: pipeline_token -> (result, user_id)
-_memory_store: dict[str, tuple[PipelineResult, str]] = {}
+# Bound the in-memory store: abandoned analyze calls (user never saves)
+# would otherwise accumulate full pipeline results forever.
+_MAX_MEMORY_ENTRIES = 1_000
+
+# In-memory fallback: pipeline_token -> (result, user_id, created_at)
+_memory_store: dict[str, tuple[PipelineResult, str, datetime]] = {}
 
 
 def _now() -> datetime:
     return datetime.now(timezone.utc)
 
 
-def store_pipeline_result(result: PipelineResult, user_id: str) -> None:
-    """Stage a successful pipeline result for the later save call.
+def _prune_memory() -> None:
+    """Drop expired entries, then evict oldest-first if still oversized."""
+    cutoff = _now() - TTL
+    for token, entry in list(_memory_store.items()):
+        if entry[2] < cutoff:
+            del _memory_store[token]
+    while len(_memory_store) > _MAX_MEMORY_ENTRIES:
+        oldest = min(_memory_store, key=lambda t: _memory_store[t][2])
+        del _memory_store[oldest]
 
-    Always stored in memory; the Supabase insert is best-effort and its
-    failures (e.g. missing ``pipeline_staging`` table) are swallowed.
+
+def stage_pipeline_result(result: PipelineResult, user_id: str) -> None:
+    """Stage a successful pipeline result in memory. Synchronous and cheap —
+    called inline by the analyze endpoint so a save request that arrives
+    immediately after the analyze response can always claim its token."""
+    _memory_store[result.pipeline_token] = (result, user_id, _now())
+    _prune_memory()
+
+
+def persist_pipeline_result(result: PipelineResult, user_id: str) -> None:
+    """Write the staged result to Supabase as a cross-process backup.
+
+    Best-effort: failures (e.g. missing ``pipeline_staging`` table) are
+    swallowed and staging continues in memory only.
     """
-    _memory_store[result.pipeline_token] = (result, user_id)
-
     try:
         client = get_supabase()
         client.table(TABLE).insert(
@@ -71,18 +93,25 @@ def store_pipeline_result(result: PipelineResult, user_id: str) -> None:
         )
 
 
+def store_pipeline_result(result: PipelineResult, user_id: str) -> None:
+    """Stage in memory and persist the DB backup (combined helper)."""
+    stage_pipeline_result(result, user_id)
+    persist_pipeline_result(result, user_id)
+
+
 def pop_pipeline_result(token: str, user_id: str) -> Optional[PipelineResult]:
     """Claim a staged result, checking the in-memory store first.
 
-    A memory hit for the owning user returns immediately. Otherwise the
-    claim falls back to a single DELETE ... RETURNING against Supabase
-    (PostgREST returns the deleted rows), which is atomic across workers.
+    A memory hit for the owning user returns immediately, provided the
+    entry has not expired. Otherwise the claim falls back to a single
+    DELETE ... RETURNING against Supabase (PostgREST returns the deleted
+    rows), which is atomic across workers.
     Returns None when missing, owned by another user, or expired.
     """
     entry = _memory_store.pop(token, None)
     if entry is not None:
-        stored_result, stored_user_id = entry
-        if stored_user_id == user_id:
+        stored_result, stored_user_id, created_at = entry
+        if stored_user_id == user_id and _now() - created_at <= TTL:
             return stored_result
 
     try:
