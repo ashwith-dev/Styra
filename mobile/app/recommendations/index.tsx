@@ -35,10 +35,11 @@ export default function RecommendationsScreen() {
     }, [actions.fetchRecommendations]),
   );
 
+  // Setting the filter is enough: it re-creates fetchRecommendations,
+  // which re-fires the focus effect above and refetches exactly once.
   const handleSelectOccasion = useCallback(
     (val: string) => {
       actions.setOccasion(val);
-      void actions.fetchRecommendations({ occasion: val });
     },
     [actions],
   );
@@ -46,7 +47,6 @@ export default function RecommendationsScreen() {
   const _handleSelectSeason = useCallback(
     (val: string) => {
       actions.setSeason(val);
-      void actions.fetchRecommendations({ season: val });
     },
     [actions],
   );

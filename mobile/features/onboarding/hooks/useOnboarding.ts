@@ -96,12 +96,13 @@ export function useOnboarding(): OnboardingViewModel {
     async (updater: (prev: OnboardingState) => OnboardingState) => {
       setState((prev) => {
         const next = updater(prev);
+        // Persist locally on every tap; the remote Supabase sync happens
+        // once on completion — syncing per tap storms the API with upserts.
         void saveOnboardingState(userId, next);
-        void syncOnboardingToPreferences(next.selections);
         return next;
       });
     },
-    [userId, syncOnboardingToPreferences],
+    [userId],
   );
 
   const selectLifestyle = useCallback(

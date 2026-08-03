@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { View, Image, Text, StyleSheet, type ImageStyle } from "react-native";
 import { colors, fontSize } from "../../lib/theme";
 
@@ -18,6 +18,12 @@ export function CachedImage({
   accessibilityLabel,
 }: CachedImageProps) {
   const [failed, setFailed] = useState(!uri);
+
+  // Reset when the uri changes (e.g. null → loaded) so a previously
+  // failed/empty render doesn't get stuck on the placeholder.
+  useEffect(() => {
+    setFailed(!uri);
+  }, [uri]);
 
   if (failed || !uri) {
     return (

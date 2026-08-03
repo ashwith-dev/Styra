@@ -14,19 +14,13 @@ function getGreetingTime(): string {
 }
 
 function extractFirstName(raw: string): string {
-  if (!raw) return "Alex";
+  if (!raw) return "there";
 
-  // If raw contains spaces (e.g. "Ashwith Thatipally"), take first word
   const firstWord = raw.trim().split(" ")[0].split("@")[0];
+  const cleanName = firstWord.replace(/[._0-9]/g, "");
 
-  // If string contains concatenated name (e.g. "ashwiththatipally" -> "Ashwith")
-  let cleanName = firstWord.replace(/[._0-9]/g, "");
-  if (cleanName.toLowerCase().startsWith("ashwith")) {
-    cleanName = "Ashwith";
-  }
-
-  if (!cleanName) return "Alex";
-  return cleanName.charAt(0).toUpperCase() + cleanName.slice(1).toLowerCase();
+  if (!cleanName) return "there";
+  return cleanName.charAt(0).toUpperCase() + cleanName.slice(1);
 }
 
 export interface HomeViewModel {
@@ -100,7 +94,7 @@ export function useHomeData(): HomeViewModel {
     user?.user_metadata?.first_name ||
     user?.user_metadata?.display_name;
 
-  const userName = extractFirstName(String(rawName || user?.email || "Ashwith"));
+  const userName = extractFirstName(String(rawName || user?.email || ""));
   const userAvatar = user?.user_metadata?.avatar_url ?? null;
 
   return {

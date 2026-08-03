@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   Alert,
   Linking,
@@ -30,7 +30,14 @@ import {
   SettingsSectionCard,
 } from "@/features/settings";
 import { deleteUserAccount } from "@/lib/services/accountService";
+import { clearDataCaches, getCacheSizeBytes } from "@/lib/storage/clearAll";
 import { supabase } from "@/lib/supabase";
+
+function formatBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
 
 export default function SettingsScreen() {
   const { user, actions } = useProfileData();
@@ -43,8 +50,13 @@ export default function SettingsScreen() {
   const [editName, setEditName] = useState(user.name);
   const [editAvatarUrl, setEditAvatarUrl] = useState(user.avatarUrl ?? "");
   const [savingProfile, setSavingProfile] = useState(false);
+  const [cacheSizeLabel, setCacheSizeLabel] = useState("…");
 
-  const appVersion = Constants.expoConfig?.version ?? "2.4.1";
+  const appVersion = Constants.expoConfig?.version ?? "1.0.0";
+
+  useEffect(() => {
+    void getCacheSizeBytes().then((b) => setCacheSizeLabel(formatBytes(b)));
+  }, []);
 
   // Handle Edit Profile save
   const handleSaveProfile = useCallback(async () => {
@@ -63,22 +75,29 @@ export default function SettingsScreen() {
   const handleConfirmSignOut = useCallback(async () => {
     setSignOutModalVisible(false);
     await actions.signOut();
-    router.replace("/auth/login");
+    router.replace("/auth/sign-in");
   }, [actions]);
 
   // Delete Account Handler (Confirmed from Custom Modal)
   const handleConfirmDeleteAccount = useCallback(async () => {
     setDeleteAccountModalVisible(false);
-    const { data: authData } = await supabase.auth.getUser();
-    const userId = authData?.user?.id || user.id;
+    const userId = user.id;
 
-    if (userId) {
-      await deleteUserAccount(userId);
-    } else {
-      await actions.signOut();
+    if (!userId) {
+      Alert.alert("Error", "Could not verify your account. Please sign in again.");
+      return;
     }
-    router.replace("/auth/login");
-  }, [user.id, actions]);
+
+    try {
+      await deleteUserAccount(userId);
+      router.replace("/auth/sign-in");
+    } catch {
+      Alert.alert(
+        "Delete Failed",
+        "We couldn't delete your account. Check your connection and try again.",
+      );
+    }
+  }, [user.id]);
 
   // Open External URLs safely
   const handleOpenUrl = useCallback((url: string) => {
@@ -177,9 +196,19 @@ export default function SettingsScreen() {
               title="Data & Storage"
               isLast
               onPress={() =>
-                Alert.alert("Data & Storage", "Your wardrobe image cache is current. Space used: 24 MB", [
+                Alert.alert("Data & Storage", `Cached wardrobe & AI data: ${cacheSizeLabel}`, [
                   { text: "Close" },
-                  { text: "Clear Cache", style: "destructive", onPress: () => Alert.alert("Cleared", "Cache cleared successfully.") },
+                  {
+                    text: "Clear Cache",
+                    style: "destructive",
+                    onPress: () => {
+                      void (async () => {
+                        await clearDataCaches();
+                        setCacheSizeLabel(formatBytes(await getCacheSizeBytes()));
+                        Alert.alert("Cleared", "Cache cleared successfully.");
+                      })();
+                    },
+                  },
                 ])
               }
             />

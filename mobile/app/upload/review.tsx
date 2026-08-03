@@ -41,10 +41,14 @@ export default function ReviewScreen() {
     resultJson: string;
   }>();
 
-  const aiResult = useMemo<AIPipelineResult>(
-    () => (params.resultJson ? JSON.parse(params.resultJson) : {}),
-    [params.resultJson],
-  );
+  const aiResult = useMemo<AIPipelineResult>(() => {
+    if (!params.resultJson) return {} as AIPipelineResult;
+    try {
+      return JSON.parse(params.resultJson) as AIPipelineResult;
+    } catch {
+      return {} as AIPipelineResult;
+    }
+  }, [params.resultJson]);
 
   const {
     draft,
@@ -69,10 +73,22 @@ export default function ReviewScreen() {
     [categoryValue, subcategoryValue],
   );
 
-  const categoryOptions = useMemo(
-    () => getCategoriesForWardrobeType(wardrobeType).map((c) => c.name),
+  const categoryDefs = useMemo(
+    () => getCategoriesForWardrobeType(wardrobeType),
     [wardrobeType],
   );
+  const categoryOptions = useMemo(
+    () => categoryDefs.map((c) => c.name),
+    [categoryDefs],
+  );
+  // The backend and recommendation engine expect canonical category ids
+  // ("top"), not display names ("Tops") — translate at the select boundary.
+  const categoryDisplayValue = useMemo(() => {
+    const found = categoryDefs.find(
+      (c) => c.id === categoryValue.toLowerCase() || c.name.toLowerCase() === categoryValue.toLowerCase(),
+    );
+    return found ? found.name : categoryValue;
+  }, [categoryDefs, categoryValue]);
 
   const subcategoryOptions = useMemo(
     () => getSubcategoriesForCategory(categoryValue, wardrobeType),
@@ -182,12 +198,14 @@ export default function ReviewScreen() {
               <AttributeSelectField
                 key={field.key}
                 label={field.label}
-                value={val}
+                value={categoryDisplayValue}
                 options={categoryOptions}
                 confidence={conf}
-                onSelect={(newCat) => {
-                  setAttribute("category", newCat);
-                  const newSubs = getSubcategoriesForCategory(newCat, wardrobeType);
+                onSelect={(newCatName) => {
+                  const id =
+                    categoryDefs.find((c) => c.name === newCatName)?.id ?? newCatName;
+                  setAttribute("category", id);
+                  const newSubs = getSubcategoriesForCategory(id, wardrobeType);
                   if (newSubs.length > 0) {
                     setAttribute("type", newSubs[0]);
                   }

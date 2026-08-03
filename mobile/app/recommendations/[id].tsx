@@ -1,5 +1,5 @@
 import { useCallback } from "react";
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -8,14 +8,18 @@ import { Button } from "@/components/ui/Button";
 import { ErrorMessage } from "@/components/ui/ErrorMessage";
 import { ClothingCard } from "@/components/wardrobe/ClothingCard";
 import { colors, radius, spacing, typography } from "@/theme";
-import { useRecommendationsData } from "@/features/recommendations";
+import {
+  getLastRecommendations,
+  saveRecommendationAsLook,
+} from "@/features/recommendations";
 
 export default function RecommendationDetailScreen() {
   const { index } = useLocalSearchParams<{ id: string; index: string }>();
-  const { recommendations, error, actions } = useRecommendationsData();
 
+  // Read the list screen's already-fetched recommendations — refetching
+  // here could return a different ordering and show the wrong outfit.
   const idx = index ? parseInt(index, 10) : 0;
-  const recommendation = recommendations[idx];
+  const recommendation = getLastRecommendations()[idx];
 
   const handleItemPress = useCallback((itemId: string) => {
     router.push(`/items/${itemId}`);
@@ -23,11 +27,13 @@ export default function RecommendationDetailScreen() {
 
   const handleSaveToLooks = useCallback(async () => {
     if (!recommendation) return;
-    const success = await actions.saveToLooks(recommendation.id);
+    const success = await saveRecommendationAsLook(recommendation);
     if (success) {
       router.push("/looks");
+    } else {
+      Alert.alert("Save Failed", "Could not save this outfit. Please try again.");
     }
-  }, [recommendation, actions]);
+  }, [recommendation]);
 
   if (!recommendation) {
     return (
@@ -38,7 +44,7 @@ export default function RecommendationDetailScreen() {
           </TouchableOpacity>
         </View>
         <View style={styles.centered}>
-          <ErrorMessage message={error || "Outfit recommendation not found."} />
+          <ErrorMessage message="Outfit recommendation not found. Go back and refresh the list." />
           <Button
             label="Back to Recommendations"
             onPress={() => router.back()}
