@@ -225,14 +225,28 @@ async def test_pipeline_timing(mock_validator, mock_segmenter, mock_extractor, m
 # /analyze-clothing HTTP endpoint
 # ---------------------------------------------------------------------------
 
+def _override_auth() -> None:
+    from app.dependencies import get_current_user
+    from app.main import app
+
+    app.dependency_overrides[get_current_user] = lambda: "user-1"
+
+
+def teardown_module() -> None:
+    from app.main import app
+
+    app.dependency_overrides.clear()
+
+
 def test_analyze_clothing_no_pipeline() -> None:
     """When pipeline_service is None, return 503."""
     from app.main import app
 
+    _override_auth()
     with patch("app.main.pipeline_service", None):
         client = TestClient(app)
         resp = client.post(
-            "/analyze-clothing",
+            "/v1/analyze-clothing",
             files={"file": ("test.jpg", _image_bytes(), "image/jpeg")},
             headers={"Authorization": f"Bearer {_token()}"},
         )
@@ -247,10 +261,11 @@ def _run_pipeline_test(pipeline_result, expected_status: int) -> TestClient:
     mock_pipeline = AsyncMock()
     mock_pipeline.run.return_value = pipeline_result
 
+    _override_auth()
     with patch("app.main.pipeline_service", mock_pipeline):
         client = TestClient(app)
         resp = client.post(
-            "/analyze-clothing",
+            "/v1/analyze-clothing",
             files={"file": ("test.jpg", _image_bytes(), "image/jpeg")},
             headers={"Authorization": f"Bearer {_token()}"},
         )
@@ -258,8 +273,9 @@ def _run_pipeline_test(pipeline_result, expected_status: int) -> TestClient:
         return resp
 
 
-@patch("app.api.analyze.store_pipeline_result")
-def test_analyze_clothing_success(mock_store) -> None:
+@patch("app.api.analyze.persist_pipeline_result")
+@patch("app.api.analyze.stage_pipeline_result")
+def test_analyze_clothing_success(mock_stage, mock_persist) -> None:
     """Full endpoint integration: pipeline runs and returns structured data."""
     result = PipelineResult(
         pipeline_token="tok-1",
@@ -302,11 +318,12 @@ def test_analyze_clothing_large_file() -> None:
     """File over 10 MB is rejected before the pipeline runs."""
     from app.main import app
 
+    _override_auth()
     with patch("app.main.pipeline_service", AsyncMock()) as mock_pipe:
         client = TestClient(app)
         large = b"x" * (11 * 1024 * 1024)
         resp = client.post(
-            "/analyze-clothing",
+            "/v1/analyze-clothing",
             files={"file": ("large.jpg", large, "image/jpeg")},
             headers={"Authorization": f"Bearer {_token()}"},
         )

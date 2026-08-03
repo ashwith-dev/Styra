@@ -341,6 +341,48 @@ OCCASION_EXPLANATIONS: dict[str, str] = {
 }
 
 
+def _norm(value: str) -> str:
+    """Normalise an attribute value for rule lookups.
+
+    The extraction model returns display-case values ("Summer", "Date Night")
+    while the rule tables are lowercase snake_case — comparisons must go
+    through this or they silently never match.
+    """
+    return value.strip().lower().replace(" ", "_").replace("-", "_")
+
+
+# Map every category the extractor / mobile taxonomy can produce onto the
+# six wardrobe slots the engine understands. Full-body categories (suit,
+# traditional, ethnic, jumpsuit) fill the dress slot: like a dress, they
+# replace the top+bottom pair in an outfit.
+_CATEGORY_CANONICAL: dict[str, str] = {
+    "top": "top",
+    "tops": "top",
+    "activewear": "top",
+    "bottom": "bottom",
+    "bottoms": "bottom",
+    "dress": "dress",
+    "dresses": "dress",
+    "jumpsuit": "dress",
+    "jumpsuits": "dress",
+    "suit": "dress",
+    "suits": "dress",
+    "traditional": "dress",
+    "ethnic": "dress",
+    "outerwear": "outerwear",
+    "footwear": "footwear",
+    "accessory": "accessory",
+    "accessories": "accessory",
+}
+
+
+def _canonical_category(value: Optional[str]) -> Optional[str]:
+    """Return the engine wardrobe slot for a raw category value, or None."""
+    if not value:
+        return None
+    return _CATEGORY_CANONICAL.get(_norm(value))
+
+
 def _attr_value(attributes: dict, key: str) -> Optional[str]:
     if isinstance(attributes.get(key), dict):
         val = attributes[key].get("value")

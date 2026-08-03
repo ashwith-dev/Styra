@@ -5,6 +5,7 @@ from unittest.mock import MagicMock, patch
 from fastapi.testclient import TestClient
 from jose import jwt as jose_jwt
 
+from app.dependencies import get_current_user
 from app.main import app
 from app.utils.jwt import get_user_supabase
 
@@ -13,6 +14,7 @@ client = TestClient(app)
 
 def _override_user_client(mock: MagicMock):
     app.dependency_overrides[get_user_supabase] = lambda: mock
+    app.dependency_overrides[get_current_user] = lambda: "user-1"
 
 
 def teardown_module():
@@ -56,7 +58,7 @@ def test_get_recommendations_empty_wardrobe():
     supabase.table.return_value.select.return_value.eq.return_value.execute.return_value.data = None
 
     resp = client.get(
-        "/recommendations",
+        "/v1/recommendations",
         headers={"Authorization": f"Bearer {_token()}"},
     )
     assert resp.status_code == 404
@@ -78,7 +80,7 @@ def test_get_recommendations_success():
     ]
 
     resp = client.get(
-        "/recommendations",
+        "/v1/recommendations",
         headers={"Authorization": f"Bearer {_token()}"},
     )
     assert resp.status_code == 200
@@ -112,7 +114,7 @@ def test_get_recommendations_with_occasion_filter():
     ]
 
     resp = client.get(
-        "/recommendations?occasion=casual",
+        "/v1/recommendations?occasion=casual",
         headers={"Authorization": f"Bearer {_token()}"},
     )
     assert resp.status_code == 200
@@ -133,7 +135,7 @@ def test_get_recommendations_with_season_filter():
     ]
 
     resp = client.get(
-        "/recommendations?season=summer",
+        "/v1/recommendations?season=summer",
         headers={"Authorization": f"Bearer {_token()}"},
     )
     assert resp.status_code == 200
@@ -151,7 +153,7 @@ def test_get_recommendations_with_combined_filters():
     ]
 
     resp = client.get(
-        "/recommendations?occasion=casual&season=summer",
+        "/v1/recommendations?occasion=casual&season=summer",
         headers={"Authorization": f"Bearer {_token()}"},
     )
     assert resp.status_code == 200
@@ -170,7 +172,7 @@ def test_get_recommendations_invalid_occasion():
     ]
 
     resp = client.get(
-        "/recommendations?occasion=underwater",
+        "/v1/recommendations?occasion=underwater",
         headers={"Authorization": f"Bearer {_token()}"},
     )
     assert resp.status_code == 422
@@ -187,7 +189,7 @@ def test_get_recommendations_invalid_season():
     ]
 
     resp = client.get(
-        "/recommendations?season=monsoon",
+        "/v1/recommendations?season=monsoon",
         headers={"Authorization": f"Bearer {_token()}"},
     )
     assert resp.status_code == 422
@@ -203,5 +205,6 @@ def test_get_recommendations_unauthenticated():
         _item("1", "top")
     ]
 
-    resp = client.get("/recommendations")
+    app.dependency_overrides.pop(get_current_user, None)
+    resp = client.get("/v1/recommendations")
     assert resp.status_code in (401, 403)

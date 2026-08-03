@@ -7,6 +7,7 @@ import pytest
 from fastapi.testclient import TestClient
 from jose import jwt as jose_jwt
 
+from app.dependencies import get_current_user
 from app.main import app
 from app.utils.jwt import get_user_supabase
 
@@ -21,6 +22,7 @@ def _token(secret: str = "test-secret") -> str:
 
 def _override_user_client(mock: MagicMock):
     app.dependency_overrides[get_user_supabase] = lambda: mock
+    app.dependency_overrides[get_current_user] = lambda: "user-1"
 
 
 def teardown_module():
@@ -36,7 +38,7 @@ def test_list_clothing_empty() -> None:
     eq.execute.return_value.count = 0
     eq.order.return_value.range.return_value.execute.return_value.data = []
 
-    resp = client.get("/clothing", headers={"Authorization": f"Bearer {_token()}"})
+    resp = client.get("/v1/clothing", headers={"Authorization": f"Bearer {_token()}"})
     assert resp.status_code == 200
     assert resp.json()["items"] == []
 
@@ -66,7 +68,7 @@ def test_list_clothing_maps_flat_row_to_contract() -> None:
         }
     ]
 
-    resp = client.get("/clothing", headers={"Authorization": f"Bearer {_token()}"})
+    resp = client.get("/v1/clothing", headers={"Authorization": f"Bearer {_token()}"})
 
     assert resp.status_code == 200
     item = resp.json()["items"][0]
@@ -114,7 +116,7 @@ def test_save_clothing_upserts_user_and_embeds(mock_admin, mock_pop) -> None:
     ]
 
     resp = client.post(
-        "/clothing",
+        "/v1/clothing",
         json={
             "pipeline_token": "tok",
             "attributes": {

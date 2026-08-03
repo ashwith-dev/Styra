@@ -64,27 +64,30 @@ def _failed_result() -> PipelineResult:
     )
 
 
-@patch("app.api.analyze.store_pipeline_result")
-def test_failed_result_is_not_staged(mock_store) -> None:
+@patch("app.api.analyze.persist_pipeline_result")
+@patch("app.api.analyze.stage_pipeline_result")
+def test_failed_result_is_not_staged(mock_stage, mock_persist) -> None:
     _override(_failed_result())
     resp = client.post(
-        "/analyze-clothing",
+        "/v1/analyze-clothing",
         files={"file": ("a.jpg", b"img-bytes", "image/jpeg")},
     )
     assert resp.status_code == 400
     assert resp.json()["detail"]["stage_failed"] == "validation"
-    mock_store.assert_not_called()
+    mock_stage.assert_not_called()
+    mock_persist.assert_not_called()
 
 
-@patch("app.api.analyze.store_pipeline_result")
-def test_successful_result_is_staged_for_calling_user(mock_store) -> None:
+@patch("app.api.analyze.persist_pipeline_result")
+@patch("app.api.analyze.stage_pipeline_result")
+def test_successful_result_is_staged_for_calling_user(mock_stage, mock_persist) -> None:
     _override(_completed_result())
     resp = client.post(
-        "/analyze-clothing",
+        "/v1/analyze-clothing",
         files={"file": ("a.jpg", b"img-bytes", "image/jpeg")},
     )
     assert resp.status_code == 200
     assert resp.json()["pipeline_token"] == "tok-1"
-    result_arg, user_arg = mock_store.call_args.args
+    result_arg, user_arg = mock_stage.call_args.args
     assert result_arg.pipeline_token == "tok-1"
     assert user_arg == "user-1"

@@ -184,9 +184,27 @@ def test_pop_returns_from_memory_without_supabase(mock_supabase) -> None:
 @patch("app.services.pipeline_store.get_supabase")
 def test_pop_memory_entry_wrong_user_falls_through(mock_supabase) -> None:
     mock_supabase.return_value = _client_returning([])
-    pipeline_store._memory_store["tok-1"] = (_result(), "user-1")
+    pipeline_store._memory_store["tok-1"] = (
+        _result(),
+        "user-1",
+        datetime.now(timezone.utc),
+    )
 
     assert pop_pipeline_result("tok-1", "user-2") is None
+
+
+@patch("app.services.pipeline_store.get_supabase")
+def test_pop_expired_memory_entry_returns_none(mock_supabase) -> None:
+    """Memory entries honour the same TTL as DB rows."""
+    mock_supabase.return_value = _client_returning([])
+    pipeline_store._memory_store["tok-1"] = (
+        _result(),
+        "user-1",
+        datetime.now(timezone.utc) - TTL - timedelta(minutes=1),
+    )
+
+    assert pop_pipeline_result("tok-1", "user-1") is None
+    assert "tok-1" not in pipeline_store._memory_store
 
 
 @patch("app.services.pipeline_store.get_supabase")
