@@ -8,10 +8,14 @@ import time
 import threading
 from typing import Optional
 
-from fastapi import HTTPException, Request, status
+from fastapi import Request, status
+from fastapi.responses import JSONResponse
+
+from app.config import settings
 
 # ── Per-endpoint bucket configuration ──
 # Each entry: (max_tokens, refill_seconds) — so "N requests per S seconds".
+# Keys are API-prefix-relative (i.e. without the "/v1" prefix).
 _RATE_LIMITS: dict[str, tuple[int, float]] = {
     "/analyze-clothing": (5, 60.0),    # 5 requests per minute (costly AI pipeline)
     "/clothing": (50, 60.0),           # 50 write requests per minute
@@ -23,6 +27,11 @@ _RATE_LIMITS: dict[str, tuple[int, float]] = {
 DEFAULT_LIMIT: tuple[int, float] = (200, 60.0)  # 200 requests per minute default
 
 _BURST_FACTOR = 1.5  # allow slight burst over the per-second fill rate
+
+# Cap the bucket store so a flood of distinct users/IPs cannot grow memory
+# without bound. When exceeded, stale buckets (idle > 10 min) are evicted.
+_MAX_STORE_ENTRIES = 10_000
+_STALE_AFTER_SECONDS = 600.0
 
 
 class _Bucket:
@@ -65,11 +74,34 @@ def _key_for(request: Request) -> str:
     return f"{client}:{request.url.path}"
 
 
+def _route_path(path: str) -> str:
+    """Strip the configured API prefix so limit keys match versioned paths."""
+    prefix = settings.api_prefix
+    if prefix and path.startswith(prefix):
+        return path[len(prefix):]
+    return path
+
+
 def get_rate_limit_config(path: str) -> tuple[int, float]:
+    route = _route_path(path)
     for prefix, limit in _RATE_LIMITS.items():
-        if path.startswith(prefix):
+        if route.startswith(prefix):
             return limit
     return DEFAULT_LIMIT
+
+
+def _evict_stale(now: float) -> None:
+    """Drop buckets idle longer than the staleness window.
+
+    If nothing is stale the store is cleared wholesale — a full store of
+    active buckets is indistinguishable from an attack at this size.
+    """
+    stale = [k for k, b in _store.items() if now - b.last_refill > _STALE_AFTER_SECONDS]
+    if stale:
+        for k in stale:
+            del _store[k]
+    else:
+        _store.clear()
 
 
 async def rate_limit_middleware(request: Request, call_next):
@@ -78,15 +110,24 @@ async def rate_limit_middleware(request: Request, call_next):
     key = _key_for(request)
 
     with _lock:
+        if len(_store) >= _MAX_STORE_ENTRIES:
+            _evict_stale(time.monotonic())
+
         bucket = _store.get(key)
         if bucket is None or (bucket.max_tokens != max_tokens * _BURST_FACTOR):
             bucket = _Bucket(max_tokens, refill)
             _store[key] = bucket
 
-        if not bucket.consume():
-            raise HTTPException(
-                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-                detail="Rate limit exceeded. Please slow down.",
-            )
+        allowed = bucket.consume()
+
+    if not allowed:
+        # Return a response directly: raising HTTPException here would bypass
+        # the app's exception handlers (they sit inside the middleware stack)
+        # and surface to clients as a 500.
+        return JSONResponse(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            content={"detail": "Rate limit exceeded. Please slow down."},
+            headers={"Retry-After": str(int(refill))},
+        )
 
     return await call_next(request)

@@ -4,7 +4,10 @@ from fastapi import APIRouter, UploadFile, File, Depends, HTTPException, status
 
 from app.models.api_contract import AnalyzeClothingResponse
 from app.services.pipeline_service import PipelineService
-from app.services.pipeline_store import store_pipeline_result
+from app.services.pipeline_store import (
+    persist_pipeline_result,
+    stage_pipeline_result,
+)
 from app.dependencies import get_current_user
 
 router = APIRouter()
@@ -58,7 +61,11 @@ async def analyze_clothing(
             },
         )
 
-    asyncio.create_task(asyncio.to_thread(store_pipeline_result, result, user_id))
+    # Stage in memory synchronously so a save request that arrives right
+    # after this response can always claim its token; the DB backup write
+    # is best-effort and runs in the background.
+    stage_pipeline_result(result, user_id)
+    asyncio.create_task(asyncio.to_thread(persist_pipeline_result, result, user_id))
 
     return AnalyzeClothingResponse(
         pipeline_token=result.pipeline_token,

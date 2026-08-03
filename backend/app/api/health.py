@@ -1,6 +1,10 @@
+import logging
+
 from fastapi import APIRouter
 
 from app.config import settings
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -10,14 +14,16 @@ async def health():
     status = "ok"
     checks: dict[str, str] = {}
 
-    # Supabase
+    # Supabase — exception details are logged server-side only; the public
+    # response must not leak connection strings or internal errors.
     try:
         from app.services.supabase_client import get_supabase
 
-        get_supabase().table("clothing_items").select("id", limit=1).execute()
+        get_supabase().table("clothing_items").select("id").limit(1).execute()
         checks["supabase"] = "ok"
-    except Exception as exc:
-        checks["supabase"] = f"unavailable: {exc}"
+    except Exception:
+        logger.warning("Health check: Supabase unavailable", exc_info=True)
+        checks["supabase"] = "unavailable"
         status = "degraded"
 
     # Pipeline
@@ -28,8 +34,9 @@ async def health():
             checks["pipeline"] = "available"
         else:
             checks["pipeline"] = "not configured"
-    except Exception as exc:
-        checks["pipeline"] = f"error: {exc}"
+    except Exception:
+        logger.warning("Health check: pipeline check failed", exc_info=True)
+        checks["pipeline"] = "error"
 
     return {
         "status": status,

@@ -1,8 +1,9 @@
 import asyncio
 import logging
 import re
+from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from supabase import Client
 
 from app.dependencies import get_current_user
@@ -18,6 +19,7 @@ from app.services.supabase_client import get_supabase, get_user_client
 from app.services.pipeline_store import pop_pipeline_result
 from app.services.embedding.attribute_embedder import AttributeEmbedder
 from app.services.clothing_mapper import attributes_to_row, row_to_attributes
+from app.services.storage_service import get_storage_service
 from app.utils.jwt import get_token, get_user_supabase
 from app.utils.attribute_validation import validate_attributes
 
@@ -84,7 +86,7 @@ def _to_detail(r: dict) -> ClothingItemDetail:
 async def save_clothing(
     body: SaveClothingRequest,
     user_id: str = Depends(get_current_user),
-    supabase_admin: Client = Depends(get_user_supabase),
+    user_client: Client = Depends(get_user_supabase),
 ) -> SaveClothingResponse:
     admin = get_supabase()
 
@@ -122,7 +124,7 @@ async def save_clothing(
     }
 
     try:
-        resp = _insert_item(supabase_admin, data)
+        resp = _insert_item(user_client, data)
     except Exception as exc:
         logger.error("Failed to insert clothing item: %s", exc)
         raise HTTPException(
@@ -150,8 +152,8 @@ async def save_clothing(
 async def list_clothing(
     user_id: str = Depends(get_current_user),
     supabase: Client = Depends(get_user_supabase),
-    limit: int = 1000,
-    offset: int = 0,
+    limit: int = Query(default=1000, ge=1, le=1000),
+    offset: int = Query(default=0, ge=0),
 ) -> ListClothingResponse:
     total_count = 0
     try:
@@ -191,7 +193,7 @@ async def list_clothing(
 
 @router.get("/clothing/{item_id}", response_model=ClothingItemDetail)
 async def get_clothing_item(
-    item_id: str,
+    item_id: UUID,
     user_id: str = Depends(get_current_user),
     supabase: Client = Depends(get_user_supabase),
 ) -> ClothingItemDetail:
@@ -199,9 +201,9 @@ async def get_clothing_item(
         resp = (
             supabase.table("clothing_items")
             .select("*")
-            .eq("id", item_id)
+            .eq("id", str(item_id))
             .eq("user_id", user_id)
-            .single()
+            .maybe_single()
             .execute()
         )
         if not resp.data:
@@ -220,7 +222,7 @@ async def get_clothing_item(
 
 @router.patch("/clothing/{item_id}", response_model=ClothingItemDetail)
 async def update_clothing_item(
-    item_id: str,
+    item_id: UUID,
     body: UpdateClothingRequest,
     user_id: str = Depends(get_current_user),
     supabase: Client = Depends(get_user_supabase),
@@ -229,7 +231,7 @@ async def update_clothing_item(
         resp = (
             supabase.table("clothing_items")
             .update(attributes_to_row(body.attributes))
-            .eq("id", item_id)
+            .eq("id", str(item_id))
             .eq("user_id", user_id)
             .execute()
         )
@@ -249,20 +251,41 @@ async def update_clothing_item(
 
 @router.delete("/clothing/{item_id}", status_code=204)
 async def delete_clothing_item(
-    item_id: str,
+    item_id: UUID,
     user_id: str = Depends(get_current_user),
     supabase: Client = Depends(get_user_supabase),
 ) -> None:
     try:
+        # Fetch first so the storage objects can be removed with the row;
+        # otherwise the public bucket files are orphaned forever.
+        row_resp = (
+            supabase.table("clothing_items")
+            .select("image_url, original_image_url, thumbnail_url")
+            .eq("id", str(item_id))
+            .eq("user_id", user_id)
+            .maybe_single()
+            .execute()
+        )
+        if not row_resp.data:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
+
         resp = (
             supabase.table("clothing_items")
             .delete()
-            .eq("id", item_id)
+            .eq("id", str(item_id))
             .eq("user_id", user_id)
             .execute()
         )
         if not resp.data:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
+
+        storage = get_storage_service()
+        for url in (
+            row_resp.data.get("image_url"),
+            row_resp.data.get("original_image_url"),
+            row_resp.data.get("thumbnail_url"),
+        ):
+            await asyncio.to_thread(storage.delete_by_public_url, url)
     except HTTPException:
         raise
     except Exception as exc:

@@ -12,11 +12,4 @@ onnxruntime>=1.17.0
 numpy==2.2.2
 alembic==1.14.1
 psycopg2-binary==2.9.10
-transformers==4.47.1
-torch==2.5.1
 pytest==8.3.4
-google-genai>=0.1.1
-scikit-image>=0.22.0
-torchvision>=0.16.0
-timm>=1.0.0
-einops>=0.8.0
