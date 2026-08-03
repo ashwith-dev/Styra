@@ -29,4 +29,5 @@ export { Step4Colors } from "./components/Step4Colors";
 export { MoreColoursModal } from "./components/MoreColoursModal";
 export { Step5Fit } from "./components/Step5Fit";
 export { Step6Notifications } from "./components/Step6Notifications";
+export { Step7WardrobeType } from "./components/Step7WardrobeType";
 export { Step7Ready } from "./components/Step7Ready";

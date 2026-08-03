@@ -255,9 +255,10 @@ export const WOMEN_CATEGORIES: CategoryDef[] = [
 ];
 
 // Helper to get combined unique categories & subcategories for Mixed Wardrobe
-export function getCategoriesForWardrobeType(type: WardrobeType = "mixed"): CategoryDef[] {
-  if (type === "men") return MEN_CATEGORIES;
-  if (type === "women") return WOMEN_CATEGORIES;
+export function getCategoriesForWardrobeType(type: string = "mixed"): CategoryDef[] {
+  const normalized = (type || "mixed").toLowerCase();
+  if (normalized === "men" || normalized === "male") return MEN_CATEGORIES;
+  if (normalized === "women" || normalized === "female") return WOMEN_CATEGORIES;
 
   // Combine Men & Women categories for Mixed
   const categoryMap = new Map<string, { name: string; subs: Set<string> }>();
@@ -280,7 +281,7 @@ export function getCategoriesForWardrobeType(type: WardrobeType = "mixed"): Cate
 
 export function getSubcategoriesForCategory(
   category: string,
-  type: WardrobeType = "mixed",
+  type: string = "mixed",
 ): string[] {
   const categories = getCategoriesForWardrobeType(type);
   const found = categories.find(

@@ -99,6 +99,31 @@ export function AiStyleProfileSection({
         </TouchableOpacity>
       </View>
 
+      {/* 2.5 Wardrobe Type Card */}
+      <TouchableOpacity
+        onPress={() => onEditSection("wardrobeType")}
+        style={styles.card}
+        activeOpacity={0.8}
+      >
+        <View style={styles.cardHeader}>
+          <Text style={styles.cardTitle}>WARDROBE TYPE</Text>
+          <Ionicons name="pencil" size={16} color="#7F7C76" />
+        </View>
+
+        <Text
+          style={[
+            styles.valueHeadline,
+            !preferences.wardrobeType && styles.unselectedText,
+          ]}
+        >
+          {preferences.wardrobeType === "men"
+            ? "Men's Wardrobe"
+            : preferences.wardrobeType === "women"
+            ? "Women's Wardrobe"
+            : "Mixed / Unisex"}
+        </Text>
+      </TouchableOpacity>
+
       {/* 3. Fit Preference Card */}
       <TouchableOpacity
         onPress={() => onEditSection("fitPreference")}

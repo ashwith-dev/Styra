@@ -20,6 +20,7 @@ const INITIAL_SELECTIONS: OnboardingSelections = {
   preferredStyles: [],
   preferredColors: [],
   preferredFit: undefined,
+  wardrobeType: undefined,
 };
 
 const DEFAULT_STATE: OnboardingState = {
@@ -61,11 +62,30 @@ export function useOnboarding(): OnboardingViewModel {
   const syncOnboardingToPreferences = useCallback(async (selections: OnboardingSelections) => {
     try {
       const resolvedColors = (selections.preferredColors || []).map((c) => resolveColorHex(c));
+      const genderMap: Record<string, string> = {
+        men: "Male",
+        women: "Female",
+        mixed: "Others",
+      };
+
       await updateUserPreferences({
         lifestyle: selections.lifestyle ? String(selections.lifestyle) : undefined,
         styles: selections.preferredStyles || [],
         favoriteColors: resolvedColors,
         fitPreference: selections.preferredFit ? String(selections.preferredFit) : undefined,
+        wardrobeType: selections.wardrobeType,
+        ...(selections.wardrobeType
+          ? {
+              bodyProfile: {
+                height: "",
+                weight: "",
+                topSize: "",
+                bottomSize: "",
+                shoeSize: "",
+                gender: genderMap[selections.wardrobeType] || "Others",
+              },
+            }
+          : {}),
       });
     } catch {
       // Non-fatal if sync fails during onboarding
@@ -164,6 +184,19 @@ export function useOnboarding(): OnboardingViewModel {
     [updateAndPersist],
   );
 
+  const selectWardrobeType = useCallback(
+    (type: "men" | "women" | "mixed") => {
+      void updateAndPersist((prev) => ({
+        ...prev,
+        selections: {
+          ...prev.selections,
+          wardrobeType: type,
+        },
+      }));
+    },
+    [updateAndPersist],
+  );
+
   const canProceed = useMemo(() => {
     switch (state.currentStep) {
       case 1:
@@ -182,6 +215,8 @@ export function useOnboarding(): OnboardingViewModel {
       case 6:
         return true;
       case 7:
+        return Boolean(state.selections.wardrobeType);
+      case 8:
         return true;
       default:
         return true;
@@ -189,7 +224,7 @@ export function useOnboarding(): OnboardingViewModel {
   }, [state.currentStep, state.selections]);
 
   const nextStep = useCallback(async () => {
-    if (state.currentStep < 7) {
+    if (state.currentStep < 8) {
       void updateAndPersist((prev) => ({
         ...prev,
         currentStep: prev.currentStep + 1,
@@ -202,7 +237,7 @@ export function useOnboarding(): OnboardingViewModel {
       await updateAndPersist((prev) => ({
         ...prev,
         completed: true,
-        completedSteps: [1, 2, 3, 4, 5, 6, 7],
+        completedSteps: [1, 2, 3, 4, 5, 6, 7, 8],
       }));
       router.replace("/home");
     }
@@ -218,7 +253,7 @@ export function useOnboarding(): OnboardingViewModel {
   }, [state.currentStep, updateAndPersist]);
 
   const skipOnboarding = useCallback(async () => {
-    if (state.currentStep < 7) {
+    if (state.currentStep < 8) {
       void updateAndPersist((prev) => ({
         ...prev,
         currentStep: prev.currentStep + 1,
@@ -231,7 +266,7 @@ export function useOnboarding(): OnboardingViewModel {
     await updateAndPersist((prev) => ({
       ...prev,
       completed: true,
-      completedSteps: [1, 2, 3, 4, 5, 6, 7],
+      completedSteps: [1, 2, 3, 4, 5, 6, 7, 8],
     }));
     router.push("/upload/capture");
   }, [state.selections, updateAndPersist, syncOnboardingToPreferences]);
@@ -258,6 +293,7 @@ export function useOnboarding(): OnboardingViewModel {
       toggleColor,
       toggleOtherColor,
       selectFit,
+      selectWardrobeType,
       resetOnboarding,
     },
   };

@@ -36,10 +36,11 @@ export interface OnboardingSelections {
   preferredColors: string[];
   otherColor?: boolean;
   preferredFit?: string;
+  wardrobeType?: "men" | "women" | "mixed";
 }
 
 export interface OnboardingState {
-  currentStep: number; // 1-indexed (1 to 7)
+  currentStep: number; // 1-indexed (1 to 8)
   totalSteps: number;
   completedSteps: number[];
   completed: boolean;
@@ -63,6 +64,7 @@ export interface OnboardingViewModel {
     toggleColor: (colorName: string) => void;
     toggleOtherColor: () => void;
     selectFit: (id: string) => void;
+    selectWardrobeType: (type: "men" | "women" | "mixed") => void;
     resetOnboarding: () => Promise<void>;
   };
 }
