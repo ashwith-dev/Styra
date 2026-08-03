@@ -55,16 +55,9 @@ def _key_for(request: Request) -> str:
     try:
         token = request.headers.get("Authorization", "").removeprefix("Bearer ").strip()
         if token:
-            from jose import jwt
-            from app.config import settings
+            from app.utils.jwt import decode_access_token
 
-            payload = jwt.decode(
-                token,
-                settings.supabase_jwt_secret,
-                algorithms=["HS256"],
-                options={"verify_aud": False},
-            )
-            user_id = payload.get("sub")
+            user_id = decode_access_token(token).get("sub")
     except Exception:
         pass
 

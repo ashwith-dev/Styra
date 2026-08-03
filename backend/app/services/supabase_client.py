@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from supabase import create_client, Client, ClientOptions
 
 from app.config import settings
