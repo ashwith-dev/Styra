@@ -3,9 +3,9 @@ import type { OutfitRecommendationResponse, OutfitRecommendationItem } from "@/l
 
 export async function fetchOutfitRecommendations(
   params?: { occasion?: string; season?: string },
-  _signal?: AbortSignal,
+  signal?: AbortSignal,
 ): Promise<OutfitRecommendationResponse> {
-  return api.getOutfitRecommendations(params);
+  return api.getOutfitRecommendations(params, signal);
 }
 
 export async function sendOutfitFeedback(

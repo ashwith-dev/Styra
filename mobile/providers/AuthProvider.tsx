@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import type { Session, User, AuthError } from "@supabase/supabase-js";
 import { supabase } from "../lib/supabase";
+import { clearAllLocalData } from "../lib/storage/clearAll";
 
 interface AuthContextValue {
   session: Session | null;
@@ -72,11 +73,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signOut = async () => {
+    const userId = session?.user?.id;
     try {
       await supabase.auth.signOut();
     } catch {
       // Non-fatal: session will be stale but sign-out is best-effort
     }
+    // Wipe on-device caches so the next account on this device never sees
+    // the previous user's wardrobe, looks, or preferences.
+    await clearAllLocalData(userId);
   };
 
   const resetPassword = async (email: string) => {

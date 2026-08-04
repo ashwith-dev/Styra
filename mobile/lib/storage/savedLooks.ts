@@ -1,3 +1,4 @@
+import * as FileSystem from "expo-file-system";
 import * as SecureStore from "expo-secure-store";
 import { generateId } from "@/lib/uuid";
 import type { SavedLook } from "@/features/looks/types/looks";
@@ -8,12 +9,38 @@ export interface CacheMetadata<T> {
   version: number;
 }
 
-const SAVED_LOOKS_STORAGE_KEY = "styra_saved_looks_v1";
+// Saved looks are user data: stored in documentDirectory (persisted and
+// backed up), not SecureStore — SecureStore values are capped at ~2 KB,
+// which a handful of looks with image URLs exceeds silently.
+const SAVED_LOOKS_FILE = `${FileSystem.documentDirectory}styra_saved_looks_v1.json`;
+const LEGACY_SECURESTORE_KEY = "styra_saved_looks_v1";
 const LOOKS_CACHE_VERSION = 1;
+
+async function readRaw(): Promise<string | null> {
+  try {
+    const info = await FileSystem.getInfoAsync(SAVED_LOOKS_FILE);
+    if (info.exists) {
+      const json = await FileSystem.readAsStringAsync(SAVED_LOOKS_FILE);
+      if (json) return json;
+      return null;
+    }
+
+    // One-time migration from the legacy SecureStore location.
+    const legacy = await SecureStore.getItemAsync(LEGACY_SECURESTORE_KEY);
+    if (legacy) {
+      await FileSystem.writeAsStringAsync(SAVED_LOOKS_FILE, legacy);
+      await SecureStore.deleteItemAsync(LEGACY_SECURESTORE_KEY).catch(() => {});
+      return legacy;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
 
 export async function getSavedLooksMetadata(): Promise<CacheMetadata<SavedLook[]> | null> {
   try {
-    const json = await SecureStore.getItemAsync(SAVED_LOOKS_STORAGE_KEY);
+    const json = await readRaw();
     if (!json) return null;
     return JSON.parse(json) as CacheMetadata<SavedLook[]>;
   } catch (err) {
@@ -39,10 +66,7 @@ export async function saveSavedLooks(looks: SavedLook[]): Promise<void> {
     version: LOOKS_CACHE_VERSION,
   };
   try {
-    await SecureStore.setItemAsync(
-      SAVED_LOOKS_STORAGE_KEY,
-      JSON.stringify(metadata),
-    );
+    await FileSystem.writeAsStringAsync(SAVED_LOOKS_FILE, JSON.stringify(metadata));
   } catch (err) {
     console.error("Failed to write saved looks to storage:", err);
     throw new Error("Could not persist saved look.", { cause: err });
@@ -99,9 +123,9 @@ export async function deleteSavedLook(id: string): Promise<void> {
 
 export async function clearSavedLooks(): Promise<void> {
   try {
-    await SecureStore.deleteItemAsync(SAVED_LOOKS_STORAGE_KEY);
+    await FileSystem.deleteAsync(SAVED_LOOKS_FILE, { idempotent: true });
+    await SecureStore.deleteItemAsync(LEGACY_SECURESTORE_KEY).catch(() => {});
   } catch (err) {
     console.error("Failed to clear saved looks from storage:", err);
   }
 }
-

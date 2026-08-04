@@ -74,3 +74,13 @@ export async function setInsightsCache(
     console.error("Failed to write insights cache:", err);
   }
 }
+
+export async function clearAiCache(): Promise<void> {
+  for (const file of [RECS_FILE, INSIGHTS_FILE]) {
+    try {
+      await FileSystem.deleteAsync(file, { idempotent: true });
+    } catch (err) {
+      console.error("Failed to clear AI cache:", err);
+    }
+  }
+}

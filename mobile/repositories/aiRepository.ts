@@ -32,7 +32,7 @@ function mapBackendOutfitToV1(
     title: `${dto.outfit_category.toUpperCase()} OUTFIT`,
     category: dto.outfit_category,
     items,
-    matchScore: Math.round(dto.score * 100),
+    matchScore: Math.round(dto.score),
     explanation: dto.explanation || "Curated based on color harmony and style context.",
   };
 }

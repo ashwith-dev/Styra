@@ -1,3 +1,4 @@
+import * as FileSystem from "expo-file-system";
 import * as SecureStore from "expo-secure-store";
 import { generateId } from "@/lib/uuid";
 
@@ -19,11 +20,36 @@ export interface SyncOperation {
   attempts: number;
 }
 
-const MUTATION_QUEUE_KEY = "styra_mutation_queue_v1";
+// The queue lives in documentDirectory, not SecureStore — queued payloads
+// (e.g. look items with image URLs) exceed SecureStore's ~2 KB value cap.
+const MUTATION_QUEUE_FILE = `${FileSystem.documentDirectory}styra_mutation_queue_v1.json`;
+const LEGACY_SECURESTORE_KEY = "styra_mutation_queue_v1";
+
+async function readRaw(): Promise<string | null> {
+  try {
+    const info = await FileSystem.getInfoAsync(MUTATION_QUEUE_FILE);
+    if (info.exists) {
+      const json = await FileSystem.readAsStringAsync(MUTATION_QUEUE_FILE);
+      if (json) return json;
+      return null;
+    }
+
+    // One-time migration from the legacy SecureStore location.
+    const legacy = await SecureStore.getItemAsync(LEGACY_SECURESTORE_KEY);
+    if (legacy) {
+      await FileSystem.writeAsStringAsync(MUTATION_QUEUE_FILE, legacy);
+      await SecureStore.deleteItemAsync(LEGACY_SECURESTORE_KEY).catch(() => {});
+      return legacy;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
 
 export async function getQueue(): Promise<SyncOperation[]> {
   try {
-    const json = await SecureStore.getItemAsync(MUTATION_QUEUE_KEY);
+    const json = await readRaw();
     if (!json) return [];
     const ops = JSON.parse(json) as SyncOperation[];
     return ops.sort((a, b) => a.priority - b.priority);
@@ -34,7 +60,7 @@ export async function getQueue(): Promise<SyncOperation[]> {
 
 export async function saveQueue(queue: SyncOperation[]): Promise<void> {
   try {
-    await SecureStore.setItemAsync(MUTATION_QUEUE_KEY, JSON.stringify(queue));
+    await FileSystem.writeAsStringAsync(MUTATION_QUEUE_FILE, JSON.stringify(queue));
   } catch (err) {
     console.error("Failed to write mutation queue to storage:", err);
   }
@@ -109,7 +135,8 @@ export async function incrementOpAttempts(opId: string): Promise<void> {
 
 export async function clearQueue(): Promise<void> {
   try {
-    await SecureStore.deleteItemAsync(MUTATION_QUEUE_KEY);
+    await FileSystem.deleteAsync(MUTATION_QUEUE_FILE, { idempotent: true });
+    await SecureStore.deleteItemAsync(LEGACY_SECURESTORE_KEY).catch(() => {});
   } catch (err) {
     console.error("Failed to clear mutation queue:", err);
   }

@@ -43,6 +43,9 @@ export async function processSyncQueue(): Promise<void> {
       const handler = handlers.get(op.type);
       if (!handler) {
         console.warn(`No handler registered for sync operation type: ${op.type}`);
+        // Orphaned ops (e.g. queued by an older app version) must age out
+        // instead of looping forever.
+        await incrementOpAttempts(op.id);
         continue;
       }
 
