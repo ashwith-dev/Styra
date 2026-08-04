@@ -1,8 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { generateId } from "@/lib/uuid";
 import * as aiRepo from "@/repositories/aiRepository";
-import * as looksRepo from "@/repositories/looksRepository";
 import { getUserFacingMessage } from "@/lib/errors";
+import { saveRecommendationAsLook, setLastRecommendations } from "../cache";
 import type {
   AIRecommendationItemV1,
   AIState,
@@ -47,6 +46,9 @@ export function useRecommendationsData(): RecommendationsViewModel {
           (item) => !dislikedSetRef.current.has(item.id),
         );
         setRecommendations(filtered);
+        // Keep the module cache in sync so the detail screen reads the
+        // exact list the user sees (indexes must line up).
+        setLastRecommendations(filtered);
         setAiState("success");
       } catch (err: unknown) {
         if ((err as Error)?.name === "CanceledError" || (err as Error)?.name === "AbortError") {
@@ -59,14 +61,14 @@ export function useRecommendationsData(): RecommendationsViewModel {
     [occasion, season],
   );
 
+  // No auto-fetch here: the screen's useFocusEffect drives fetching
+  // (mount + focus + filter changes). An effect keyed on
+  // fetchRecommendations would double-fire alongside it.
   useEffect(() => {
-    void fetchRecommendations();
     return () => {
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
-      }
+      abortControllerRef.current?.abort();
     };
-  }, [fetchRecommendations]);
+  }, []);
 
   const submitFeedback = useCallback(
     async (outfitId: string, feedback: "like" | "dislike"): Promise<boolean> => {
@@ -83,28 +85,7 @@ export function useRecommendationsData(): RecommendationsViewModel {
     async (outfitId: string): Promise<boolean> => {
       const rec = recommendations.find((r) => r.id === outfitId);
       if (!rec) return false;
-
-      const lookItems = rec.items.map((item) => ({
-        id: generateId(),
-        clothing_item_id: item.id,
-        thumbnail_url: item.thumbnail_url || null,
-        segmented_image_url: item.segmented_image_url || null,
-        attributes: item.attributes || {},
-      }));
-
-      try {
-        await looksRepo.createLook({
-          name: rec.title,
-          description: rec.explanation,
-          category: rec.category,
-          season: rec.season || "All Seasons",
-          source: "ai",
-          items: lookItems,
-        });
-        return true;
-      } catch {
-        return false;
-      }
+      return saveRecommendationAsLook(rec);
     },
     [recommendations],
   );

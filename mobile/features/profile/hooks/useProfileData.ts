@@ -109,19 +109,19 @@ export function useProfileData(): ProfileViewModel {
   const categoryCount = getCachedWardrobeCategoryCount();
   const outfitsCreatedCount = savedLooksCount;
 
-  // Real calculations for wardrobe insights
-  const insights = useMemo(() => {
-    const wardrobeItems = getCachedWardrobeItems();
+  // Real calculations for wardrobe insights. Computed every render (cheap
+  // over a few hundred items) — memoizing on an unrelated dependency
+  // served stale insights after wardrobe changes.
+  const wardrobeItems = getCachedWardrobeItems();
 
-    if (wardrobeItems.length === 0) {
-      return {
-        mostWorn: "None Yet",
-        favColour: "None Yet",
-        mostOwned: "None Yet",
-        newestItem: "No items",
-      };
-    }
+  let insights = {
+    mostWorn: "None Yet",
+    favColour: "None Yet",
+    mostOwned: "None Yet",
+    newestItem: "No items",
+  };
 
+  if (wardrobeItems.length > 0) {
     const categoryCounts: Record<string, number> = {};
     const colorCounts: Record<string, number> = {};
 
@@ -171,13 +171,13 @@ export function useProfileData(): ProfileViewModel {
       else newestText = `${diffDays} days ago`;
     }
 
-    return {
+    insights = {
       mostWorn: mostOwned,
       favColour: favColor,
       mostOwned,
       newestItem: newestText,
     };
-  }, [savedLooksCount]);
+  }
 
   return {
     user: profileUser,

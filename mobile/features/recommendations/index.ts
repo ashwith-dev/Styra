@@ -8,3 +8,9 @@ export type {
   RecommendationsViewModel,
 } from "./types/ai";
 export { useRecommendationsData } from "./hooks/useRecommendationsData";
+export {
+  getLastRecommendations,
+  setLastRecommendations,
+  clearLastRecommendations,
+  saveRecommendationAsLook,
+} from "./cache";

@@ -9,6 +9,11 @@ import * as api from "../lib/api";
 
 let _cachedWardrobeItems: ClothingItemBrief[] = [];
 
+/** Clear the in-memory wardrobe cache (sign-out / account switch). */
+export function resetWardrobeMemoryCache(): void {
+  _cachedWardrobeItems = [];
+}
+
 export function getCachedWardrobeItems(): ClothingItemBrief[] {
   return _cachedWardrobeItems;
 }

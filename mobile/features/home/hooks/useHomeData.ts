@@ -1,6 +1,7 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { getCachedWardrobeCategoryCount, useWardrobe } from "@/hooks/useWardrobe";
 import { useAuth } from "@/providers/AuthProvider";
+import { getPreferences } from "@/lib/storage/preferences";
 import {
   validateMinimumWardrobe,
   type WardrobeValidationResult,
@@ -29,6 +30,7 @@ export interface HomeViewModel {
     avatar: string | null;
     greetingTime: string;
     signOut: () => Promise<void>;
+    lifestyle: string | null;
   };
   stats: {
     totalItems: number;
@@ -46,6 +48,22 @@ export interface HomeViewModel {
 export function useHomeData(): HomeViewModel {
   const { user, signOut } = useAuth();
   const { allItems, loading, error, refresh, confirmDelete } = useWardrobe();
+  const [userLifestyle, setUserLifestyle] = useState<string | null>(null);
+
+  useEffect(() => {
+    let mounted = true;
+    void (async () => {
+      try {
+        const prefs = await getPreferences();
+        if (mounted && prefs.lifestyle) {
+          setUserLifestyle(prefs.lifestyle);
+        }
+      } catch {
+        // Non-fatal — lifestyle label is cosmetic
+      }
+    })();
+    return () => { mounted = false; };
+  }, []);
 
   const greetingTime = useMemo(() => getGreetingTime(), []);
 
@@ -103,6 +121,7 @@ export function useHomeData(): HomeViewModel {
       avatar: userAvatar,
       greetingTime,
       signOut,
+      lifestyle: userLifestyle,
     },
     stats: {
       totalItems,

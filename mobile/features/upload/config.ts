@@ -33,7 +33,6 @@ export const UPLOAD_SINGLE_ATTRS: FieldDef[] = [
   { key: "sleeve_length", label: "Sleeve Length" },
   { key: "fit", label: "Fit" },
   { key: "length", label: "Length" },
-  { key: "closure", label: "Closure" },
   { key: "description", label: "Description", multiline: true },
 ];
 

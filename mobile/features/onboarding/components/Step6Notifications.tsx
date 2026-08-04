@@ -11,6 +11,11 @@ import { colors, radius, spacing, typography } from "@/theme";
 import { STEP6_NOTIF_IMAGE } from "../config";
 import { OnboardingFooter } from "./OnboardingFooter";
 import { OnboardingHeader } from "./OnboardingHeader";
+import { PermissionDialog } from "@/components/ui/PermissionDialog";
+import {
+  NOTIFICATION_DENIED_DIALOG,
+} from "@/lib/services/permissionConstants";
+import { useNotificationPermission } from "@/hooks/useNotificationPermission";
 
 interface Step6NotificationsProps {
   onAllow: () => void;
@@ -25,6 +30,28 @@ export function Step6Notifications({
   onBack,
   onSkip,
 }: Step6NotificationsProps) {
+  const {
+    showDeniedDialog,
+    isRequesting,
+    requestAndHandlePermission,
+    handleDialogPrimary,
+    handleDialogSecondary,
+  } = useNotificationPermission();
+
+  const handleAllowPress = () => {
+    void requestAndHandlePermission(
+      // Granted
+      () => onAllow(),
+      // Denied (user tapped "Maybe Later" in the in-app dialog)
+      () => onMaybeLater(),
+    );
+  };
+
+  const handleMaybeLaterPress = () => {
+    // User skipped without tapping "Allow" at all — go to next step
+    onMaybeLater();
+  };
+
   return (
     <View style={styles.container}>
       <OnboardingHeader currentStep={6} onBack={onBack} title="Curated" />
@@ -62,17 +89,20 @@ export function Step6Notifications({
         {/* Action Buttons */}
         <View style={styles.actionsGroup}>
           <TouchableOpacity
-            onPress={onAllow}
-            style={styles.allowBtn}
+            onPress={handleAllowPress}
+            style={[styles.allowBtn, isRequesting && styles.allowBtnDisabled]}
             activeOpacity={0.88}
+            disabled={isRequesting}
             accessibilityRole="button"
-            accessibilityLabel="Allow Notifications"
+            accessibilityLabel="Turn On Notifications"
           >
-            <Text style={styles.allowBtnText}>Allow Notifications</Text>
+            <Text style={styles.allowBtnText}>
+              {isRequesting ? "Requesting…" : "Turn On Notifications"}
+            </Text>
           </TouchableOpacity>
 
           <TouchableOpacity
-            onPress={onMaybeLater}
+            onPress={handleMaybeLaterPress}
             style={styles.maybeBtn}
             activeOpacity={0.85}
             accessibilityRole="button"
@@ -83,15 +113,30 @@ export function Step6Notifications({
         </View>
       </ScrollView>
 
-      {/* Bottom Bar: Skip text button on left, Next circle button on right */}
+      {/* Bottom Bar */}
       <OnboardingFooter
-        onContinue={onAllow}
+        onContinue={handleAllowPress}
         onSkip={onSkip}
-        onNext={onAllow}
+        onNext={handleAllowPress}
         showSkipButton={true}
         showNextArrow={true}
         continueLabel="Continue"
         centerContinue={false}
+      />
+
+      {/* In-app dialog shown after native dialog is denied */}
+      <PermissionDialog
+        visible={showDeniedDialog}
+        title={NOTIFICATION_DENIED_DIALOG.title}
+        message={NOTIFICATION_DENIED_DIALOG.message}
+        primaryLabel={NOTIFICATION_DENIED_DIALOG.primaryLabel}
+        secondaryLabel={NOTIFICATION_DENIED_DIALOG.secondaryLabel}
+        iconName="notifications-off-outline"
+        onPrimary={handleDialogPrimary}
+        onSecondary={() => {
+          handleDialogSecondary();
+          onMaybeLater();
+        }}
       />
     </View>
   );
@@ -177,6 +222,9 @@ const styles = StyleSheet.create({
     backgroundColor: colors.textPrimary,
     alignItems: "center",
     justifyContent: "center",
+  },
+  allowBtnDisabled: {
+    opacity: 0.6,
   },
   allowBtnText: {
     ...typography.body,

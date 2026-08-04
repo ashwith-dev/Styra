@@ -24,13 +24,16 @@ export function useUploadState(initialData?: {
   const [draft, setDraft] = useState<DraftClothingItem>(() => {
     if (!initialData) return INITIAL_DRAFT;
 
+    // Seed the form with every AttributeConfidence-shaped field the AI
+    // returned — not just the fields in UPLOAD_SINGLE_ATTRS — so detected
+    // values (size, secondary_color, warmth, ...) appear in the form.
     const initialAttrs: Record<string, string> = {};
-    for (const field of UPLOAD_SINGLE_ATTRS) {
-      const val = (initialData.aiResult as any)[field.key];
-      if (val && typeof val === "object" && "value" in val) {
-        initialAttrs[field.key] = String(val.value ?? "");
-      } else if (typeof val === "string") {
-        initialAttrs[field.key] = val;
+    for (const [key, val] of Object.entries(initialData.aiResult)) {
+      if (val && typeof val === "object" && !Array.isArray(val) && "value" in val) {
+        const v = (val as { value: unknown }).value;
+        if (v != null && v !== "") initialAttrs[key] = String(v);
+      } else if (typeof val === "string" && (key === "brand" || key === "description")) {
+        if (val) initialAttrs[key] = val;
       }
     }
 
@@ -94,10 +97,12 @@ export function useUploadState(initialData?: {
   const buildPayload = useCallback((): Record<string, unknown> => {
     const payload: Record<string, unknown> = {};
 
-    for (const field of UPLOAD_SINGLE_ATTRS) {
-      const val = (draft.attributes[field.key] ?? "").trim();
+    // Every edited field is saved — iterating only UPLOAD_SINGLE_ATTRS
+    // here silently dropped edits to taxonomy fields like size or warmth.
+    for (const [key, rawVal] of Object.entries(draft.attributes)) {
+      const val = rawVal.trim();
       if (val) {
-        payload[field.key] = { value: val, confidence: 1.0 };
+        payload[key] = { value: val, confidence: 1.0 };
       }
     }
 
