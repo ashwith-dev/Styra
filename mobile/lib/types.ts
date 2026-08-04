@@ -17,7 +17,6 @@ export interface AIPipelineResult {
   sleeve_length?: AttributeConfidence | null;
   fit?: AttributeConfidence | null;
   length?: AttributeConfidence | null;
-  closure?: AttributeConfidence | null;
   season: AttributeConfidence[];
   occasion: AttributeConfidence[];
   brand?: string | null;

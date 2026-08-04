@@ -71,6 +71,12 @@ function createClient(): AxiosInstance {
   client.interceptors.response.use(
     (response) => response,
     (error: AxiosError<{ detail?: string | { error?: string; message?: string } }>) => {
+      // Let cancellations pass through untouched — callers distinguish
+      // aborts from real network failures by error name (CanceledError).
+      if (axios.isCancel(error)) {
+        throw error;
+      }
+
       if (error.response) {
         const status = error.response.status;
 
@@ -170,6 +176,12 @@ export async function deleteClothingItem(id: string, signal?: AbortSignal): Prom
   await api.delete(`/clothing/${id}`, { signal });
 }
 
+// ── Account ──
+
+export async function deleteAccount(signal?: AbortSignal): Promise<void> {
+  await api.delete("/account", { signal });
+}
+
 // ── Health (connectivity check) ──
 
 export async function checkHealth(signal?: AbortSignal): Promise<boolean> {
@@ -186,10 +198,10 @@ export async function checkHealth(signal?: AbortSignal): Promise<boolean> {
 export async function getOutfitRecommendations(params?: {
   occasion?: string;
   season?: string;
-}): Promise<OutfitRecommendationResponse> {
+}, signal?: AbortSignal): Promise<OutfitRecommendationResponse> {
   const { data } = await api.get<OutfitRecommendationResponse>(
     "/recommendations",
-    { params },
+    { params, signal },
   );
   return data;
 }

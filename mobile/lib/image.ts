@@ -1,5 +1,6 @@
 import * as ImageManipulator from "expo-image-manipulator";
 import * as FileSystem from "expo-file-system";
+import { Image } from "react-native";
 
 const MAX_IMAGE_SIZE_BYTES = 10 * 1024 * 1024; // 10 MB
 const COMPRESSION_QUALITY = 0.8;
@@ -13,8 +14,10 @@ export interface ImageCheckResult {
 
 /** Validates file extension against allowed types. */
 export function validateFormat(uri: string): boolean {
-  const ext = uri.split(".").pop()?.toLowerCase();
-  if (!ext) return false;
+  // Strip query params (e.g. photo.jpg?timestamp=123) and fragments before extracting extension
+  const cleanUri = uri.split("?")[0].split("#")[0];
+  const ext = cleanUri.split(".").pop()?.toLowerCase();
+  if (!ext) return true; // If no extension (e.g. content:// URIs), allow through
   return ["jpg", "jpeg", "png", "webp"].includes(ext);
 }
 
@@ -30,16 +33,29 @@ export async function validateSize(uri: string): Promise<boolean> {
   }
 }
 
+function getImageSize(uri: string): Promise<{ width: number; height: number }> {
+  return new Promise((resolve, reject) => {
+    Image.getSize(uri, (width, height) => resolve({ width, height }), reject);
+  });
+}
+
 /**
  * Resize and compress an image before upload.
- * Ensures the longest side ≤ MAX_DIMENSION and applies JPEG compression.
- * Returns the manipulated image URI, or the original if already small enough.
+ * Shrinks the longest side to ≤ MAX_DIMENSION with JPEG compression.
+ * Images already within the limit are returned unchanged — resizing a
+ * smaller image up to 2048px would upscale it (blurry, larger file).
  */
 export async function compressImage(uri: string): Promise<string> {
   try {
+    const { width, height } = await getImageSize(uri);
+    const longest = Math.max(width, height);
+    if (longest <= MAX_DIMENSION) {
+      return uri;
+    }
+    const scale = MAX_DIMENSION / longest;
     const result = await ImageManipulator.manipulateAsync(
       uri,
-      [{ resize: { width: MAX_DIMENSION } }],
+      [{ resize: { width: Math.round(width * scale) } }],
       { compress: COMPRESSION_QUALITY, format: ImageManipulator.SaveFormat.JPEG },
     );
     return result.uri;
