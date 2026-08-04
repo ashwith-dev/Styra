@@ -20,6 +20,8 @@ import {
   RecentClothingStrip,
   useHomeData,
 } from "@/features/home";
+import { LocationBanner } from "@/features/home/components/LocationBanner";
+import { useLocationWeather } from "@/hooks/useLocationWeather";
 
 export default function HomeScreen() {
   const {
@@ -32,6 +34,14 @@ export default function HomeScreen() {
     refresh,
     confirmDelete,
   } = useHomeData();
+
+  const {
+    weatherData,
+    locationStatus,
+    showLocationBanner,
+    dismissBanner,
+    triggerLocationWeather,
+  } = useLocationWeather();
 
   useFocusEffect(
     useCallback(() => {
@@ -51,6 +61,11 @@ export default function HomeScreen() {
     router.push(`/items/${id}`);
   }, []);
 
+  const isLoadingWeather =
+    locationStatus === "requesting_permission" ||
+    locationStatus === "fetching_location" ||
+    locationStatus === "fetching_weather";
+
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
       <View style={styles.contentContainer}>
@@ -58,13 +73,24 @@ export default function HomeScreen() {
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
         >
-          {/* Header */}
+          {/* Header with live temp or '_ • COLLEGE' when not fetched yet */}
           <HomeHeader
             userName={user.name}
             userAvatar={user.avatar}
             greetingTime={user.greetingTime}
             onSignOut={user.signOut}
+            liveTemp={weatherData?.temperatureDisplay ?? null}
+            userLifestyle={user.lifestyle}
+            onContextTagPress={triggerLocationWeather}
           />
+
+          {/* Slim light-red banner — shown below STYRA logo when location is OFF/denied */}
+          {showLocationBanner && (
+            <LocationBanner
+              onOpenSettings={triggerLocationWeather}
+              onDismiss={dismissBanner}
+            />
+          )}
 
           {/* Quick Actions (Show when wardrobe is unlocked) */}
           {wardrobeValidation.isUnlocked && (
@@ -117,11 +143,14 @@ export default function HomeScreen() {
                 topCategory={stats.topCategory}
               />
 
-              {/* AI Outfit Features & Presentation Placeholders */}
+              {/* AI Outfit Features & Live Weather Card */}
               <HomePlaceholders
                 weather={HOME_CONFIG.weather}
                 todayOutfit={HOME_CONFIG.todayOutfit}
                 aiTeaser={HOME_CONFIG.aiTeaser}
+                liveWeather={weatherData}
+                isLoadingWeather={isLoadingWeather}
+                onWeatherCardPress={triggerLocationWeather}
               />
             </>
           )}

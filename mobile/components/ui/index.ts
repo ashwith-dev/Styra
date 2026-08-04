@@ -18,3 +18,4 @@ export { CachedImage } from "./CachedImage";
 export { BottomNavBar } from "./BottomNavBar";
 export { SignOutModal } from "./SignOutModal";
 export { DeleteAccountModal } from "./DeleteAccountModal";
+export { PermissionDialog } from "./PermissionDialog";

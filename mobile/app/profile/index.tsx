@@ -2,6 +2,7 @@ import { useCallback, useState } from "react";
 import { ScrollView, StyleSheet, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { BottomNavBar } from "@/components/ui";
+import { PermissionDialog } from "@/components/ui/PermissionDialog";
 import { colors, spacing } from "@/theme";
 import {
   AiStyleProfileSection,
@@ -19,9 +20,20 @@ import {
   WardrobeInsightsSection,
   WardrobeSummaryCard,
 } from "@/features/profile";
+import { useNotificationPermission } from "@/hooks/useNotificationPermission";
+import { NOTIFICATION_DENIED_DIALOG } from "@/lib/services/permissionConstants";
+import type { UserPreferences } from "@/features/profile";
 
 export default function ProfileScreen() {
   const { user, preferences, stats, insights, actions } = useProfileData();
+
+  const {
+    permissionStatus: notifPermissionStatus,
+    showDeniedDialog: showNotifDeniedDialog,
+    requestAndHandlePermission,
+    handleDialogPrimary: handleNotifDialogPrimary,
+    handleDialogSecondary: handleNotifDialogSecondary,
+  } = useNotificationPermission();
 
   // Modals state
   const [editProfileVisible, setEditProfileVisible] = useState(false);
@@ -341,6 +353,58 @@ export default function ProfileScreen() {
     [actions],
   );
 
+  /**
+   * Handles toggling any notification preference key from SettingsSectionList.
+   * - Toggling ON  → request OS permission; if denied, revert + show dialog.
+   * - Toggling OFF → update preferences immediately (no system dialog needed).
+   */
+  const handleToggleNotification = useCallback(
+    (key: keyof UserPreferences["notifications"], val: boolean) => {
+      if (!val) {
+        // Turning off — always allowed, just update preferences
+        void actions.updatePreferences({
+          notifications: {
+            ...preferences.notifications,
+            [key]: false,
+          },
+        });
+        // Also persist master switch
+        void actions.updatePreferences({ smartNotifications: false });
+        return;
+      }
+
+      // Turning on — need real OS permission
+      void requestAndHandlePermission(
+        () => {
+          // Granted
+          void actions.updatePreferences({
+            notifications: {
+              ...preferences.notifications,
+              [key]: true,
+            },
+            smartNotifications: true,
+          });
+        },
+        () => {
+          // Denied — keep toggle OFF (don't update preferences)
+        },
+      );
+    },
+    [actions, preferences.notifications, requestAndHandlePermission],
+  );
+
+  // Derive notification toggle values based on REAL permission + local pref
+  const effectiveNotifications = {
+    outfits: notifPermissionStatus === "granted" && preferences.notifications.outfits,
+    wardrobe: notifPermissionStatus === "granted" && preferences.notifications.wardrobe,
+    general: notifPermissionStatus === "granted" && preferences.notifications.general,
+  };
+
+  const effectivePreferences = {
+    ...preferences,
+    notifications: effectiveNotifications,
+  };
+
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
       <View style={styles.container}>
@@ -364,11 +428,21 @@ export default function ProfileScreen() {
           {/* Wardrobe Summary Card */}
           <WardrobeSummaryCard stats={stats} />
 
-          {/* AI Style Profile Section */}
+          {/* AI Style Profile Section — uses effectivePreferences so smartNotifications
+              toggle reflects the REAL OS notification permission */}
           <AiStyleProfileSection
-            preferences={preferences}
+            preferences={effectivePreferences}
             onEditSection={handleOpenSelectionModal}
-            onToggleNotification={handleToggleSmartNotifications}
+            onToggleNotification={(val) => {
+              if (!val) {
+                handleToggleSmartNotifications(false);
+                return;
+              }
+              void requestAndHandlePermission(
+                () => handleToggleSmartNotifications(true),
+                () => { /* Denied — keep OFF */ },
+              );
+            }}
           />
 
           {/* Body Profile Section */}
@@ -446,6 +520,18 @@ export default function ProfileScreen() {
         onClose={() =>
           setSelectionModalConfig((prev) => ({ ...prev, visible: false }))
         }
+      />
+
+      {/* Notification Permission Denied Dialog (Profile screen toggle) */}
+      <PermissionDialog
+        visible={showNotifDeniedDialog}
+        title={NOTIFICATION_DENIED_DIALOG.title}
+        message={NOTIFICATION_DENIED_DIALOG.message}
+        primaryLabel={NOTIFICATION_DENIED_DIALOG.primaryLabel}
+        secondaryLabel={NOTIFICATION_DENIED_DIALOG.secondaryLabel}
+        iconName="notifications-off-outline"
+        onPrimary={handleNotifDialogPrimary}
+        onSecondary={handleNotifDialogSecondary}
       />
     </SafeAreaView>
   );
