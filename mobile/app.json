@@ -14,14 +14,20 @@
       "supportsTablet": true,
       "infoPlist": {
         "NSCameraUsageDescription": "Wardrobe needs camera access to take photos of your clothing items.",
-        "NSPhotoLibraryUsageDescription": "Wardrobe needs gallery access to add your clothing items."
+        "NSPhotoLibraryUsageDescription": "Wardrobe needs gallery access to add your clothing items.",
+        "NSLocationWhenInUseUsageDescription": "STYRA uses your location to recommend weather-appropriate outfits tailored to your local conditions.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "STYRA uses your location to recommend weather-appropriate outfits tailored to your local conditions."
       }
     },
     "android": {
       "package": "com.wardrobe.app",
       "permissions": [
         "CAMERA",
-        "READ_EXTERNAL_STORAGE"
+        "READ_EXTERNAL_STORAGE",
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION",
+        "RECEIVE_BOOT_COMPLETED",
+        "VIBRATE"
       ],
       "enableProguardInReleaseBuilds": true,
       "extraProguardRules": "-keep public class com.horcrux.svg.** {*;}"
@@ -32,6 +38,20 @@
         {
           "photosPermission": "Allow Wardrobe to access your photos to add clothing items.",
           "cameraPermission": "Allow Wardrobe to access your camera to take photos of clothing items."
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "STYRA uses your location to recommend weather-appropriate outfits tailored to your local conditions."
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/notification-icon.png",
+          "color": "#1A1A1A",
+          "sounds": []
         }
       ],
       "expo-router",
