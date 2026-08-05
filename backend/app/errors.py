@@ -15,6 +15,8 @@ from pydantic import ValidationError
 
 import logging
 
+from app.logging_config import get_correlation_id
+
 logger = logging.getLogger(__name__)
 
 
@@ -57,13 +59,16 @@ class ValidationError_(AppError):
 
 
 async def app_error_handler(request: Request, exc: AppError) -> JSONResponse:
-    return JSONResponse(status_code=exc.status_code, content={"detail": exc.detail})
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"detail": exc.detail, "request_id": get_correlation_id()},
+    )
 
 
 async def http_exception_handler(request: Request, exc: HTTPException) -> JSONResponse:
     return JSONResponse(
         status_code=exc.status_code,
-        content={"detail": exc.detail},
+        content={"detail": exc.detail, "request_id": get_correlation_id()},
     )
 
 
@@ -72,13 +77,16 @@ async def pydantic_validation_handler(
 ) -> JSONResponse:
     return JSONResponse(
         status_code=HTTP_422_UNPROCESSABLE_ENTITY,
-        content={"detail": exc.errors()},
+        content={"detail": exc.errors(), "request_id": get_correlation_id()},
     )
 
 
 async def generic_exception_handler(request: Request, exc: Exception) -> JSONResponse:
-    logger.exception("Unhandled exception")
+    logger.exception("Unhandled exception [req=%s]", get_correlation_id())
     return JSONResponse(
         status_code=HTTP_500_INTERNAL_SERVER_ERROR,
-        content={"detail": "Internal server error"},
+        content={
+            "detail": "Internal server error",
+            "request_id": get_correlation_id(),
+        },
     )
