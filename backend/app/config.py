@@ -10,6 +10,11 @@ class Settings(BaseSettings):
     openrouter_api_key: str = ""
     qwen_model: str = "qwen/qwen2.5-vl-72b-instruct"
 
+    gemini_api_key: str = ""
+    gemini_model: str = "gemini-3.6-flash"
+
+    sentry_dsn: str = ""
+
     storage_bucket_originals: str = "clothing-originals"
     storage_bucket_segmented: str = "clothing-segmented"
     storage_bucket_thumbnails: str = "clothing-thumbnails"

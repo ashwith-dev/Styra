@@ -16,6 +16,7 @@ from app.errors import (
 )
 from app.middleware.rate_limit import rate_limit_middleware
 from app.middleware import correlation_id_middleware
+from app.middleware.deprecation import deprecation_header_middleware
 from app.services.pipeline_service import PipelineService
 from app.services.validation.image_validator import ImageValidator
 from app.services.segmentation.rembg_segmenter import RembgSegmenter
@@ -25,6 +26,32 @@ from app.services.storage_service import get_storage_service
 import logging
 
 logger = logging.getLogger(__name__)
+
+# ── Sentry (best-effort — disabled when SENTRY_DSN is empty) ──
+if settings.sentry_dsn:
+    import sentry_sdk
+    from sentry_sdk.integrations.asyncio import AsyncioIntegration
+    from sentry_sdk.integrations.logging import LoggingIntegration
+
+    sentry_logging = LoggingIntegration(
+        level=logging.WARNING,
+        event_level=logging.ERROR,
+    )
+
+    sentry_sdk.init(
+        dsn=settings.sentry_dsn,
+        release=settings.app_version,
+        environment="production",
+        integrations=[
+            AsyncioIntegration(),
+            sentry_logging,
+        ],
+        traces_sample_rate=0.1,
+        send_default_pii=False,
+    )
+    logger.info("Sentry initialised (env=production, version=%s)", settings.app_version)
+else:
+    logger.info("Sentry disabled (SENTRY_DSN not set)")
 
 # ── Pipeline service singleton (wired at startup, used by analyze route) ──
 pipeline_service: PipelineService | None = None
@@ -53,6 +80,8 @@ async def lifespan(app: FastAPI):
         await pipeline_service.warmup()
     yield
     pipeline_service = None
+    from app.services.http_client import close_http_client
+    await close_http_client()
     logger.info("Shutting down")
 
 
@@ -94,6 +123,7 @@ async def body_size_guard(request, call_next):
 
 # Rate limiting — applied before routes
 app.middleware("http")(correlation_id_middleware)
+app.middleware("http")(deprecation_header_middleware)
 app.middleware("http")(rate_limit_middleware)
 
 # ── Exception handlers ──
@@ -108,12 +138,16 @@ from app.api.clothing import router as clothing_router  # noqa: E402
 from app.api.analyze import router as analyze_router  # noqa: E402
 from app.api.recommendations import router as recs_router  # noqa: E402
 from app.api.account import router as account_router  # noqa: E402
+from app.api.outfits import router as outfits_router  # noqa: E402
+from app.api.outfit_actions import router as outfit_actions_router  # noqa: E402
 
 app.include_router(health_router, prefix=settings.api_prefix, tags=["Health"])
 app.include_router(clothing_router, prefix=settings.api_prefix, tags=["Clothing"])
 app.include_router(analyze_router, prefix=settings.api_prefix, tags=["Pipeline"])
 app.include_router(recs_router, prefix=settings.api_prefix, tags=["Recommendations"])
 app.include_router(account_router, prefix=settings.api_prefix, tags=["Account"])
+app.include_router(outfits_router, prefix=settings.api_prefix, tags=["Outfits"])
+app.include_router(outfit_actions_router, prefix=settings.api_prefix, tags=["Outfits"])
 
 
 if __name__ == "__main__":
