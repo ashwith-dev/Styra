@@ -12,6 +12,15 @@ from app.services.recommendations.rules import (
 )
 
 
+# Aliases applied to the *request* occasion only. Item-side occasion values
+# keep their canonical form (e.g. "date_night") because the compatibility
+# sets in rules_config are keyed on those values, while the table's target
+# keys use the short form ("date").
+_TARGET_ALIASES: dict[str, str] = {
+    "date_night": "date",
+}
+
+
 class OccasionEngine:
     """Filter clothing items by occasion suitability."""
 
@@ -32,6 +41,7 @@ class OccasionEngine:
             return list(items)
 
         target = _norm(occasion)
+        target = _TARGET_ALIASES.get(target, target)
         raw_compat = OCCASION_COMPATIBILITY.get(target)
         if raw_compat is None:
             return list(items)
@@ -60,29 +70,55 @@ class OccasionEngine:
         """Check if the item's specific type conflicts with the occasion.
 
         Returns True if the item type is explicitly unsuitable.
+        Also checks subcategory if type is not available.
         """
         attrs = item.get("attributes", {})
-        cat_val = _canonical_category(_attr_value(attrs, "category"))
-        if cat_val is None:
+
+        # Collect all possible type identifiers for this item:
+        # type first, then subcategory, then raw category value.
+        type_candidates: list[str] = []
+        for key in ("type", "subcategory", "category"):
+            val = _attr_value(attrs, key)
+            if val:
+                type_candidates.append(_norm(val))
+
+        if not type_candidates:
             return False
 
-        type_val = _attr_value(attrs, "type")
-        if type_val is None:
-            return False
+        type_val = _attr_value(attrs, "type") or _attr_value(attrs, "subcategory")
+        cat_val = _canonical_category(_attr_value(attrs, "category"), type_val)
+
+        if cat_val is None:
+            # No category metadata: fall back to the union of this
+            # occasion's unsuitable types across all categories. Only
+            # positive evidence blocks (lenient default-allow) — e.g.
+            # null-category jeans are still blocked at formal.
+            union_unsuitable: set[str] = set()
+            for cat_rules in ITEM_TYPE_OCCASION_RULES.values():
+                occ_rules = cat_rules.get(occasion)
+                if occ_rules:
+                    union_unsuitable.update(
+                        _norm(v) for v in occ_rules.get("unsuitable", [])
+                    )
+            return any(tc in union_unsuitable for tc in type_candidates)
 
         cat_rules = ITEM_TYPE_OCCASION_RULES.get(cat_val, {})
         occasion_rules = cat_rules.get(occasion)
         if occasion_rules is None:
             return False
 
-        type_norm = _norm(type_val)
         unsuitable = {_norm(v) for v in occasion_rules.get("unsuitable", [])}
-        if type_norm in unsuitable:
-            return True
-
         suitable = {_norm(v) for v in occasion_rules.get("suitable", [])}
-        if suitable and type_norm not in suitable:
-            return True
+
+        # Check if ANY identifier matches an unsuitable type
+        for tc in type_candidates:
+            if tc in unsuitable:
+                return True
+
+        # If suitable list exists and NONE of the identifiers match, block it
+        if suitable:
+            if not any(tc in suitable for tc in type_candidates):
+                return True
 
         return False
 

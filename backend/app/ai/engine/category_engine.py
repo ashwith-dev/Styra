@@ -5,11 +5,14 @@ exactly one top, one bottom, with optional slots for footwear,
 outerwear, and accessories.
 """
 
+import logging
 from typing import Optional
 
 from app.services.recommendations.rules import (
     OUTFIT_CATEGORIES, _canonical_category, _attr_value,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class CategoryEngine:
@@ -78,10 +81,18 @@ class CategoryEngine:
             "top": [], "bottom": [], "dress": [],
             "outerwear": [], "footwear": [], "accessory": [],
         }
+        dropped = 0
         for item in items:
             cat = self._extract_category(item)
             if cat and cat in partitioned:
                 partitioned[cat].append(item)
+            else:
+                dropped += 1
+        if dropped:
+            logger.info(
+                "Partition dropped %d item(s) with missing or unmapped category",
+                dropped,
+            )
         return partitioned
 
     def get_required_slots(self, outfit_category: str) -> list[str]:
@@ -116,4 +127,5 @@ class CategoryEngine:
     def _extract_category(item: dict) -> Optional[str]:
         attrs = item.get("attributes", {})
         raw_cat = _attr_value(attrs, "category")
-        return _canonical_category(raw_cat)
+        type_val = _attr_value(attrs, "type") or _attr_value(attrs, "subcategory")
+        return _canonical_category(raw_cat, type_val)

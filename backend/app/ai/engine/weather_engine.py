@@ -35,10 +35,12 @@ class WeatherEngine:
         if rules is None:
             return list(items)
 
-        prefer = set(rules.get("prefer", []))
-        avoid = set(rules.get("avoid", []))
+        # Norm both sides: config tables use display forms ("faux leather")
+        # while _extract_material returns normed values ("faux_leather").
+        # ("prefer" is used only by the scorer, not for filtering.)
+        avoid = {_norm(m) for m in rules.get("avoid", [])}
 
-        if not prefer and not avoid:
+        if not avoid:
             return list(items)
 
         kept: list[dict] = []

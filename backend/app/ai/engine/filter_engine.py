@@ -91,7 +91,7 @@ class FilterEngine:
 
         # 1. Exclude explicitly removed items.
         if context.excluded_item_ids:
-            current = [i for i in current if i["id"] not in context.excluded_item_ids]
+            current = [i for i in current if i.get("id") not in context.excluded_item_ids]
         stage_counts["exclude"] = len(current)
 
         # 2. Weather filter.

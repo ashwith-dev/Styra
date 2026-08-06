@@ -5,7 +5,9 @@ as replacement), plus optional footwear/outerwear/accessory picks.
 Designed for wardrobes with 500+ items via pre-scored candidate caps.
 """
 
-from typing import Optional
+import itertools
+import random
+from typing import Iterator, Optional
 
 from app.ai.engine.scoring_config import MAX_CANDIDATES_PER_SLOT, MAX_COMBINATIONS
 
@@ -24,8 +26,7 @@ class OutfitBuilder:
         """Build all valid outfit combinations.
 
         Mandatory: top + bottom, or dress alone.
-        Optional: footwear, outerwear, accessory — each either picks
-        the single best candidate (by similarity score) or is absent.
+        Optional: footwear, outerwear, accessory.
 
         Args:
             partitioned: Category → list of item dicts.
@@ -36,19 +37,30 @@ class OutfitBuilder:
         Returns:
             List of outfit combinations, each a list of item dicts.
         """
-        tops = self._top_n(partitioned.get("top", []), max_candidates_per_slot)
-        bottoms = self._top_n(partitioned.get("bottom", []), max_candidates_per_slot)
-        dresses = self._top_n(partitioned.get("dress", []), max_candidates_per_slot)
+        tops = self._shuffled_top_n(partitioned.get("top", []), max_candidates_per_slot)
+        bottoms = self._shuffled_top_n(partitioned.get("bottom", []), max_candidates_per_slot)
+        dresses = self._shuffled_top_n(partitioned.get("dress", []), max_candidates_per_slot)
 
-        footwear_opts = self._optional_pool(partitioned.get("footwear", []))
-        outerwear_opts = self._optional_pool(partitioned.get("outerwear", []))
-        accessory_opts = self._optional_pool(partitioned.get("accessory", []))
+        # Optional slots are capped too — otherwise large wardrobes explode
+        # the combination space (see round-robin note below).
+        footwear_items = self._shuffled_top_n(partitioned.get("footwear", []), max_candidates_per_slot)
+        outerwear_items = self._shuffled_top_n(partitioned.get("outerwear", []), max_candidates_per_slot)
+        accessory_items = self._shuffled_top_n(partitioned.get("accessory", []), max_candidates_per_slot)
 
-        has_dress_template = outfit_category in _DRESS_TEMPLATE_CATEGORIES
+        # Footwear-first for every occasion except home — being barefoot
+        # at the gym or a formal event is never the intent.
+        footwear_opts = self._optional_pool(
+            footwear_items,
+            prefer_filled=(outfit_category != "home"),
+        )
+        outerwear_opts = self._optional_pool(outerwear_items)
+        accessory_opts = self._optional_pool(accessory_items)
+
         seed_pairs: list[list[dict]] = []
 
-        # Dress-first: dress replaces top + bottom.
-        if has_dress_template and dresses:
+        # Dress-first: a dress replaces top + bottom for every occasion
+        # except gym (where dresses are never appropriate).
+        if outfit_category != "gym" and dresses:
             for dress in dresses:
                 seed_pairs.append([dress])
 
@@ -57,53 +69,77 @@ class OutfitBuilder:
             for bottom in bottoms:
                 seed_pairs.append([top, bottom])
 
-        # Generate all combinations with optionals.
+        # Shuffle seed pairs so each request surfaces different combos first.
+        random.shuffle(seed_pairs)
+
+        def _expand(seed: list[dict]) -> Iterator[list[dict]]:
+            for fw, ow, ac in itertools.product(footwear_opts, outerwear_opts, accessory_opts):
+                combo = list(seed)
+                if fw:
+                    combo.append(fw)
+                if ow:
+                    combo.append(ow)
+                if ac:
+                    combo.append(ac)
+                yield combo
+
+        # Round-robin across seeds: one combo per seed per pass, so the
+        # max_combinations cap can never be exhausted by a single seed
+        # (which previously collapsed results to "same core, different shoes").
         seen: set[frozenset[str]] = set()
         result: list[list[dict]] = []
+        active = [_expand(seed) for seed in seed_pairs]
 
-        for seed in seed_pairs:
-            for fw in footwear_opts:
-                for ow in outerwear_opts:
-                    for ac in accessory_opts:
-                        combo = list(seed)
-                        if fw:
-                            combo.append(fw)
-                        if ow:
-                            combo.append(ow)
-                        if ac:
-                            combo.append(ac)
+        while active and len(result) < max_combinations:
+            survivors: list[Iterator[list[dict]]] = []
+            for gen in active:
+                try:
+                    combo = next(gen)
+                except StopIteration:
+                    continue
 
-                        key = frozenset(i["id"] for i in combo)
-                        if key in seen:
-                            continue
-                        seen.add(key)
-                        result.append(combo)
-
-                        if len(result) >= max_combinations:
-                            return result
+                key = frozenset(i["id"] for i in combo)
+                if key not in seen:
+                    seen.add(key)
+                    result.append(combo)
+                    if len(result) >= max_combinations:
+                        return result
+                survivors.append(gen)
+            active = survivors
 
         return result
 
     @staticmethod
-    def _top_n(items: list[dict], n: int) -> list[dict]:
-        """Return the top *n* items by similarity score (or all if fewer)."""
-        if len(items) <= n:
-            return items
-        scored = [(i.get("similarity_score", 0.5), i) for i in items]
-        scored.sort(key=lambda x: x[0], reverse=True)
-        return [i for _, i in scored[:n]]
+    def _shuffled_top_n(items: list[dict], n: int) -> list[dict]:
+        """Return up to *n* items, uniformly shuffled for variety.
+
+        Selection is a plain uniform shuffle (no similarity weighting);
+        for pools larger than *n* only the first ``n * 2`` items in
+        partition order are eligible.
+        """
+        if not items:
+            return []
+        pool = items[:] if len(items) <= n else items[:n * 2]  # consider slightly more than n
+        random.shuffle(pool)
+        return pool[:n]
 
     @staticmethod
-    def _optional_pool(items: list[dict]) -> list[Optional[dict]]:
-        """Return [None, best_item] for an optional slot.
+    def _optional_pool(
+        items: list[dict],
+        prefer_filled: bool = False,
+    ) -> list[Optional[dict]]:
+        """Return all items as options for an optional slot, plus None (skip).
 
-        None means the slot is skipped. Only the single best candidate
-        (highest similarity) is considered for inclusion.
+        When ``prefer_filled`` is True (e.g. casual outfits) and items are
+        available, None is placed at the end so footwear is tried first.
         """
         if not items:
             return [None]
-        best = max(items, key=lambda i: i.get("similarity_score", 0.5))
-        return [None, best]
-
-
-_DRESS_TEMPLATE_CATEGORIES = frozenset({"formal", "party", "date_night", "ethnic"})
+        # Shuffle footwear options for variety.
+        shuffled = items[:]
+        random.shuffle(shuffled)
+        if prefer_filled:
+            # Try all shoes first, then also generate without shoe.
+            return list(shuffled) + [None]
+        else:
+            return [None] + list(shuffled)

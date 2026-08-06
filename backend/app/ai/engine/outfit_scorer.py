@@ -9,11 +9,7 @@ import logging
 from typing import Optional
 
 from app.ai.models.outfit_candidate import OutfitCandidate, ScoreComponent
-from app.ai.engine.scoring_config import (
-    DEFAULT_WEIGHTS,
-    OPTIONAL_SLOT_BONUS,
-    MISSING_DATA_PENALTY_PER_ATTR,
-)
+from app.ai.engine.scoring_config import DEFAULT_WEIGHTS
 from app.ai.engine.filter_engine import FilterEngine, FilterContext
 from app.services.recommendations.rules import OUTFIT_CATEGORIES
 
@@ -55,7 +51,8 @@ class OutfitScorer:
         components = self._compute_all_components(outfit, context, weights)
         total = round(sum(c.weighted_score for c in components), 4)
 
-        matched, rejected = self._classify_rules(outfit, context)
+        by_dimension = {c.dimension: c.raw_score for c in components}
+        matched, rejected = self._classify_rules(outfit, context, by_dimension)
 
         return OutfitCandidate(
             outfit_id=outfit_id,
@@ -163,8 +160,10 @@ class OutfitScorer:
         rules = WEATHER_MATERIAL_PREFERENCES.get(temperature)
         if rules is None:
             return 0.8
-        avoid = set(rules.get("avoid", []))
-        prefer = set(rules.get("prefer", []))
+        # Norm both sides: config uses display forms ("faux leather")
+        # while item materials are normed below ("faux_leather").
+        avoid = {m.lower().replace(" ", "_") for m in rules.get("avoid", [])}
+        prefer = {m.lower().replace(" ", "_") for m in rules.get("prefer", [])}
 
         scores: list[float] = []
         for item in outfit:
@@ -327,13 +326,17 @@ class OutfitScorer:
         self,
         outfit: list[dict],
         context: FilterContext,
+        scores: dict[str, float],
     ) -> tuple[list[str], list[str]]:
         matched: list[str] = []
         rejected: list[str] = []
 
+        # Rule outcomes reuse the dimension scores already computed in
+        # _compute_all_components — recomputing them here would triple
+        # the per-combo cost of three dimensions.
         # Season
         if context.season:
-            season_score = self._score_season(outfit, context.season)
+            season_score = scores.get("season_match", 0.5)
             if season_score > 0.5:
                 matched.append(f"season:{context.season}")
             else:
@@ -341,7 +344,7 @@ class OutfitScorer:
 
         # Weather
         if context.temperature:
-            weather_score = self._score_weather(outfit, context.temperature)
+            weather_score = scores.get("weather_match", 0.5)
             if weather_score > 0.5:
                 matched.append(f"weather:{context.temperature}")
             else:
@@ -349,7 +352,7 @@ class OutfitScorer:
 
         # Occasion
         if context.occasion:
-            occasion_score = self._score_occasion(outfit, context.occasion)
+            occasion_score = scores.get("occasion_match", 0.5)
             if occasion_score > 0.5:
                 matched.append(f"occasion:{context.occasion}")
             else:
@@ -378,6 +381,7 @@ class OutfitScorer:
             id=item["id"],
             attributes=attrs,
             thumbnail_url=item.get("thumbnail_url"),
+            original_image_url=item.get("original_image_url"),
             similarity_score=item.get("similarity_score", 0.0),
             category=cat,
             color=color,

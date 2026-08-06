@@ -25,7 +25,10 @@ class ScoringWeights:
 DEFAULT_WEIGHTS = ScoringWeights()
 
 # ── Builder limits ──
-MAX_COMBINATIONS = 5000
+# Hard cap on scored combinations per request. Combined with the builder's
+# round-robin seed expansion, 2000 combos cover every seed core with room
+# to spare while keeping scoring time within the latency budget.
+MAX_COMBINATIONS = 2000
 MAX_CANDIDATES_PER_SLOT = 15
 
 # ── Return limits ──
@@ -36,16 +39,12 @@ MAX_TOP_N = 20
 # Size of the top-scored pool the fallback sampler picks from when the
 # LLM stylist is unavailable.
 FALLBACK_SAMPLE_TOP_K = 3
+# Hard deadline for a Gemini stylist call. On timeout the endpoint
+# falls back to weighted sampling so requests never hang on a slow LLM.
+STYLIST_TIMEOUT_SECONDS = 12.0
 # Weight floor so every candidate in the pool stays selectable even with
 # a near-zero score.
 MIN_SAMPLE_WEIGHT = 0.05
 # How many of the user's most recently generated outfits are
 # deprioritised so consecutive requests surface fresh combinations.
 RECENT_OUTFIT_EXCLUDE_COUNT = 5
-
-# ── Optional slot penalties ──
-# Items that fill an optional slot get a slight score boost for completeness.
-OPTIONAL_SLOT_BONUS = 0.10
-
-# ── Missing data penalty per missing attribute ──
-MISSING_DATA_PENALTY_PER_ATTR = 0.02

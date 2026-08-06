@@ -6,6 +6,7 @@ API routes will call.
 """
 
 import logging
+import random
 import time
 from typing import Iterable, Optional
 
@@ -15,7 +16,7 @@ from app.ai.engine.filter_engine import FilterEngine, FilterContext
 from app.ai.engine.candidate_selector import CandidateSelector
 from app.ai.engine.outfit_builder import OutfitBuilder
 from app.ai.engine.outfit_scorer import OutfitScorer
-from app.ai.engine.scoring_config import DEFAULT_TOP_N, MAX_TOP_N
+from app.ai.engine.scoring_config import DEFAULT_TOP_N, MAX_TOP_N, MIN_SAMPLE_WEIGHT
 
 logger = logging.getLogger(__name__)
 
@@ -25,28 +26,49 @@ def _item_id_set(candidate: OutfitCandidate) -> frozenset[str]:
     return frozenset(item.id for item in candidate.items)
 
 
-def deprioritize_recent(
+def weighted_sample_top_n(
+    ranked: list[OutfitCandidate],
+    top_n: int,
+    rng: random.Random,
+) -> list[OutfitCandidate]:
+    """Pick *top_n* candidates by score-weighted sampling without replacement.
+
+    The pool is the top ``max(top_n * 4, 10)`` ranked candidates, so quality
+    is preserved while identical requests still surface varied selections
+    (a pure deterministic sort would repeat the same top-N every time).
+    """
+    pool = list(ranked[: max(top_n * 4, 10)])
+    chosen: list[OutfitCandidate] = []
+    while pool and len(chosen) < top_n:
+        weights = [max(c.score, MIN_SAMPLE_WEIGHT) for c in pool]
+        idx = rng.choices(range(len(pool)), weights=weights, k=1)[0]
+        chosen.append(pool.pop(idx))
+    return chosen
+
+
+def split_fresh_vs_recent(
     candidates: list[OutfitCandidate],
     recent_outfits: Iterable[frozenset[str]],
-) -> list[OutfitCandidate]:
-    """Move candidates identical to a recently generated outfit to the end.
+) -> tuple[list[OutfitCandidate], list[OutfitCandidate]]:
+    """Split candidates into fresh combinations vs. recent-outfit repeats.
 
-    Score order is preserved within each group. Repeats are kept as
-    backfill (rather than dropped) so a small wardrobe never yields an
-    empty result just because everything was generated recently.
+    Score order is preserved within each group. When *every* candidate is
+    a repeat the split is a no-op (all fresh, no repeats) so a small
+    wardrobe never yields an empty result just because everything was
+    generated recently.
     """
     recent = set(recent_outfits)
     if not recent:
-        return candidates
+        return candidates, []
     fresh = [c for c in candidates if _item_id_set(c) not in recent]
     if not fresh:
-        return candidates
+        return candidates, []
     repeats = [c for c in candidates if _item_id_set(c) in recent]
     if repeats:
         logger.info(
             "Deprioritised %d candidate(s) matching recent outfits", len(repeats)
         )
-    return fresh + repeats
+    return fresh, repeats
 
 
 class RankingEngine:
@@ -86,6 +108,7 @@ class RankingEngine:
         *,
         top_n: int = DEFAULT_TOP_N,
         recent_outfits: Optional[list[frozenset[str]]] = None,
+        rng: Optional[random.Random] = None,
     ) -> CandidateSet:
         """Run the full pipeline and return ranked outfit candidates.
 
@@ -97,6 +120,8 @@ class RankingEngine:
                 Candidates identical to one of these are deprioritised
                 below fresh combinations so consecutive requests yield
                 distinct looks.
+            rng: Randomness source for top-N sampling (injectable for
+                deterministic tests; defaults to the module RNG).
 
         Returns:
             ``CandidateSet`` with ranked outfit candidates and metadata.
@@ -142,12 +167,19 @@ class RankingEngine:
         # 5. Rank by score descending.
         candidates.sort(key=lambda c: c.score, reverse=True)
 
-        # 6. Deprioritise outfits identical to recently generated ones.
+        # 6. Split out repeats of recently generated outfits: fresh
+        # combinations are sampled first and repeats only backfill when
+        # there aren't enough fresh ones.
+        fresh: list[OutfitCandidate] = candidates
+        repeats: list[OutfitCandidate] = []
         if recent_outfits:
-            candidates = deprioritize_recent(candidates, recent_outfits)
+            fresh, repeats = split_fresh_vs_recent(candidates, recent_outfits)
 
-        # 7. Return top N.
-        top = candidates[:top_n]
+        # 7. Sample top N (score-weighted, without replacement) so
+        # regenerations with identical inputs still produce variety.
+        top = weighted_sample_top_n(fresh, top_n, rng or random)
+        if len(top) < top_n and repeats:
+            top.extend(repeats[: top_n - len(top)])
 
         duration = (time.monotonic() - start) * 1000
 
@@ -160,11 +192,16 @@ class RankingEngine:
             duration,
         )
 
+        slots_missing: list[str] = []
+        if not partitioned.get("footwear"):
+            slots_missing.append("footwear")
+
         return CandidateSet(
             candidates=top,
             total_combinations_generated=total_generated,
             total_combinations_scored=len(candidates),
             pipeline_duration_ms=round(duration, 2),
+            slots_missing=slots_missing,
         )
 
     def _build_query_embedding(

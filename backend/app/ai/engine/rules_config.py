@@ -103,6 +103,7 @@ OCCASION_COMPATIBILITY: dict[str, set[str]] = {
     "festive": {"festive", "traditional", "wedding_guest", "formal"},
     "business_casual": {"work", "everyday", "business_casual", "smart_casual"},
     "smart_casual": {"everyday", "smart_casual", "date_night", "party"},
+    "ethnic": {"traditional", "festive", "formal", "wedding"},
 }
 
 # ── Wardrobe gender categories ──
@@ -207,10 +208,13 @@ ITEM_TYPE_OCCASION_RULES: dict[str, dict[str, dict[str, list[str]]]] = {
         "formal": {
             "suitable": [
                 "trousers", "chinos", "suit pants", "dress pants",
+                "formal pants", "formal trousers", "slacks",
             ],
             "unsuitable": [
                 "shorts", "joggers", "sweatpants", "track pants",
-                "cargo pants", "ripped jeans",
+                "cargo pants", "ripped jeans", "jeans", "denim jeans",
+                "blue jeans", "skinny jeans", "straight jeans",
+                "distressed jeans",
             ],
         },
         "gym": {
@@ -219,6 +223,16 @@ ITEM_TYPE_OCCASION_RULES: dict[str, dict[str, dict[str, list[str]]]] = {
             ],
             "unsuitable": [
                 "trousers", "chinos", "suit pants", "dress pants",
+            ],
+        },
+        "office": {
+            "suitable": [
+                "trousers", "chinos", "suit pants", "dress pants",
+                "formal pants", "slacks",
+            ],
+            "unsuitable": [
+                "shorts", "joggers", "sweatpants", "track pants",
+                "ripped jeans",
             ],
         },
     },

@@ -12,6 +12,14 @@ from app.services.recommendations.rules import (
 )
 
 
+# Config table keys use display forms ("faux leather"); item materials are
+# normed ("faux_leather") — pre-norm the table so lookups match.
+_MATERIAL_COMPAT_NORMED: dict[str, set[str]] = {
+    _norm(k): {_norm(v) for v in values}
+    for k, values in MATERIAL_COMPATIBILITY.items()
+}
+
+
 class CompatibilityEngine:
     """Score compatibility between pairs of clothing items."""
 
@@ -79,11 +87,11 @@ class CompatibilityEngine:
         if material_a == material_b:
             return 0.9
 
-        compat = MATERIAL_COMPATIBILITY.get(material_a)
+        compat = _MATERIAL_COMPAT_NORMED.get(material_a)
         if compat and material_b in compat:
             return 0.85
 
-        compat_b = MATERIAL_COMPATIBILITY.get(material_b)
+        compat_b = _MATERIAL_COMPAT_NORMED.get(material_b)
         if compat_b and material_a in compat_b:
             return 0.85
 
