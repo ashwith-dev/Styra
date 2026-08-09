@@ -17,8 +17,11 @@ logger = logging.getLogger(__name__)
 
 
 def _is_missing_status_column_error(exc: Exception) -> bool:
+    # Only match the genuine undefined-column error — a bare "status"
+    # substring would swallow unrelated errors (HTTP status codes, …) and
+    # retry without the status=completed filter, leaking unprocessed items.
     err_str = str(exc)
-    return "column clothing_items.status does not exist" in err_str or "42703" in err_str or "status" in err_str
+    return "column clothing_items.status does not exist" in err_str or "42703" in err_str
 
 
 class SupabaseWardrobeRepository(WardrobeRepository):
@@ -197,19 +200,17 @@ class SupabaseWardrobeRepository(WardrobeRepository):
                 style=str(style) if style else None,
             ))
 
-        # Refresh signed URLs so images in generated outfits are never expired.
+        # Refresh signed URLs so images in generated outfits are never
+        # expired — batched per bucket, not one HTTP call per candidate.
         storage = get_storage_service()
-        refreshed_candidates: list[CandidateItem] = []
-        for c in candidates:
-            fresh = storage.refresh_urls_for_row({
-                "thumbnail_url": c.thumbnail_url,
-                "image_url": None,
-                "original_image_url": c.original_image_url,
-            })
+        refreshed_rows = storage.refresh_urls_for_rows([
+            {"thumbnail_url": c.thumbnail_url, "original_image_url": c.original_image_url}
+            for c in candidates
+        ])
+        for c, fresh in zip(candidates, refreshed_rows):
             c.thumbnail_url = fresh.get("thumbnail_url") or c.thumbnail_url
             c.original_image_url = fresh.get("original_image_url") or c.original_image_url
-            refreshed_candidates.append(c)
-        return refreshed_candidates
+        return candidates
 
 
 def _extract_attr_value(attrs: dict, key: str) -> Optional[str]:

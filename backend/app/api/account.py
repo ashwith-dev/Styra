@@ -30,8 +30,8 @@ async def delete_account(user_id: str = Depends(get_current_user)) -> None:
 
     # 1. Remove storage objects.
     try:
-        resp = (
-            admin.table("clothing_items")
+        resp = await asyncio.to_thread(
+            lambda: admin.table("clothing_items")
             .select("image_url, original_image_url, thumbnail_url")
             .eq("user_id", user_id)
             .execute()
@@ -50,11 +50,15 @@ async def delete_account(user_id: str = Depends(get_current_user)) -> None:
     # 2. Remove rows in auxiliary app tables (no FK cascade to auth.users).
     for table in _EXTRA_USER_TABLES:
         try:
-            admin.table(table).delete().eq("user_id", user_id).execute()
+            await asyncio.to_thread(
+                lambda t=table: admin.table(t).delete().eq("user_id", user_id).execute()
+            )
         except Exception:
             logger.warning("Account deletion: %s cleanup failed", table, exc_info=True)
     try:
-        admin.table("users").delete().eq("id", user_id).execute()
+        await asyncio.to_thread(
+            lambda: admin.table("users").delete().eq("id", user_id).execute()
+        )
     except Exception:
         logger.warning("Account deletion: users cleanup failed", exc_info=True)
 

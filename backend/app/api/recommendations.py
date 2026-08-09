@@ -1,7 +1,11 @@
+import asyncio
+import logging
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from supabase import Client
+
+logger = logging.getLogger(__name__)
 
 from app.dependencies import get_current_user
 from app.models.api_contract import (
@@ -44,8 +48,8 @@ async def get_recommendations(
     style / season attributes.
     """
     # 1. Fetch the source item to get its category and embedding
-    source_resp = (
-        supabase.table("clothing_items")
+    source_resp = await asyncio.to_thread(
+        lambda: supabase.table("clothing_items")
         .select("id, attributes, embedding")
         .eq("id", body.clothing_item_id)
         .eq("user_id", user_id)
@@ -56,8 +60,13 @@ async def get_recommendations(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
 
     source = source_resp.data
-    source_attrs = source.get("attributes", {})
-    source_category = source_attrs.get("category", {}).get("value", "")
+    # attributes jsonb may be NULL or hold a plain string value — both are
+    # valid stored shapes, so extract defensively instead of chaining .get.
+    source_attrs = source.get("attributes") or {}
+    cat_val = source_attrs.get("category")
+    if isinstance(cat_val, dict):
+        cat_val = cat_val.get("value")
+    source_category = cat_val if isinstance(cat_val, str) else ""
 
     # 2. Determine compatible categories
     compatible = _compatible_categories(source_category)
@@ -68,17 +77,20 @@ async def get_recommendations(
         )
 
     # 3. pgvector cosine similarity query
+    # NB: signature matches migration 005 (no p_user_id — the user-scoped
+    # client + RLS restricts rows to the caller).
     embedding = source["embedding"]
-    rpc_resp = supabase.rpc(
-        "match_compatible_items",
-        {
-            "p_user_id": user_id,
-            "query_embedding": embedding,
-            "compatible_categories": compatible,
-            "exclude_id": body.clothing_item_id,
-            "match_count": body.limit,
-        },
-    ).execute()
+    rpc_resp = await asyncio.to_thread(
+        lambda: supabase.rpc(
+            "match_compatible_items",
+            {
+                "query_embedding": embedding,
+                "compatible_categories": compatible,
+                "exclude_id": body.clothing_item_id,
+                "match_count": body.limit,
+            },
+        ).execute()
+    )
 
     recs = []
     for row in rpc_resp.data or []:
@@ -115,8 +127,8 @@ async def list_recommendations(
       travel, gym, ethnic
     - ``season``: spring, summer, fall, winter
     """
-    wardrobe_resp = (
-        supabase.table("clothing_items")
+    wardrobe_resp = await asyncio.to_thread(
+        lambda: supabase.table("clothing_items")
         .select("id, attributes, thumbnail_url, status")
         .eq("user_id", user_id)
         .execute()
@@ -150,12 +162,14 @@ async def list_recommendations(
             )
 
     try:
-        recommendations = _recommendation_engine.recommend(
+        recommendations = await asyncio.to_thread(
+            _recommendation_engine.recommend,
             wardrobe,
             occasion=occasion,
             season=season,
         )
     except Exception:
+        logger.exception("Recommendation engine failed for user %s", user_id)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to generate recommendations",
@@ -207,11 +221,20 @@ async def submit_outfit_feedback(
             detail="Feedback must be 'like' or 'dislike'",
         )
 
-    supabase.table("outfit_feedback").upsert({
-        "user_id": user_id,
-        "outfit_id": body.outfit_id,
-        "feedback": body.feedback,
-    }, on_conflict="user_id,outfit_id").execute()
+    try:
+        await asyncio.to_thread(
+            lambda: supabase.table("outfit_feedback").upsert({
+                "user_id": user_id,
+                "outfit_id": body.outfit_id,
+                "feedback": body.feedback,
+            }, on_conflict="user_id,outfit_id").execute()
+        )
+    except Exception as exc:
+        logger.error("Failed to record outfit feedback: %s", exc)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to record feedback",
+        )
 
     return OutfitFeedbackResponse(feedback=body.feedback)
 
@@ -226,8 +249,8 @@ async def add_outfit_favorite(
     supabase: Client = Depends(get_user_supabase),
 ) -> OutfitFavoriteResponse:
     """Save an outfit recommendation as a favourite."""
-    existing = (
-        supabase.table("outfit_favorites")
+    existing = await asyncio.to_thread(
+        lambda: supabase.table("outfit_favorites")
         .select("id")
         .eq("user_id", user_id)
         .eq("outfit_id", body.outfit_id)
@@ -239,15 +262,35 @@ async def add_outfit_favorite(
             detail="Outfit already saved",
         )
 
-    resp = (
-        supabase.table("outfit_favorites")
-        .insert({
-            "user_id": user_id,
-            "outfit_id": body.outfit_id,
-            "outfit_data": body.outfit_data.model_dump(),
-        })
-        .execute()
-    )
+    try:
+        resp = await asyncio.to_thread(
+            lambda: supabase.table("outfit_favorites")
+            .insert({
+                "user_id": user_id,
+                "outfit_id": body.outfit_id,
+                "outfit_data": body.outfit_data.model_dump(),
+            })
+            .execute()
+        )
+    except Exception as exc:
+        # Concurrent double-save can pass the existence check above and hit
+        # the unique constraint instead — that is a conflict, not a 500.
+        if "23505" in str(exc) or "duplicate" in str(exc).lower():
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Outfit already saved",
+            )
+        logger.error("Failed to save outfit favorite: %s", exc)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to save outfit",
+        )
+
+    if not resp.data:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to save outfit",
+        )
 
     row = resp.data[0]
     return OutfitFavoriteResponse(
@@ -267,8 +310,8 @@ async def remove_outfit_favorite(
     supabase: Client = Depends(get_user_supabase),
 ) -> None:
     """Remove a saved outfit favourite."""
-    resp = (
-        supabase.table("outfit_favorites")
+    resp = await asyncio.to_thread(
+        lambda: supabase.table("outfit_favorites")
         .delete()
         .eq("user_id", user_id)
         .eq("outfit_id", outfit_id)
@@ -291,15 +334,18 @@ async def list_outfit_favorites(
     supabase: Client = Depends(get_user_supabase),
 ) -> list[dict]:
     """List all saved outfit favourites for the current user."""
-    resp = (
-        supabase.table("outfit_favorites")
-        .select("id, outfit_id, outfit_data, created_at")
-        .eq("user_id", user_id)
-        .order("created_at", desc=True)
-        .execute()
-    )
-
-    return resp.data or []
+    try:
+        resp = await asyncio.to_thread(
+            lambda: supabase.table("outfit_favorites")
+            .select("id, outfit_id, outfit_data, created_at")
+            .eq("user_id", user_id)
+            .order("created_at", desc=True)
+            .execute()
+        )
+        return resp.data or []
+    except Exception as exc:
+        logger.warning("outfit_favorites query failed (table may not exist): %s", exc)
+        return []
 
 
 # ── GET /recommendations/favorites/{outfit_id} ──
@@ -312,12 +358,16 @@ async def check_outfit_favorite(
     supabase: Client = Depends(get_user_supabase),
 ) -> dict:
     """Check if an outfit is saved as a favourite. Returns saved status."""
-    resp = (
-        supabase.table("outfit_favorites")
-        .select("id")
-        .eq("user_id", user_id)
-        .eq("outfit_id", outfit_id)
-        .execute()
-    )
+    try:
+        resp = await asyncio.to_thread(
+            lambda: supabase.table("outfit_favorites")
+            .select("id")
+            .eq("user_id", user_id)
+            .eq("outfit_id", outfit_id)
+            .execute()
+        )
+        return {"saved": len(resp.data or []) > 0}
+    except Exception as exc:
+        logger.warning("outfit_favorites check failed: %s", exc)
+        return {"saved": False}
 
-    return {"saved": len(resp.data or []) > 0}

@@ -12,6 +12,10 @@ from app.dependencies import get_current_user
 
 router = APIRouter()
 
+# Strong references to in-flight DB-backup tasks so they can't be
+# garbage-collected mid-run (fire-and-forget, but never silently lost).
+_PERSIST_TASKS: set[asyncio.Task] = set()
+
 
 def _get_pipeline_service() -> PipelineService:
     """Lazy singleton — wired in ``main.py``."""
@@ -65,7 +69,11 @@ async def analyze_clothing(
     # after this response can always claim its token; the DB backup write
     # is best-effort and runs in the background.
     stage_pipeline_result(result, user_id)
-    asyncio.create_task(asyncio.to_thread(persist_pipeline_result, result, user_id))
+    persist_task = asyncio.create_task(
+        asyncio.to_thread(persist_pipeline_result, result, user_id)
+    )
+    _PERSIST_TASKS.add(persist_task)
+    persist_task.add_done_callback(_PERSIST_TASKS.discard)
 
     return AnalyzeClothingResponse(
         pipeline_token=result.pipeline_token,

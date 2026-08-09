@@ -47,12 +47,12 @@ class OutfitBuilder:
         outerwear_items = self._shuffled_top_n(partitioned.get("outerwear", []), max_candidates_per_slot)
         accessory_items = self._shuffled_top_n(partitioned.get("accessory", []), max_candidates_per_slot)
 
-        # Footwear-first for every occasion except home — being barefoot
-        # at the gym or a formal event is never the intent.
-        footwear_opts = self._optional_pool(
-            footwear_items,
-            prefer_filled=(outfit_category != "home"),
-        )
+        # Footwear is compulsory for every outfit generation
+        if footwear_items:
+            footwear_opts: list[Optional[dict]] = list(footwear_items)
+            random.shuffle(footwear_opts)
+        else:
+            footwear_opts = [None]
         outerwear_opts = self._optional_pool(outerwear_items)
         accessory_opts = self._optional_pool(accessory_items)
 

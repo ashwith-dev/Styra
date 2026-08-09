@@ -76,13 +76,16 @@ class BGEProvider(EmbeddingProvider):
         if not texts:
             return []
 
-        non_empty = [t for t in texts if t and t.strip()]
-        if not non_empty:
-            raise EmbeddingGenerationError("all input texts are empty")
+        # Empty entries must never become zero vectors — a zero vector has
+        # undefined (NaN) cosine distance and silently corrupts similarity
+        # ordering if persisted. Fail loudly like the single-text path.
+        for i, text in enumerate(texts):
+            if not text or not text.strip():
+                raise EmbeddingGenerationError(f"cannot embed empty text (index {i})")
 
         model = self._get_model()
         try:
-            raw = model.encode(non_empty, normalize_embeddings=True, show_progress_bar=False)
+            raw = model.encode(texts, normalize_embeddings=True, show_progress_bar=False)
         except Exception as exc:
             logger.error("BGE-M3 batch encode failed: %s", exc)
             raise EmbeddingGenerationError(f"batch embedding failed: {exc}") from exc
@@ -91,19 +94,12 @@ class BGEProvider(EmbeddingProvider):
             raise EmbeddingGenerationError(_EMPTY_EMBED_SIZE_ERROR)
 
         result: list[list[float]] = []
-        raw_list = raw.tolist()
-        idx = 0
-        for text in texts:
-            if text and text.strip():
-                vec = raw_list[idx]
-                if not vec or len(vec) != EMBEDDING_DIMENSIONS:
-                    raise EmbeddingGenerationError(
-                        f"invalid embedding dimensions: {len(vec) if vec else 0}"
-                    )
-                result.append(normalize_vector(vec))
-                idx += 1
-            else:
-                result.append([0.0] * EMBEDDING_DIMENSIONS)
+        for vec in raw.tolist():
+            if not vec or len(vec) != EMBEDDING_DIMENSIONS:
+                raise EmbeddingGenerationError(
+                    f"invalid embedding dimensions: {len(vec) if vec else 0}"
+                )
+            result.append(normalize_vector(vec))
         return result
 
     def _encode_single(self, text: str) -> list[float]:

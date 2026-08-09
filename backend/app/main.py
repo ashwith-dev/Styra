@@ -1,3 +1,4 @@
+import asyncio
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -78,6 +79,10 @@ async def lifespan(app: FastAPI):
     pipeline_service = _build_pipeline()
     if pipeline_service is not None:
         await pipeline_service.warmup()
+    # Pre-fetch JWKS so the first authenticated request doesn't stall on a
+    # synchronous key fetch (best-effort — lazy refetch still applies).
+    from app.utils.jwt import warm_signing_keys
+    await asyncio.to_thread(warm_signing_keys)
     yield
     pipeline_service = None
     from app.services.http_client import close_http_client
@@ -121,10 +126,12 @@ async def body_size_guard(request, call_next):
     return await call_next(request)
 
 
-# Rate limiting — applied before routes
-app.middleware("http")(correlation_id_middleware)
-app.middleware("http")(deprecation_header_middleware)
+# Rate limiting — applied before routes.
+# Starlette runs later-registered middleware outermost, so the correlation ID
+# is registered last: every response (including 429s) carries X-Request-ID.
 app.middleware("http")(rate_limit_middleware)
+app.middleware("http")(deprecation_header_middleware)
+app.middleware("http")(correlation_id_middleware)
 
 # ── Exception handlers ──
 app.add_exception_handler(AppError, app_error_handler)

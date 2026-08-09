@@ -5,6 +5,8 @@ invocation into a single pipeline. This is the primary entry point that
 API routes will call.
 """
 
+from abc import ABC, abstractmethod
+
 from app.ai.interfaces.embedding_provider import EmbeddingProvider
 from app.ai.interfaces.llm_provider import LLMProvider
 from app.ai.interfaces.vector_store import VectorStore
@@ -12,7 +14,7 @@ from app.ai.models.outfit_request import OutfitRequest
 from app.ai.models.outfit_response import OutfitResponse
 
 
-class AIService:
+class AIService(ABC):
     """Orchestrates the AI outfit generation pipeline.
 
     Coordinates embedding generation, candidate retrieval via vector search,
@@ -37,6 +39,7 @@ class AIService:
         self._vector_store = vector_store
         self._llm_provider = llm_provider
 
+    @abstractmethod
     def generate_outfits(self, request: OutfitRequest) -> OutfitResponse:
         """Run the full outfit generation pipeline.
 
@@ -50,4 +53,4 @@ class AIService:
             app.ai.utils.exceptions.OutfitGenerationError: If any pipeline
                 stage fails.
         """
-        raise NotImplementedError
+        ...

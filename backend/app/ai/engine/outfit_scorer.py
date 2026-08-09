@@ -429,5 +429,10 @@ class OutfitScorer:
         if isinstance(val, dict):
             c = val.get("confidence")
             if c is not None:
-                return float(c)
+                try:
+                    return float(c)
+                except (TypeError, ValueError):
+                    # A poisoned row (non-numeric confidence) must not crash
+                    # scoring for the whole wardrobe.
+                    return default
         return default

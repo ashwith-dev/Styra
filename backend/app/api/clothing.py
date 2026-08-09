@@ -17,17 +17,15 @@ from app.models.api_contract import (
 )
 from app.services.supabase_client import get_supabase, get_user_client
 from app.services.pipeline_store import pop_pipeline_result
-from app.services.embedding.attribute_embedder import AttributeEmbedder
 from app.services.clothing_mapper import attributes_to_row, row_to_attributes
 from app.services.storage_service import get_storage_service
 from app.utils.jwt import get_token, get_user_supabase
-from app.utils.attribute_validation import validate_attributes
+from app.utils.attribute_validation import normalize_attributes, validate_attributes
+from app.ai.providers.singletons import generate_embedding_pgvector
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
-
-_embedder = AttributeEmbedder()
 
 # Columns the insert can live without if the live table hasn't been
 # migrated yet (PostgREST PGRST204). Core columns never get dropped.
@@ -38,10 +36,6 @@ _LIST_COLUMNS = (
     "category, subcategory, color, season, occasion, brand, "
     "ai_tags, attributes, created_at"
 )
-
-
-def _to_pgvector(embedding: list[float] | None) -> str | None:
-    return f"[{','.join(str(v) for v in embedding)}]" if embedding else None
 
 
 def _missing_column(exc: Exception) -> str | None:
@@ -100,6 +94,9 @@ async def save_clothing(
             },
         )
 
+    # Snap enumerable values to canonical taxonomy form before persisting.
+    body.attributes = normalize_attributes(body.attributes)
+
     staged = await asyncio.to_thread(
         pop_pipeline_result, body.pipeline_token, user_id
     )
@@ -110,9 +107,14 @@ async def save_clothing(
         )
 
     try:
-        admin.table("users").upsert({"id": user_id}, on_conflict="id").execute()
+        await asyncio.to_thread(
+            lambda: admin.table("users").upsert({"id": user_id}, on_conflict="id").execute()
+        )
     except Exception as exc:
         logger.warning("User row upsert warning: %s", exc)
+
+    # CPU-bound (BGE-M3 encode) — keep it off the event loop.
+    embedding = await asyncio.to_thread(generate_embedding_pgvector, body.attributes)
 
     data = {
         "user_id": user_id,
@@ -120,11 +122,11 @@ async def save_clothing(
         "original_image_url": staged.original_image_url,
         "thumbnail_url": staged.thumbnail_url,
         **attributes_to_row(body.attributes),
-        "embedding": _to_pgvector(_embedder.embed_attributes(body.attributes)),
+        "embedding": embedding,
     }
 
     try:
-        resp = _insert_item(user_client, data)
+        resp = await asyncio.to_thread(_insert_item, user_client, data)
     except Exception as exc:
         logger.error("Failed to insert clothing item: %s", exc)
         raise HTTPException(
@@ -157,8 +159,8 @@ async def list_clothing(
 ) -> ListClothingResponse:
     total_count = 0
     try:
-        total_resp = (
-            supabase.table("clothing_items")
+        total_resp = await asyncio.to_thread(
+            lambda: supabase.table("clothing_items")
             .select("id", count="exact")
             .eq("user_id", user_id)
             .execute()
@@ -167,8 +169,8 @@ async def list_clothing(
     except Exception as exc:
         logger.warning("list_clothing count query failed (%s); continuing without total", exc)
 
-    resp = (
-        supabase.table("clothing_items")
+    resp = await asyncio.to_thread(
+        lambda: supabase.table("clothing_items")
         .select(_LIST_COLUMNS)
         .eq("user_id", user_id)
         .order("created_at", desc=True)
@@ -176,6 +178,10 @@ async def list_clothing(
         .execute()
     )
 
+    storage = get_storage_service()
+    refreshed_rows = await asyncio.to_thread(
+        storage.refresh_urls_for_rows, resp.data or []
+    )
     items = [
         ClothingItemBrief(
             id=r["id"],
@@ -186,7 +192,7 @@ async def list_clothing(
             status="completed",
             created_at=r["created_at"],
         )
-        for r in (resp.data or [])
+        for r in refreshed_rows
     ]
     return ListClothingResponse(items=items, total_count=total_count)
 
@@ -198,8 +204,8 @@ async def get_clothing_item(
     supabase: Client = Depends(get_user_supabase),
 ) -> ClothingItemDetail:
     try:
-        resp = (
-            supabase.table("clothing_items")
+        resp = await asyncio.to_thread(
+            lambda: supabase.table("clothing_items")
             .select("*")
             .eq("id", str(item_id))
             .eq("user_id", user_id)
@@ -209,7 +215,11 @@ async def get_clothing_item(
         if not resp.data:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
 
-        return _to_detail(resp.data)
+        # Refresh signed URLs so images are never expired for the client.
+        refreshed = await asyncio.to_thread(
+            get_storage_service().refresh_urls_for_row, resp.data
+        )
+        return _to_detail(refreshed)
     except HTTPException:
         raise
     except Exception as exc:
@@ -227,10 +237,27 @@ async def update_clothing_item(
     user_id: str = Depends(get_current_user),
     supabase: Client = Depends(get_user_supabase),
 ) -> ClothingItemDetail:
+    validation_errors = validate_attributes(body.attributes)
+    if validation_errors:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={
+                "message": "Invalid attributes",
+                "errors": validation_errors,
+            },
+        )
+
     try:
-        resp = (
-            supabase.table("clothing_items")
-            .update(attributes_to_row(body.attributes))
+        body.attributes = normalize_attributes(body.attributes)
+        update_data = attributes_to_row(body.attributes)
+        # CPU-bound (BGE-M3 encode) — keep it off the event loop.
+        embedding = await asyncio.to_thread(generate_embedding_pgvector, body.attributes)
+        if embedding is not None:
+            update_data["embedding"] = embedding
+
+        resp = await asyncio.to_thread(
+            lambda: supabase.table("clothing_items")
+            .update(update_data)
             .eq("id", str(item_id))
             .eq("user_id", user_id)
             .execute()
@@ -258,8 +285,8 @@ async def delete_clothing_item(
     try:
         # Fetch first so the storage objects can be removed with the row;
         # otherwise the public bucket files are orphaned forever.
-        row_resp = (
-            supabase.table("clothing_items")
+        row_resp = await asyncio.to_thread(
+            lambda: supabase.table("clothing_items")
             .select("image_url, original_image_url, thumbnail_url")
             .eq("id", str(item_id))
             .eq("user_id", user_id)
@@ -269,8 +296,8 @@ async def delete_clothing_item(
         if not row_resp.data:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
 
-        resp = (
-            supabase.table("clothing_items")
+        resp = await asyncio.to_thread(
+            lambda: supabase.table("clothing_items")
             .delete()
             .eq("id", str(item_id))
             .eq("user_id", user_id)
