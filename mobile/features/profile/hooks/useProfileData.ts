@@ -50,9 +50,9 @@ export function useProfileData(): ProfileViewModel {
     };
   }, []);
 
-  // Update profile information (Name, Avatar URL)
+  // Update profile information (Name, Phone, Avatar URL)
   const updateProfile = useCallback(
-    async (data: { name?: string; avatarUrl?: string }): Promise<boolean> => {
+    async (data: { name?: string; phone?: string; avatarUrl?: string }): Promise<boolean> => {
       setError(null);
       try {
         const success = await profileRepo.updateUserProfile(data);
@@ -96,10 +96,17 @@ export function useProfileData(): ProfileViewModel {
         ? rawName.trim()
         : "User";
 
+    const rawPhone =
+      (user?.user_metadata?.phone as string | undefined) ??
+      (user?.user_metadata?.contact_no as string | undefined) ??
+      (user?.phone as string | undefined) ??
+      "";
+
     return {
       id: user?.id ?? "",
       name: formattedName,
       email: user?.email ?? "No email provided",
+      phone: rawPhone,
       avatarUrl: user?.user_metadata?.avatar_url ?? null,
       createdAt: user?.created_at ?? new Date().toISOString(),
     };

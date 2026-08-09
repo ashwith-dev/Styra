@@ -1,3 +1,9 @@
 export { SettingsRow } from "./components/SettingsRow";
 export { SettingsSectionCard } from "./components/SettingsSectionCard";
 export { SettingsProfileHeroCard } from "./components/SettingsProfileHeroCard";
+export { PrivacyModal } from "./components/PrivacyModal";
+export { HelpCenterModal } from "./components/HelpCenterModal";
+export { ContactSupportModal } from "./components/ContactSupportModal";
+export { SendFeedbackModal } from "./components/SendFeedbackModal";
+export { RateStyraModal } from "./components/RateStyraModal";
+export { TermsConditionsModal } from "./components/TermsConditionsModal";

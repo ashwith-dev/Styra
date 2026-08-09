@@ -154,7 +154,9 @@ class RecommendationEngine:
         seen_combos: set[frozenset[str]],
     ) -> list[OutfitRecommendation]:
         template = OUTFIT_CATEGORIES[outfit_cat]
-        has_dress = template.get("dress", False) is not None
+        # Template values are booleans, so presence of the key — not its
+        # truthiness — decides whether dress combos exist for this category.
+        has_dress = "dress" in template
 
         # Determine which slots are required (not nullable).
         slots: list[str] = []

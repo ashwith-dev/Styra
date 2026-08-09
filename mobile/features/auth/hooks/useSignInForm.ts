@@ -66,19 +66,19 @@ export function useSignInForm() {
     return ok;
   };
 
-  const handleSubmit = async (): Promise<void> => {
-    if (!validate()) return;
+  const handleSubmit = async (): Promise<boolean> => {
+    if (!validate()) return false;
     setState((prev) => ({ ...prev, loading: true, submitError: null }));
 
     try {
       const { user, error } = await signIn(state.email.trim(), state.password);
 
       if (error) {
-        setState((prev) => ({ ...prev, loading: false }));
         const message = error.message.toLowerCase().includes("invalid login credentials")
           ? "Incorrect email or password. Please try again."
           : error.message;
-        setState((prev) => ({ ...prev, submitError: message }));
+        setState((prev) => ({ ...prev, loading: false, submitError: message }));
+        return false;
       } else {
         setState((prev) => ({ ...prev, loading: false }));
 
@@ -96,12 +96,12 @@ export function useSignInForm() {
           });
         }
 
-        // Navigate directly to Home screen
-        router.replace("/home");
+        return true;
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : "Network request failed. Please check your connection.";
       setState((prev) => ({ ...prev, loading: false, submitError: message }));
+      return false;
     }
   };
 

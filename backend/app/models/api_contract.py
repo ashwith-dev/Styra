@@ -137,3 +137,98 @@ class OutfitFavoriteResponse(BaseModel):
     id: str
     outfit_id: str
     created_at: str
+
+
+# ---------------------------------------------------------------------------
+# POST /outfits/generate  — AI outfit generation
+# ---------------------------------------------------------------------------
+class WeatherInput(BaseModel):
+    temperature: Optional[float] = None
+    condition: Optional[str] = None
+
+
+class OutfitGenerationRequest(BaseModel):
+    occasion: Optional[str] = None
+    style: Optional[str] = None
+    weather: Optional[WeatherInput] = None
+    excluded_item_ids: list[str] = Field(default_factory=list)
+
+
+class OutfitItemResponse(BaseModel):
+    id: str
+    category: Optional[str] = None
+    type: Optional[str] = None
+    color: Optional[str] = None
+    attributes: dict = Field(default_factory=dict)
+    thumbnail_url: Optional[str] = None
+    image_url: Optional[str] = None
+
+
+class ScoreBreakdownItem(BaseModel):
+    dimension: str
+    score: float
+    weight: float
+    weighted_score: float
+
+
+class ScoreResponse(BaseModel):
+    overall: float
+    breakdown: list[ScoreBreakdownItem] = Field(default_factory=list)
+
+
+class StylistResponse(BaseModel):
+    reason: str
+    tips: list[str] = Field(default_factory=list)
+    confidence: float = 0.0
+
+
+class MetadataResponse(BaseModel):
+    generated_at: str
+    request_id: Optional[str] = None
+    used_gemini: bool = False
+    fallback_used: bool = False
+    generation_time_ms: float = 0.0
+    wardrobe_items_count: int = 0
+    candidates_generated: int = 0
+    slots_missing: list[str] = Field(default_factory=list)
+
+
+class OutfitGenerationResponse(BaseModel):
+    success: bool
+    outfit: dict = Field(default_factory=dict)
+    score: ScoreResponse
+    stylist: StylistResponse
+    metadata: MetadataResponse
+
+
+class RegenerateRequest(BaseModel):
+    request_id: Optional[str] = None
+    previous_outfit_id: Optional[str] = None
+    occasion: Optional[str] = None
+    style: Optional[str] = None
+    weather: Optional[WeatherInput] = None
+
+
+class WearOutfitRequest(BaseModel):
+    outfit_id: str
+    date: Optional[str] = None
+    worn_date: Optional[str] = None
+
+
+class OutfitHistoryItem(BaseModel):
+    id: str
+    occasion: Optional[str] = None
+    style: Optional[str] = None
+    weather: Optional[dict] = None
+    overall_score: Optional[float] = None
+    gemini_used: bool = False
+    fallback_used: bool = False
+    created_at: str
+    items: list[OutfitItemResponse] = Field(default_factory=list)
+
+
+class OutfitHistoryResponse(BaseModel):
+    outfits: list[OutfitHistoryItem] = Field(default_factory=list)
+    total: int = 0
+    page: int = 1
+    page_size: int = 20

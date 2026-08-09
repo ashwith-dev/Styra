@@ -20,7 +20,9 @@ from app.services.extraction.base_attributes import (
     AIPipelineResult,
     AttributeConfidence,
 )
+from app.services.http_client import get_http_client
 from app.utils.prompts import SYSTEM_PROMPT_STRUCTURED
+from app.utils.taxonomy import TAXONOMY_TYPES
 
 logger = logging.getLogger(__name__)
 
@@ -81,7 +83,6 @@ class QwenExtractor(BaseAttributeExtractor):
     def __init__(self) -> None:
         self._api_key = settings.openrouter_api_key
         self._model = settings.qwen_model or _FALLBACK_MODELS[0]
-        self._client = httpx.AsyncClient(timeout=60.0)
 
     # ------------------------------------------------------------------
     # Public API
@@ -138,34 +139,41 @@ class QwenExtractor(BaseAttributeExtractor):
             color_hex = f"#{avg_r:02x}{avg_g:02x}{avg_b:02x}"
             color_name = self._color_name_from_rgb(avg_r, avg_g, avg_b)
 
-            # Heuristic for category based on aspect ratio
+            # Heuristic for category based on aspect ratio. Type values
+            # are canonical taxonomy entries (confirmed via the same snap
+            # the model path uses) so fallback rows never pollute the DB
+            # with off-taxonomy or mis-cased values.
             if aspect > 1.35:
                 category = "bottom"
-                type_val = "trousers"
+                type_val = "Trousers"
                 description = f"Classic {color_name.lower()} trousers"
             elif aspect < 0.85:
                 category = "top"
-                type_val = "t-shirt"
+                type_val = "T-Shirt"
                 description = f"Casual {color_name.lower()} top"
             else:
                 category = "top"
-                type_val = "shirt"
+                type_val = "Shirt (Casual)"
                 description = f"Versatile {color_name.lower()} shirt"
+
+            snapped_type = self._snap_type_to_valid(category, type_val)
+            if snapped_type:
+                type_val = snapped_type
 
             return AIPipelineResult(
                 category=AttributeConfidence(value=category, confidence=0.85),
                 type=AttributeConfidence(value=type_val, confidence=0.85),
                 color=AttributeConfidence(value=color_name, confidence=0.9),
                 color_hex=AttributeConfidence(value=color_hex, confidence=0.9),
-                fit=AttributeConfidence(value="regular", confidence=0.8),
-                style=AttributeConfidence(value="casual", confidence=0.8),
+                fit=AttributeConfidence(value="Regular", confidence=0.8),
+                style=AttributeConfidence(value="Casual", confidence=0.8),
                 season=[
-                    AttributeConfidence(value="spring", confidence=1.0),
-                    AttributeConfidence(value="summer", confidence=1.0),
+                    AttributeConfidence(value="Spring", confidence=1.0),
+                    AttributeConfidence(value="Summer", confidence=1.0),
                 ],
                 occasion=[
-                    AttributeConfidence(value="casual", confidence=1.0),
-                    AttributeConfidence(value="everyday", confidence=1.0),
+                    AttributeConfidence(value="Casual", confidence=1.0),
+                    AttributeConfidence(value="Everyday", confidence=1.0),
                 ],
                 description=description,
                 model_name="Visual-Heuristic-Analyzer",
@@ -176,7 +184,7 @@ class QwenExtractor(BaseAttributeExtractor):
             logger.error("Visual fallback extraction failed: %s", exc)
             return AIPipelineResult(
                 category=AttributeConfidence(value="top", confidence=0.8),
-                type=AttributeConfidence(value="t-shirt", confidence=0.8),
+                type=AttributeConfidence(value="T-Shirt", confidence=0.8),
                 color=AttributeConfidence(value="Black", confidence=0.8),
                 color_hex=AttributeConfidence(value="#1A1A1A", confidence=0.8),
                 description="Clothing item",
@@ -244,10 +252,14 @@ class QwenExtractor(BaseAttributeExtractor):
             }
 
             try:
-                resp = await self._client.post(
+                resp = await get_http_client().post(
                     "https://openrouter.ai/api/v1/chat/completions",
                     headers=headers,
                     json=payload,
+                    # Multi-MB base64 image posts to an LLM regularly exceed
+                    # the shared client's 30 s default — give vision calls
+                    # their own, longer budget.
+                    timeout=httpx.Timeout(90.0, connect=10.0),
                 )
             except httpx.RequestError as exc:
                 raise ExtractionError(f"OpenRouter API request failed: {exc}") from exc
@@ -265,9 +277,13 @@ class QwenExtractor(BaseAttributeExtractor):
             if resp.status_code == 429:
                 logger.warning(
                     "OpenRouter rate-limited model %r (429) — free-tier quota "
-                    "likely exhausted; falling back to visual heuristic",
+                    "likely exhausted; trying fallback model string",
                     model,
                 )
+                last_error = ExtractionError(
+                    f"OpenRouter rate limited (429): {model}"
+                )
+                continue
 
             try:
                 resp.raise_for_status()
@@ -322,6 +338,74 @@ class QwenExtractor(BaseAttributeExtractor):
     # ------------------------------------------------------------------
     # Schema mapping
     # ------------------------------------------------------------------
+
+    # Valid type options per category live in app.utils.taxonomy
+    # (TAXONOMY_TYPES) — the single source of truth shared with the
+    # extraction prompt and save-time validation.
+
+    @classmethod
+    def _snap_type_to_valid(cls, category_val: str | None, type_val: str | None) -> str | None:
+        """Map an AI-returned type to the closest valid taxonomy option.
+
+        Performs case-insensitive exact match first, then falls back to
+        token-overlap fuzzy matching. Returns the original value only if
+        the category is unknown (no taxonomy entry), and ``None`` when
+        nothing matches — callers must drop the attribute rather than
+        store an invented value.
+        """
+        if not type_val or not category_val:
+            return type_val
+
+        # LLMs occasionally return non-string scalars — coerce instead of
+        # crashing the whole mapping on .lower().
+        type_val = str(type_val)
+        category_val = str(category_val)
+
+        cat_key = category_val.lower().strip()
+        valid = TAXONOMY_TYPES.get(cat_key)
+        if valid is None:
+            return type_val  # Unknown category — pass through
+
+        type_lower = type_val.lower().strip()
+
+        # Exact case-insensitive match
+        for v in valid:
+            if v.lower() == type_lower:
+                return v
+
+        # Token overlap fuzzy match (handles "Formal Pants" → "Trousers" etc.)
+        type_tokens = set(type_lower.replace("-", " ").replace("(", "").replace(")", "").split())
+        best_score = 0.0
+        best_match = valid[0]
+
+        for v in valid:
+            v_tokens = set(v.lower().replace("-", " ").replace("(", "").replace(")", "").split())
+            # Jaccard-like overlap
+            intersection = len(type_tokens & v_tokens)
+            union = len(type_tokens | v_tokens)
+            score = intersection / max(union, 1)
+            # Bonus for substring match
+            if type_lower in v.lower() or v.lower() in type_lower:
+                score += 0.5
+            if score > best_score:
+                best_score = score
+                best_match = v
+
+        if best_score > 0.0:
+            logger.debug(
+                "Snapped AI type '%s' → '%s' (score=%.2f) for category '%s'",
+                type_val, best_match, best_score, category_val,
+            )
+            return best_match
+
+        # No match at all — omit the attribute rather than corrupting it
+        # with a wrong value (e.g. "Cargos" must not become "Jeans").
+        logger.warning(
+            "AI type '%s' has no match in %s taxonomy; dropping attribute",
+            type_val, category_val,
+        )
+        return None
+
     def _map_to_schema(self, raw: dict) -> AIPipelineResult:
         def _ac(
             key: str,
@@ -340,11 +424,34 @@ class QwenExtractor(BaseAttributeExtractor):
                     value=None if null_on_unknown else "unknown",
                     confidence=0.0,
                 )
-            return AttributeConfidence(value=val, confidence=float(confidence))
+            try:
+                conf_val = float(confidence)
+            except (TypeError, ValueError):
+                # One malformed field (e.g. "high") must not discard the
+                # entire otherwise-valid extraction.
+                conf_val = 1.0 if key in raw else 0.0
+            return AttributeConfidence(value=val, confidence=conf_val)
 
         category = _ac("category")
         if category.value not in _CATEGORIES and category.confidence > 0:
             category = AttributeConfidence(value=category.value, confidence=0.5)
+
+        # Validate and snap the type to a valid taxonomy value
+        raw_type = _ac("type")
+        if raw_type.value and category.value:
+            snapped = self._snap_type_to_valid(category.value, raw_type.value)
+            if snapped is None:
+                # No taxonomy match — omit rather than store a wrong value.
+                raw_type = AttributeConfidence(value=None, confidence=0.0)
+            elif snapped != raw_type.value:
+                # Pure case-folds keep the model's confidence; fuzzy snaps
+                # are approximations and get capped.
+                is_case_fold_only = snapped.lower() == raw_type.value.lower()
+                confidence = (
+                    raw_type.confidence if is_case_fold_only
+                    else min(raw_type.confidence, 0.6)
+                )
+                raw_type = AttributeConfidence(value=snapped, confidence=confidence)
 
         kwargs: dict[str, Any] = {
             attr: _ac(attr, null_on_unknown=True)
@@ -356,7 +463,7 @@ class QwenExtractor(BaseAttributeExtractor):
 
         return AIPipelineResult(
             category=category,
-            type=_ac("type"),
+            type=raw_type,
             color=_ac("color"),
             color_hex=_ac("color_hex", null_on_unknown=True),
             **kwargs,
@@ -374,3 +481,4 @@ class QwenExtractor(BaseAttributeExtractor):
             model_version=self.MODEL_VERSION,
             raw_model_output=raw,
         )
+

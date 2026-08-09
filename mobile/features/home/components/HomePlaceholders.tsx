@@ -2,13 +2,11 @@ import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from "rea
 import { Ionicons } from "@expo/vector-icons";
 import { Badge } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";
-import { colors, radius, spacing, typography } from "@/theme";
+import { colors, spacing, typography } from "@/theme";
 import type { HomePlaceholdersProps } from "../types";
 
 export function HomePlaceholders({
   weather,
-  todayOutfit,
-  aiTeaser,
   liveWeather,
   isLoadingWeather,
   onWeatherCardPress,
@@ -80,27 +78,6 @@ export function HomePlaceholders({
           )}
         </Card>
       </TouchableOpacity>
-
-      {/* Today's Outfit Placeholder Card */}
-      <Card variant="outlined" padding="md" style={styles.card}>
-        <View style={styles.rowBetween}>
-          <Text style={styles.cardTitle}>{todayOutfit.title}</Text>
-          <Badge label={todayOutfit.tag} variant="default" size="sm" />
-        </View>
-        <Text style={styles.cardSubtitle}>{todayOutfit.subtitle}</Text>
-      </Card>
-
-      {/* AI Recommendations Teaser Card */}
-      <Card variant="flat" padding="md" style={styles.aiTeaserCard}>
-        <View style={styles.rowBetween}>
-          <View style={styles.aiTitleRow}>
-            <Ionicons name="sparkles" size={18} color={colors.accent} />
-            <Text style={styles.aiTitle}>{aiTeaser.title}</Text>
-          </View>
-          <Badge label={aiTeaser.badge} variant="warning" size="sm" />
-        </View>
-        <Text style={styles.aiDescription}>{aiTeaser.description}</Text>
-      </Card>
     </View>
   );
 }
@@ -181,36 +158,5 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     marginTop: spacing.xs,
     fontStyle: "italic",
-  },
-  cardTitle: {
-    ...typography.h3,
-    color: colors.textPrimary,
-  },
-  cardSubtitle: {
-    ...typography.body,
-    fontSize: 13,
-    color: colors.textSecondary,
-    marginTop: spacing.xxs,
-  },
-  aiTeaserCard: {
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.md,
-  },
-  aiTitleRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.xs,
-  },
-  aiTitle: {
-    ...typography.h3,
-    color: colors.textPrimary,
-  },
-  aiDescription: {
-    ...typography.caption,
-    color: colors.textSecondary,
-    marginTop: spacing.xs,
-    lineHeight: 20,
   },
 });

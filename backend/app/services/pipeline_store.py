@@ -10,6 +10,7 @@ the database.
 """
 
 import logging
+import threading
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
@@ -29,6 +30,7 @@ _MAX_MEMORY_ENTRIES = 1_000
 
 # In-memory fallback: pipeline_token -> (result, user_id, created_at)
 _memory_store: dict[str, tuple[PipelineResult, str, datetime]] = {}
+_store_lock = threading.Lock()
 
 
 def _now() -> datetime:
@@ -38,19 +40,21 @@ def _now() -> datetime:
 def _prune_memory() -> None:
     """Drop expired entries, then evict oldest-first if still oversized."""
     cutoff = _now() - TTL
-    for token, entry in list(_memory_store.items()):
-        if entry[2] < cutoff:
-            del _memory_store[token]
-    while len(_memory_store) > _MAX_MEMORY_ENTRIES:
-        oldest = min(_memory_store, key=lambda t: _memory_store[t][2])
-        del _memory_store[oldest]
+    with _store_lock:
+        for token, entry in list(_memory_store.items()):
+            if entry[2] < cutoff:
+                del _memory_store[token]
+        while len(_memory_store) > _MAX_MEMORY_ENTRIES:
+            oldest = min(_memory_store, key=lambda t: _memory_store[t][2])
+            del _memory_store[oldest]
 
 
 def stage_pipeline_result(result: PipelineResult, user_id: str) -> None:
-    """Stage a successful pipeline result in memory. Synchronous and cheap —
-    called inline by the analyze endpoint so a save request that arrives
+    """Stage a successful pipeline result in memory. Thread-safe — called
+    inline by the analyze endpoint so a save request that arrives
     immediately after the analyze response can always claim its token."""
-    _memory_store[result.pipeline_token] = (result, user_id, _now())
+    with _store_lock:
+        _memory_store[result.pipeline_token] = (result, user_id, _now())
     _prune_memory()
 
 
@@ -108,11 +112,20 @@ def pop_pipeline_result(token: str, user_id: str) -> Optional[PipelineResult]:
     rows), which is atomic across workers.
     Returns None when missing, owned by another user, or expired.
     """
-    entry = _memory_store.pop(token, None)
-    if entry is not None:
-        stored_result, stored_user_id, created_at = entry
-        if stored_user_id == user_id and _now() - created_at <= TTL:
-            return stored_result
+    with _store_lock:
+        entry = _memory_store.get(token)
+        if entry is not None:
+            stored_result, stored_user_id, created_at = entry
+            if _now() - created_at > TTL:
+                # Expired — evict it and fall through to the DB backup.
+                del _memory_store[token]
+            elif stored_user_id != user_id:
+                # Not the owner — reject without destroying the entry; the
+                # rightful owner may still claim it within TTL.
+                return None
+            else:
+                del _memory_store[token]
+                return stored_result
 
     try:
         client = get_supabase()

@@ -273,7 +273,8 @@ const styles = StyleSheet.create({
   },
   colorsRow: {
     flexDirection: "row",
-    gap: spacing.md,
+    flexWrap: "wrap",
+    gap: spacing.sm,
     marginTop: spacing.xs,
   },
   colorCircle: {

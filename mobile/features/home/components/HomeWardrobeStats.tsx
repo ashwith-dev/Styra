@@ -1,13 +1,13 @@
 import { StyleSheet, Text, View } from "react-native";
-import { Badge } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";
 import { colors, spacing, typography } from "@/theme";
 import type { HomeWardrobeStatsProps } from "../types";
 
+
 export function HomeWardrobeStats({
   totalItems,
   categoryCount,
-  topCategory,
+  savedOutfitsCount,
 }: HomeWardrobeStatsProps) {
   return (
     <View style={styles.container}>
@@ -24,15 +24,8 @@ export function HomeWardrobeStats({
         </Card>
 
         <Card variant="flat" padding="md" style={styles.statCard}>
-          <View style={styles.topCatHeader}>
-            <Text style={styles.statLabel}>Top Category</Text>
-            {topCategory && (
-              <Badge label="ACTIVE" variant="default" size="sm" />
-            )}
-          </View>
-          <Text style={styles.topCatValue} numberOfLines={1}>
-            {topCategory ? topCategory.toUpperCase() : "—"}
-          </Text>
+          <Text style={styles.statNumber}>{savedOutfitsCount}</Text>
+          <Text style={styles.statLabel}>Saved Outfits</Text>
         </Card>
       </View>
     </View>
@@ -45,9 +38,11 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xl,
   },
   sectionTitle: {
-    ...typography.h3,
+    fontFamily: "serif",
+    fontSize: 20,
+    fontWeight: "700",
     color: colors.textPrimary,
-    marginBottom: spacing.sm,
+    marginBottom: spacing.md,
   },
   statsGrid: {
     flexDirection: "row",
@@ -55,32 +50,33 @@ const styles = StyleSheet.create({
   },
   statCard: {
     flex: 1,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
+    backgroundColor: "#FAF8F5",
+    borderRadius: 22,
+    borderWidth: 1.5,
+    borderColor: "#FFFFFF",
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.xs,
+    alignItems: "center",
     justifyContent: "center",
+    shadowColor: "#000000",
+    shadowOffset: { width: 0, height: 5 },
+    shadowOpacity: 0.04,
+    shadowRadius: 10,
+    elevation: 3,
   },
   statNumber: {
-    ...typography.h1,
-    color: colors.textPrimary,
+    fontFamily: "serif",
     fontSize: 24,
+    fontWeight: "800",
+    color: colors.textPrimary,
+    textAlign: "center",
   },
   statLabel: {
     ...typography.caption,
     fontSize: 11,
-    color: colors.textSecondary,
-    marginTop: spacing.xxs,
-  },
-  topCatHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: spacing.xxs,
-  },
-  topCatValue: {
-    ...typography.body,
     fontWeight: "600",
-    color: colors.textPrimary,
-    fontSize: 13,
+    color: "#7F7C76",
+    textAlign: "center",
+    marginTop: spacing.xxs,
   },
 });

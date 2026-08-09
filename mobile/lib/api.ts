@@ -12,6 +12,8 @@ import type {
   OutfitFavoriteRequest,
   OutfitFavoriteResponse,
   OutfitFavoriteItem,
+  OutfitGenerationRequest,
+  OutfitGenerationResponse,
 } from "./types";
 import { AppError } from "./errors";
 
@@ -46,6 +48,11 @@ if (__DEV__) {
 }
 const TIMEOUT_MS = 60_000;
 
+const RETRY_DELAY_MS = 800;
+const MAX_RETRIES = 2;
+const RETRYABLE_METHODS = new Set(["get", "head", "options"]);
+const RETRYABLE_STATUSES = new Set([408, 429, 500, 502, 503, 504]);
+
 function createClient(): AxiosInstance {
   const client = axios.create({
     baseURL: API_URL,
@@ -67,14 +74,40 @@ function createClient(): AxiosInstance {
     return config;
   });
 
-  // ── Response interceptor: normalize errors ──
+  // ── Response interceptor: retry + normalize errors ──
   client.interceptors.response.use(
     (response) => response,
-    (error: AxiosError<{ detail?: string | { error?: string; message?: string } }>) => {
+    async (error: AxiosError<{ detail?: string | { error?: string; message?: string } }>) => {
       // Let cancellations pass through untouched — callers distinguish
       // aborts from real network failures by error name (CanceledError).
       if (axios.isCancel(error)) {
         throw error;
+      }
+
+      const config = error.config;
+      const retryConfig = config as (typeof config & { __retryCount?: number });
+
+      // Retry logic: only for idempotent methods on network errors and
+      // transient server errors, with exponential backoff.
+      if (
+        retryConfig &&
+        retryConfig.method &&
+        RETRYABLE_METHODS.has(retryConfig.method.toLowerCase())
+      ) {
+        const isNetworkError = !error.response;
+        const isTransientServerError =
+          error.response && RETRYABLE_STATUSES.has(error.response.status);
+
+        if (isNetworkError || isTransientServerError) {
+          const retryCount = (retryConfig.__retryCount || 0) + 1;
+
+          if (retryCount <= MAX_RETRIES) {
+            retryConfig.__retryCount = retryCount;
+            const delay = RETRY_DELAY_MS * Math.pow(2, retryCount - 1);
+            await new Promise((resolve) => setTimeout(resolve, delay));
+            return client(retryConfig);
+          }
+        }
       }
 
       if (error.response) {
@@ -122,6 +155,83 @@ export async function analyzeClothing(
   );
   return data;
 }
+
+// ── Outfit Regenerate ──
+
+export async function regenerateOutfit(
+  params: {
+    previous_outfit_id?: string;
+    request_id?: string;
+    occasion?: string;
+    style?: string;
+    weather?: { temperature?: number; condition?: string };
+  },
+  signal?: AbortSignal,
+): Promise<OutfitGenerationResponse> {
+  const { data } = await api.post<OutfitGenerationResponse>(
+    "/outfits/regenerate",
+    params,
+    { timeout: 60_000, signal },
+  );
+  return data;
+}
+
+export async function wearOutfitToday(outfitId: string, targetDate?: string): Promise<void> {
+  await api.post("/outfits/wear", {
+    outfit_id: outfitId,
+    date: targetDate,
+    worn_date: targetDate,
+  });
+}
+
+export async function deleteWearOutfitToday(): Promise<void> {
+  await api.delete("/outfits/wear");
+}
+
+
+// ── Outfit History ──
+
+export interface OutfitHistoryResponse {
+  outfits: Array<{
+    id: string;
+    occasion?: string | null;
+    style?: string | null;
+    weather?: Record<string, unknown> | null;
+    overall_score?: number | null;
+    gemini_used: boolean;
+    fallback_used: boolean;
+    created_at: string;
+    items: Array<{ id: string }>;
+  }>;
+  total: number;
+  page: number;
+  page_size: number;
+}
+
+export async function getOutfitHistory(
+  page: number = 1,
+  pageSize: number = 20,
+): Promise<OutfitHistoryResponse> {
+  const { data } = await api.get<OutfitHistoryResponse>(
+    "/outfits/history",
+    { params: { page, page_size: pageSize } },
+  );
+  return data;
+}
+
+export async function getWornOutfits(
+  page: number = 1,
+  pageSize: number = 20,
+): Promise<OutfitHistoryResponse> {
+  const { data } = await api.get<OutfitHistoryResponse>(
+    "/outfits/worn",
+    { params: { page, page_size: pageSize } },
+  );
+  return data;
+}
+
+// Hidden marker — end of outfit actions
+
 
 // ── Save ──
 
@@ -245,3 +355,29 @@ export async function checkOutfitFavorite(
   );
   return data.saved;
 }
+
+// ── Outfit Generation (AI Engine) ──
+
+export async function generateOutfit(
+  params: OutfitGenerationRequest,
+  signal?: AbortSignal,
+): Promise<OutfitGenerationResponse> {
+  const { data } = await api.post<OutfitGenerationResponse>(
+    "/outfits/generate",
+    params,
+    { timeout: 60_000, signal },
+  );
+  return data;
+}
+
+export async function fetchOutfitCalendar(
+  startDate?: string,
+  endDate?: string,
+): Promise<Array<{ date: string; has_outfit: boolean }>> {
+  const { data } = await api.get<Array<{ date: string; has_outfit: boolean }>>(
+    "/outfits/calendar",
+    { params: { start_date: startDate, end_date: endDate } },
+  );
+  return data;
+}
+

@@ -21,6 +21,8 @@ _RATE_LIMITS: dict[str, tuple[int, float]] = {
     "/clothing": (50, 60.0),           # 50 write requests per minute
     "/recommendations/feedback": (30, 60.0),
     "/recommendations/favorites": (30, 60.0),
+    "/outfits/generate": (30, 60.0),   # calls a paid LLM — tighter than default
+    "/outfits/regenerate": (30, 60.0),
     # Everything else falls back to DEFAULT.
 }
 
@@ -59,18 +61,30 @@ _lock = threading.Lock()
 
 
 def _key_for(request: Request) -> str:
-    """Build a rate-limit key scoped to the authenticated user (or IP as fallback)."""
+    """Build a rate-limit key scoped to the authenticated user (or IP as fallback).
+
+    Bucketing needs identity only, not a freshness guarantee. Verified
+    decoding is used when the JWKS cache is warm (no network); otherwise we
+    fall back to unverified claims rather than doing a blocking JWKS fetch
+    on the event loop. Real verification still happens in the auth
+    dependency for every protected route.
+    """
     user_id: Optional[str] = None
-    try:
-        token = request.headers.get("Authorization", "").removeprefix("Bearer ").strip()
-        if token:
-            from app.utils.jwt import decode_access_token
+    token = request.headers.get("Authorization", "").removeprefix("Bearer ").strip()
+    if token:
+        try:
+            from app.utils.jwt import decode_access_token, has_cached_signing_keys
 
-            user_id = decode_access_token(token).get("sub")
-    except Exception:
-        pass
+            if has_cached_signing_keys():
+                user_id = decode_access_token(token).get("sub")
+            else:
+                from jose import jwt as jose_jwt
 
-    client = user_id or request.client.host if request.client else "unknown"
+                user_id = jose_jwt.get_unverified_claims(token).get("sub")
+        except Exception:
+            user_id = None
+
+    client = user_id or (request.client.host if request.client else "unknown")
     return f"{client}:{request.url.path}"
 
 
@@ -93,15 +107,18 @@ def get_rate_limit_config(path: str) -> tuple[int, float]:
 def _evict_stale(now: float) -> None:
     """Drop buckets idle longer than the staleness window.
 
-    If nothing is stale the store is cleared wholesale — a full store of
-    active buckets is indistinguishable from an attack at this size.
+    Stale buckets are evicted first. If none are stale, the *oldest*
+    active bucket is evicted to prevent unbounded memory growth. This
+    is a simple LRU-like eviction: the bucket least recently refilled
+    goes first.
     """
     stale = [k for k, b in _store.items() if now - b.last_refill > _STALE_AFTER_SECONDS]
     if stale:
         for k in stale:
             del _store[k]
     else:
-        _store.clear()
+        oldest_key = min(_store, key=lambda k: _store[k].last_refill)
+        del _store[oldest_key]
 
 
 async def rate_limit_middleware(request: Request, call_next):

@@ -146,10 +146,10 @@ export async function fetchUserPreferences(): Promise<UserPreferences> {
       .eq("user_id", userId)
       .maybeSingle();
 
-    // Fetch from users table for body profile
+    // Fetch from users table for body profile & contact details
     const { data: userRow } = await supabase
       .from("users")
-      .select("height_cm, weight_kg, top_size, bottom_size, shoe_size, gender")
+      .select("*")
       .eq("id", userId)
       .maybeSingle();
 
@@ -213,10 +213,15 @@ export async function updateUserPreferences(
 
 export async function updateUserProfile(data: {
   name?: string;
+  phone?: string;
   avatarUrl?: string;
 }): Promise<boolean> {
   const metadata: Record<string, unknown> = {};
   if (data.name !== undefined) metadata.full_name = data.name.trim();
+  if (data.phone !== undefined) {
+    metadata.phone = data.phone.trim();
+    metadata.contact_no = data.phone.trim();
+  }
   if (data.avatarUrl !== undefined) metadata.avatar_url = data.avatarUrl.trim();
 
   if (!isOnline()) {
@@ -231,19 +236,19 @@ export async function updateUserProfile(data: {
   const { error } = await supabase.auth.updateUser({ data: metadata });
   if (error) throw error;
 
-  if (userId && data.name) {
+  if (userId && (data.name !== undefined || data.phone !== undefined)) {
     try {
+      const userPayload: Record<string, unknown> = {
+        id: userId,
+        email: user?.email ?? "",
+        updated_at: new Date().toISOString(),
+      };
+      if (data.name !== undefined) userPayload.username = data.name.trim();
+      if (data.phone !== undefined) userPayload.phone = data.phone.trim();
+
       await supabase
         .from("users")
-        .upsert(
-          {
-            id: userId,
-            email: user.email ?? "",
-            username: data.name.trim(),
-            updated_at: new Date().toISOString(),
-          },
-          { onConflict: "id" },
-        );
+        .upsert(userPayload, { onConflict: "id" });
     } catch {
       // Ignore background table error if username uniqueness constraint fails
     }

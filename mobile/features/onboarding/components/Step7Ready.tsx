@@ -53,13 +53,13 @@ export function Step7Ready({
         {/* Final Step 7 & 100% Card */}
         <View style={styles.actionCard}>
           <View style={styles.progressRow}>
-            <Text style={styles.stepText}>Step 7 of 7</Text>
+            <Text style={styles.stepText}>Step 8 of 8</Text>
             <Text style={styles.percentText}>100%</Text>
           </View>
 
           {/* 100% Filled Progress Segments Bar */}
           <View style={styles.segmentsRow}>
-            {Array.from({ length: 7 }).map((_, i) => (
+            {Array.from({ length: 8 }).map((_, i) => (
               <View key={i} style={styles.filledSegment} />
             ))}
           </View>

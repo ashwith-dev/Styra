@@ -77,8 +77,8 @@ export function useSignUpForm() {
     return ok;
   };
 
-  const handleSubmit = async (): Promise<void> => {
-    if (!validate()) return;
+  const handleSubmit = async (): Promise<boolean> => {
+    if (!validate()) return false;
     setState((prev) => ({ ...prev, loading: true, submitError: null }));
 
     try {
@@ -89,20 +89,17 @@ export function useSignUpForm() {
 
       if (error) {
         setState((prev) => ({ ...prev, loading: false, submitError: error.message }));
+        return false;
       } else {
         // Attempt immediate auto-login so user bypasses email verification screen
-        const { error: signInErr } = await signIn(email, password);
+        await signIn(email, password);
         setState((prev) => ({ ...prev, loading: false }));
-
-        if (signInErr) {
-          router.replace("/onboarding");
-        } else {
-          router.replace("/onboarding");
-        }
+        return true;
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : "Network request failed. Please check your connection.";
       setState((prev) => ({ ...prev, loading: false, submitError: message }));
+      return false;
     }
   };
 

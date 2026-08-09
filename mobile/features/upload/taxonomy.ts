@@ -361,6 +361,25 @@ export const OCCASIONS = [
   "Home",
 ];
 
+// Style/vibe vocabulary — mirrors the backend TAXONOMY_STYLES allowlist.
+// (OCCASIONS additionally has "Home", which the backend drops for style.)
+export const STYLES = [
+  "Casual",
+  "Smart Casual",
+  "Business Casual",
+  "Formal",
+  "Party",
+  "Wedding",
+  "Festive",
+  "Office",
+  "College",
+  "Date Night",
+  "Travel",
+  "Beach",
+  "Gym",
+  "Lounge",
+];
+
 export const NECKLINES = [
   "Crew Neck",
   "Round Neck",
@@ -482,7 +501,7 @@ export function getActiveFieldsForCategory(category: string, subcategory?: strin
   }
 
   // Style / Vibe
-  fields.push({ key: "style", label: "Style", options: OCCASIONS, type: "select" });
+  fields.push({ key: "style", label: "Style", options: STYLES, type: "select" });
 
   // Tops & Outerwear specific
   if (isTop || isOuterwear || isDress || isEthnic) {

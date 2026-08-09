@@ -11,6 +11,7 @@ export { AddItemFAB } from "./components/AddItemFAB";
 export { WardrobeScreenHeader } from "./components/WardrobeScreenHeader";
 export { EmptyWardrobeView } from "./components/EmptyWardrobeView";
 export { PopulatedWardrobeView } from "./components/PopulatedWardrobeView";
+export { CategoryItemsSheet } from "./components/CategoryItemsSheet";
 
 // ── Hooks ──
 export { useItemDetail } from "./hooks/useItemDetail";

@@ -50,9 +50,8 @@ export const SavedLookCard = memo(function SavedLookCard({
       {/* Dynamic Outfit Collage Preview */}
       <OutfitCollagePreview items={look.items || []} />
 
-      {/* Outfit Title & Saved Timestamp */}
+      {/* Saved Timestamp */}
       <View style={styles.infoSection}>
-        <Text style={styles.outfitTitle}>{look.name || "Custom Look"}</Text>
         <Text style={styles.timestamp}>{timestampText}</Text>
       </View>
 
@@ -122,13 +121,6 @@ const styles = StyleSheet.create({
   },
   infoSection: {
     marginBottom: spacing.md,
-  },
-  outfitTitle: {
-    fontFamily: Platform.OS === "ios" ? "Georgia" : "serif",
-    fontSize: 22,
-    fontWeight: "700",
-    color: colors.textPrimary,
-    marginBottom: 2,
   },
   timestamp: {
     ...typography.caption,

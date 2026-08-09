@@ -22,7 +22,6 @@ import {
 } from "@/features/profile";
 import { useNotificationPermission } from "@/hooks/useNotificationPermission";
 import { NOTIFICATION_DENIED_DIALOG } from "@/lib/services/permissionConstants";
-import type { UserPreferences } from "@/features/profile";
 
 export default function ProfileScreen() {
   const { user, preferences, stats, insights, actions } = useProfileData();
@@ -39,6 +38,7 @@ export default function ProfileScreen() {
   const [editProfileVisible, setEditProfileVisible] = useState(false);
   const [colorModalVisible, setColorModalVisible] = useState(false);
   const [editName, setEditName] = useState(user.name);
+  const [editPhone, setEditPhone] = useState(user.phone ?? "");
   const [editAvatarUrl, setEditAvatarUrl] = useState(user.avatarUrl ?? "");
   const [savingProfile, setSavingProfile] = useState(false);
 
@@ -89,13 +89,14 @@ export default function ProfileScreen() {
     setSavingProfile(true);
     const success = await actions.updateProfile({
       name: editName,
+      phone: editPhone,
       avatarUrl: editAvatarUrl,
     });
     setSavingProfile(false);
     if (success) {
       setEditProfileVisible(false);
     }
-  }, [editName, editAvatarUrl, actions]);
+  }, [editName, editPhone, editAvatarUrl, actions]);
 
   // Handle saving colors from ColorSelectionModal
   const handleSaveColors = useCallback(
@@ -353,46 +354,6 @@ export default function ProfileScreen() {
     [actions],
   );
 
-  /**
-   * Handles toggling any notification preference key from SettingsSectionList.
-   * - Toggling ON  → request OS permission; if denied, revert + show dialog.
-   * - Toggling OFF → update preferences immediately (no system dialog needed).
-   */
-  const handleToggleNotification = useCallback(
-    (key: keyof UserPreferences["notifications"], val: boolean) => {
-      if (!val) {
-        // Turning off — always allowed, just update preferences
-        void actions.updatePreferences({
-          notifications: {
-            ...preferences.notifications,
-            [key]: false,
-          },
-        });
-        // Also persist master switch
-        void actions.updatePreferences({ smartNotifications: false });
-        return;
-      }
-
-      // Turning on — need real OS permission
-      void requestAndHandlePermission(
-        () => {
-          // Granted
-          void actions.updatePreferences({
-            notifications: {
-              ...preferences.notifications,
-              [key]: true,
-            },
-            smartNotifications: true,
-          });
-        },
-        () => {
-          // Denied — keep toggle OFF (don't update preferences)
-        },
-      );
-    },
-    [actions, preferences.notifications, requestAndHandlePermission],
-  );
-
   // Derive notification toggle values based on REAL permission + local pref
   const effectiveNotifications = {
     outfits: notifPermissionStatus === "granted" && preferences.notifications.outfits,
@@ -420,6 +381,7 @@ export default function ProfileScreen() {
             user={user}
             onEditProfile={() => {
               setEditName(user.name);
+              setEditPhone(user.phone ?? "");
               setEditAvatarUrl(user.avatarUrl ?? "");
               setEditProfileVisible(true);
             }}
@@ -473,9 +435,12 @@ export default function ProfileScreen() {
       <EditProfileModal
         visible={editProfileVisible}
         name={editName}
+        email={user.email}
+        phone={editPhone}
         avatarUrl={editAvatarUrl}
         saving={savingProfile}
         onChangeName={setEditName}
+        onChangePhone={setEditPhone}
         onChangeAvatarUrl={setEditAvatarUrl}
         onSave={handleSaveProfile}
         onClose={() => setEditProfileVisible(false)}

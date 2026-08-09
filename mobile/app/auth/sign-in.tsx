@@ -6,8 +6,8 @@ import {
   View,
 } from "react-native";
 import { router } from "expo-router";
-import { Button, Input } from "@/components/ui";
-import { colors, radius, spacing, typography } from "@/theme";
+import { DoorAuthButton, Input } from "@/components/ui";
+import { colors, spacing, typography } from "@/theme";
 import {
   AuthDivider,
   AuthFooterLink,
@@ -20,7 +20,7 @@ import {
  * Sign In screen — STYRA branded design.
  *
  * Layout: STYRA logo → headline → email/password inputs →
- *         FORGOT PASSWORD link → Continue CTA →
+ *         FORGOT PASSWORD link → Door Portal CTA →
  *         OR CONTINUE WITH divider → Google → footer link.
  */
 export default function SignIn() {
@@ -103,16 +103,14 @@ export default function SignIn() {
         )}
       </View>
 
-      {/* Primary CTA */}
-      <Button
-        label="Continue"
+      {/* Primary CTA with Micro-Animation */}
+      <DoorAuthButton
+        label="Sign In"
+        subtext="Opening portal..."
         onPress={handleSubmit}
+        onSuccess={() => router.replace("/home")}
         loading={loading}
         disabled={loading}
-        variant="primary"
-        size="lg"
-        fullWidth
-        style={styles.primaryBtn}
         testID="sign-in-submit"
       />
 
@@ -171,9 +169,5 @@ const styles = StyleSheet.create({
     textAlign: "center",
     marginTop: spacing.xs,
   },
-  primaryBtn: {
-    backgroundColor: colors.textPrimary,
-    borderRadius: radius.full,
-    alignSelf: "stretch",
-  },
 });
+

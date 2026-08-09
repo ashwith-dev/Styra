@@ -3,21 +3,26 @@ import type { ClothingItemBrief } from "@/lib/types";
 export interface WardrobeRequirementConfig {
   requiredTops: number;
   requiredBottoms: number;
+  requiredFootwear: number;
 }
 
 export const DEFAULT_WARDROBE_REQUIREMENTS: WardrobeRequirementConfig = {
   requiredTops: 2,
   requiredBottoms: 2,
+  requiredFootwear: 1,
 };
 
 export interface WardrobeValidationResult {
   isUnlocked: boolean;
   topsCount: number;
   bottomsCount: number;
+  footwearCount: number;
   requiredTops: number;
   requiredBottoms: number;
+  requiredFootwear: number;
   topsProgress: number; // 0..1
   bottomsProgress: number; // 0..1
+  footwearProgress: number; // 0..1
 }
 
 const TOP_CATEGORIES = new Set([
@@ -55,9 +60,26 @@ const BOTTOM_CATEGORIES = new Set([
   "lower",
 ]);
 
+const FOOTWEAR_CATEGORIES = new Set([
+  "footwear",
+  "shoes",
+  "shoe",
+  "sneakers",
+  "sneaker",
+  "boots",
+  "boot",
+  "sandals",
+  "sandal",
+  "loafers",
+  "loafer",
+  "heels",
+  "flats",
+  "footwear/shoes",
+]);
+
 /**
  * Validates whether the user's wardrobe meets minimum requirements to unlock AI outfit generation.
- * Requirements: At least 2 Top Wear items and at least 2 Bottom Wear items.
+ * Requirements: At least 2 Top Wear items, at least 2 Bottom Wear items, and at least 1 Footwear item.
  */
 export function validateMinimumWardrobe(
   items: ClothingItemBrief[],
@@ -65,6 +87,7 @@ export function validateMinimumWardrobe(
 ): WardrobeValidationResult {
   let topsCount = 0;
   let bottomsCount = 0;
+  let footwearCount = 0;
 
   for (const item of items) {
     const catAttr = (item.attributes as Record<string, unknown>)?.category;
@@ -86,15 +109,20 @@ export function validateMinimumWardrobe(
     const combined = `${catVal} ${typeVal}`;
 
     if (
-      TOP_CATEGORIES.has(catVal) ||
-      Array.from(TOP_CATEGORIES).some((t) => combined.includes(t))
+      FOOTWEAR_CATEGORIES.has(catVal) ||
+      Array.from(FOOTWEAR_CATEGORIES).some((f) => combined.includes(f))
     ) {
-      topsCount++;
+      footwearCount++;
     } else if (
       BOTTOM_CATEGORIES.has(catVal) ||
       Array.from(BOTTOM_CATEGORIES).some((b) => combined.includes(b))
     ) {
       bottomsCount++;
+    } else if (
+      TOP_CATEGORIES.has(catVal) ||
+      Array.from(TOP_CATEGORIES).some((t) => combined.includes(t))
+    ) {
+      topsCount++;
     } else {
       // Default heuristic: items default to tops if unspecified
       topsCount++;
@@ -102,15 +130,20 @@ export function validateMinimumWardrobe(
   }
 
   const isUnlocked =
-    topsCount >= config.requiredTops && bottomsCount >= config.requiredBottoms;
+    topsCount >= config.requiredTops &&
+    bottomsCount >= config.requiredBottoms &&
+    footwearCount >= config.requiredFootwear;
 
   return {
     isUnlocked,
     topsCount,
     bottomsCount,
+    footwearCount,
     requiredTops: config.requiredTops,
     requiredBottoms: config.requiredBottoms,
+    requiredFootwear: config.requiredFootwear,
     topsProgress: Math.min(1, topsCount / config.requiredTops),
     bottomsProgress: Math.min(1, bottomsCount / config.requiredBottoms),
+    footwearProgress: Math.min(1, footwearCount / config.requiredFootwear),
   };
 }

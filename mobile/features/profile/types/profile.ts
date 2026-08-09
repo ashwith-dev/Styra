@@ -9,6 +9,7 @@ export interface ProfileUser {
   id: string;
   name: string;
   email: string;
+  phone?: string | null;
   avatarUrl: string | null;
   createdAt: string;
 }
@@ -44,6 +45,7 @@ export interface UserPreferences {
 export interface ProfileActions {
   updateProfile: (data: {
     name?: string;
+    phone?: string;
     avatarUrl?: string;
   }) => Promise<boolean>;
   updatePreferences: (
@@ -89,11 +91,14 @@ export interface SettingsSectionConfig {
 export interface EditProfileModalProps {
   visible: boolean;
   name: string;
-  avatarUrl: string;
+  email: string;
+  phone: string;
+  avatarUrl?: string;
   saving: boolean;
   error?: string | null;
   onChangeName: (text: string) => void;
-  onChangeAvatarUrl: (text: string) => void;
+  onChangePhone: (text: string) => void;
+  onChangeAvatarUrl?: (text: string) => void;
   onSave: () => void;
   onClose: () => void;
 }

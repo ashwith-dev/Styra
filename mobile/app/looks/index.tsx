@@ -98,15 +98,9 @@ export default function SavedLooksListScreen() {
     () => (
       <View>
         <SavedLooksHeaderSection count={looks.length} />
-        <SavedLooksFilterBar
-          searchQuery={searchQuery}
-          onSearchChange={setSearchQuery}
-          selectedFilter={selectedFilter}
-          onFilterSelect={setSelectedFilter}
-        />
       </View>
     ),
-    [looks.length, searchQuery, selectedFilter],
+    [looks.length],
   );
 
   return (

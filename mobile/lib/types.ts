@@ -128,3 +128,58 @@ export interface OutfitFavoriteItem {
   outfit_data: OutfitRecommendationItem;
   created_at: string;
 }
+
+// ── Outfit Generation (AI Engine) ──
+
+export interface OutfitGenerationRequest {
+  occasion?: string;
+  style?: string;
+  weather?: { temperature?: number; condition?: string };
+  excluded_item_ids?: string[];
+}
+
+export interface OutfitItemResponse {
+  id: string;
+  category?: string;
+  type?: string;
+  color?: string;
+  attributes: Record<string, unknown>;
+  thumbnail_url?: string | null;
+  image_url?: string | null;
+}
+
+export interface ScoreBreakdownItem {
+  dimension: string;
+  score: number;
+  weight: number;
+  weighted_score: number;
+}
+
+export interface StylistInfo {
+  reason: string;
+  tips: string[];
+  confidence: number;
+}
+
+export interface GenerationMetadata {
+  generated_at: string;
+  request_id?: string | null;
+  used_gemini: boolean;
+  fallback_used: boolean;
+  generation_time_ms: number;
+  wardrobe_items_count: number;
+  candidates_generated: number;
+  /** Outfit slots the wardrobe couldn't fill (e.g. "footwear"). */
+  slots_missing?: string[];
+}
+
+export interface OutfitGenerationResponse {
+  success: boolean;
+  outfit: Record<string, OutfitItemResponse | OutfitItemResponse[]>;
+  score: {
+    overall: number;
+    breakdown: ScoreBreakdownItem[];
+  };
+  stylist: StylistInfo;
+  metadata: GenerationMetadata;
+}

@@ -18,11 +18,12 @@ interface InputProps extends TextInputProps {
 }
 
 export const Input = forwardRef<TextInput, InputProps>(function Input(
-  { label, error, hint, isPassword, secureTextEntry, testID, style, ...rest },
+  { label, error, hint, isPassword, secureTextEntry, testID, style, editable, ...rest },
   ref,
 ) {
   const [showPassword, setShowPassword] = useState(false);
   const passwordField = isPassword || secureTextEntry;
+  const isReadOnly = editable === false;
 
   return (
     <View style={styles.wrapper}>
@@ -32,13 +33,15 @@ export const Input = forwardRef<TextInput, InputProps>(function Input(
         <TextInput
           ref={ref}
           testID={testID}
+          editable={editable}
           style={[
             styles.input,
             error && styles.inputError,
+            isReadOnly && styles.inputDisabled,
             passwordField && styles.inputWithIcon,
             style,
           ]}
-          placeholderTextColor={colors.textSecondary}
+          placeholderTextColor={isReadOnly ? "#A09C94" : colors.textSecondary}
           autoCapitalize="none"
           accessibilityLabel={label}
           secureTextEntry={passwordField ? !showPassword : secureTextEntry}
@@ -98,6 +101,11 @@ const styles = StyleSheet.create({
   },
   inputError: {
     borderColor: colors.error,
+  },
+  inputDisabled: {
+    backgroundColor: "#F5F3ED",
+    borderColor: "#E5E2D9",
+    color: "#8E8B82",
   },
   eyeBtn: {
     position: "absolute",

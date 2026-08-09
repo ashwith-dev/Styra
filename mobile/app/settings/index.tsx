@@ -25,9 +25,15 @@ import {
   useProfileData,
 } from "@/features/profile";
 import {
+  ContactSupportModal,
+  HelpCenterModal,
+  PrivacyModal,
+  RateStyraModal,
+  SendFeedbackModal,
   SettingsProfileHeroCard,
   SettingsRow,
   SettingsSectionCard,
+  TermsConditionsModal,
 } from "@/features/settings";
 import { deleteUserAccount } from "@/lib/services/accountService";
 import { clearDataCaches, getCacheSizeBytes } from "@/lib/storage/clearAll";
@@ -44,10 +50,17 @@ export default function SettingsScreen() {
 
   // Modals state
   const [editProfileVisible, setEditProfileVisible] = useState(false);
+  const [privacyModalVisible, setPrivacyModalVisible] = useState(false);
+  const [helpCenterModalVisible, setHelpCenterModalVisible] = useState(false);
+  const [contactSupportModalVisible, setContactSupportModalVisible] = useState(false);
+  const [feedbackModalVisible, setFeedbackModalVisible] = useState(false);
+  const [rateModalVisible, setRateModalVisible] = useState(false);
+  const [termsModalVisible, setTermsModalVisible] = useState(false);
   const [signOutModalVisible, setSignOutModalVisible] = useState(false);
   const [deleteAccountModalVisible, setDeleteAccountModalVisible] = useState(false);
 
   const [editName, setEditName] = useState(user.name);
+  const [editPhone, setEditPhone] = useState(user.phone ?? "");
   const [editAvatarUrl, setEditAvatarUrl] = useState(user.avatarUrl ?? "");
   const [savingProfile, setSavingProfile] = useState(false);
   const [cacheSizeLabel, setCacheSizeLabel] = useState("…");
@@ -63,13 +76,14 @@ export default function SettingsScreen() {
     setSavingProfile(true);
     const success = await actions.updateProfile({
       name: editName,
+      phone: editPhone,
       avatarUrl: editAvatarUrl,
     });
     setSavingProfile(false);
     if (success) {
       setEditProfileVisible(false);
     }
-  }, [editName, editAvatarUrl, actions]);
+  }, [editName, editPhone, editAvatarUrl, actions]);
 
   // Sign Out Handler (Confirmed from Custom Modal)
   const handleConfirmSignOut = useCallback(async () => {
@@ -132,6 +146,7 @@ export default function SettingsScreen() {
             user={user}
             onPress={() => {
               setEditName(user.name);
+              setEditPhone(user.phone ?? "");
               setEditAvatarUrl(user.avatarUrl ?? "");
               setEditProfileVisible(true);
             }}
@@ -142,75 +157,23 @@ export default function SettingsScreen() {
             <SettingsRow
               iconName="person-outline"
               title="Personal Information"
+              isLast
               onPress={() => {
                 setEditName(user.name);
+                setEditPhone(user.phone ?? "");
                 setEditAvatarUrl(user.avatarUrl ?? "");
                 setEditProfileVisible(true);
               }}
             />
-            <SettingsRow
-              iconName="lock-closed-outline"
-              title="Change Password"
-              isLast
-              onPress={() =>
-                Alert.alert(
-                  "Change Password",
-                  "A password reset link will be sent to your registered email address.",
-                  [
-                    { text: "Cancel", style: "cancel" },
-                    {
-                      text: "Send Link",
-                      onPress: async () => {
-                        try {
-                          const email = user.email || "";
-                          if (!email) {
-                            Alert.alert("Error", "No email address found for this account.");
-                            return;
-                          }
-                          const { error } = await supabase.auth.resetPasswordForEmail(email);
-                          if (error) {
-                            Alert.alert("Error", error.message || "Failed to send reset email.");
-                          } else {
-                            Alert.alert("Sent", "Check your email for instructions to reset your password.");
-                          }
-                        } catch {
-                          Alert.alert("Error", "Failed to send password reset email. Please try again.");
-                        }
-                      },
-                    },
-                  ],
-                )
-              }
-            />
           </SettingsSectionCard>
 
-          {/* PRIVACY & DATA Section */}
+          {/* PRIVACY Section */}
           <SettingsSectionCard title="PRIVACY & DATA">
             <SettingsRow
               iconName="eye-outline"
               title="Privacy"
-              onPress={() => handleOpenUrl(EXTERNAL_LINKS.privacyPolicy)}
-            />
-            <SettingsRow
-              iconName="server-outline"
-              title="Data & Storage"
               isLast
-              onPress={() =>
-                Alert.alert("Data & Storage", `Cached wardrobe & AI data: ${cacheSizeLabel}`, [
-                  { text: "Close" },
-                  {
-                    text: "Clear Cache",
-                    style: "destructive",
-                    onPress: () => {
-                      void (async () => {
-                        await clearDataCaches();
-                        setCacheSizeLabel(formatBytes(await getCacheSizeBytes()));
-                        Alert.alert("Cleared", "Cache cleared successfully.");
-                      })();
-                    },
-                  },
-                ])
-              }
+              onPress={() => setPrivacyModalVisible(true)}
             />
           </SettingsSectionCard>
 
@@ -219,23 +182,23 @@ export default function SettingsScreen() {
             <SettingsRow
               iconName="help-circle-outline"
               title="Help Centre"
-              onPress={() => handleOpenUrl(EXTERNAL_LINKS.helpCenter)}
+              onPress={() => setHelpCenterModalVisible(true)}
             />
             <SettingsRow
               iconName="mail-outline"
               title="Contact Support"
-              onPress={() => handleOpenUrl(EXTERNAL_LINKS.supportContact)}
+              onPress={() => setContactSupportModalVisible(true)}
             />
             <SettingsRow
               iconName="chatbubble-outline"
               title="Send Feedback"
-              onPress={() => handleOpenUrl(EXTERNAL_LINKS.sendFeedback)}
+              onPress={() => setFeedbackModalVisible(true)}
             />
             <SettingsRow
               iconName="star-outline"
               title="Rate STYRA"
               isLast
-              onPress={() => Alert.alert("Rate STYRA", "Thank you for supporting STYRA! Store rating flow opening...")}
+              onPress={() => setRateModalVisible(true)}
             />
           </SettingsSectionCard>
 
@@ -244,13 +207,13 @@ export default function SettingsScreen() {
             <SettingsRow
               iconName="document-text-outline"
               title="Terms & Conditions"
-              onPress={() => handleOpenUrl(EXTERNAL_LINKS.termsConditions)}
+              onPress={() => setTermsModalVisible(true)}
             />
             <SettingsRow
               iconName="shield-checkmark-outline"
               title="Privacy Policy"
               isLast
-              onPress={() => handleOpenUrl(EXTERNAL_LINKS.privacyPolicy)}
+              onPress={() => setPrivacyModalVisible(true)}
             />
           </SettingsSectionCard>
 
@@ -291,12 +254,51 @@ export default function SettingsScreen() {
       <EditProfileModal
         visible={editProfileVisible}
         name={editName}
+        email={user.email}
+        phone={editPhone}
         avatarUrl={editAvatarUrl}
         saving={savingProfile}
         onChangeName={setEditName}
+        onChangePhone={setEditPhone}
         onChangeAvatarUrl={setEditAvatarUrl}
         onSave={handleSaveProfile}
         onClose={() => setEditProfileVisible(false)}
+      />
+
+      {/* Privacy & Data Security Modal */}
+      <PrivacyModal
+        visible={privacyModalVisible}
+        onClose={() => setPrivacyModalVisible(false)}
+      />
+
+      {/* Help Centre Modal */}
+      <HelpCenterModal
+        visible={helpCenterModalVisible}
+        onClose={() => setHelpCenterModalVisible(false)}
+      />
+
+      {/* Contact Support Modal */}
+      <ContactSupportModal
+        visible={contactSupportModalVisible}
+        onClose={() => setContactSupportModalVisible(false)}
+      />
+
+      {/* Send Feedback Modal */}
+      <SendFeedbackModal
+        visible={feedbackModalVisible}
+        onClose={() => setFeedbackModalVisible(false)}
+      />
+
+      {/* Rate STYRA Modal */}
+      <RateStyraModal
+        visible={rateModalVisible}
+        onClose={() => setRateModalVisible(false)}
+      />
+
+      {/* Terms & Conditions Modal */}
+      <TermsConditionsModal
+        visible={termsModalVisible}
+        onClose={() => setTermsModalVisible(false)}
       />
 
       {/* Custom Blurred Backdrop Sign Out Modal */}

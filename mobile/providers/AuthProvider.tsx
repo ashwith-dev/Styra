@@ -28,6 +28,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!mountedRef.current) return;
       setSession(session);
       setLoading(false);
+    }).catch(() => {
+      // A failed restore must not leave the app stuck on the splash spinner.
+      if (mountedRef.current) setLoading(false);
     });
     return () => { mountedRef.current = false; };
   }, []);

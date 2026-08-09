@@ -35,6 +35,21 @@ def _fetch_signing_keys() -> dict[str, dict]:
     return {k["kid"]: k for k in response.json().get("keys", []) if "kid" in k}
 
 
+def has_cached_signing_keys() -> bool:
+    """True when the JWKS cache is populated (i.e. verification needs no network)."""
+    return bool(_jwks_keys)
+
+
+def warm_signing_keys() -> None:
+    """Pre-fetch JWKS at startup so the first authenticated request doesn't
+    pay the fetch cost. Best-effort: lazy refetch on demand still applies."""
+    global _jwks_keys
+    try:
+        _jwks_keys = _fetch_signing_keys()
+    except Exception as exc:
+        logger.warning("JWKS pre-fetch failed (will retry on first request): %s", exc)
+
+
 def _get_signing_key(kid: str) -> dict:
     global _jwks_keys
     if kid not in _jwks_keys:

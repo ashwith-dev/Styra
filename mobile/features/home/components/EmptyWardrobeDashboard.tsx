@@ -11,6 +11,8 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { colors, radius, spacing, typography } from "@/theme";
 import { STEP1_IMAGES } from "@/features/onboarding/config";
+import { MinItemsRequirementsCard } from "./MinItemsRequirementsCard";
+
 
 interface EmptyWardrobeDashboardProps {
   userName?: string | null;
@@ -19,10 +21,10 @@ interface EmptyWardrobeDashboardProps {
 
 const SUPPORTED_CATEGORIES = [
   { id: "tops", label: "Tops", icon: "shirt-outline" },
-  { id: "bottoms", label: "Bottoms", icon: "pants-outline" },
+  { id: "bottoms", label: "Bottoms", icon: "layers-outline" },
   { id: "shoes", label: "Shoes", icon: "footsteps-outline" },
   { id: "dresses", label: "Dresses", icon: "woman-outline" },
-  { id: "outerwear", label: "Outerwear", icon: "coat-outline" },
+  { id: "outerwear", label: "Outerwear", icon: "archive-outline" },
   { id: "accessories", label: "Accessories", icon: "glasses-outline" },
 ];
 
@@ -42,22 +44,6 @@ const EDUCATIONAL_FEATURES = [
     description:
       "Upload clean photos of your garments. STYRA automatically removes background clutter and tags color, fabric, and category.",
     iconName: "albums-outline" as const,
-  },
-  {
-    id: "briefing",
-    badge: "📅 DAILY LOOKS",
-    title: "Morning Briefings",
-    description:
-      "Get fresh daily look suggestions delivered every morning based on your daily schedule and personal style preferences.",
-    iconName: "calendar-outline" as const,
-  },
-  {
-    id: "color",
-    badge: "🎨 COLOR MATCHING",
-    title: "Palette Analysis",
-    description:
-      "Discover complementary color pairings and color wheel harmonies tailored to your personal aesthetic palette.",
-    iconName: "color-palette-outline" as const,
   },
 ];
 
@@ -124,6 +110,17 @@ export function EmptyWardrobeDashboard({
         </View>
       </View>
 
+      {/* Minimum Requirements Card for Outfit Generation (Tops 2, Bottoms 2, Footwear 1) */}
+      <MinItemsRequirementsCard
+        topsCount={0}
+        requiredTops={2}
+        bottomsCount={0}
+        requiredBottoms={2}
+        footwearCount={0}
+        requiredFootwear={1}
+        onAddClothing={onAddClothing}
+      />
+
       {/* Supported Categories Section */}
       <View style={styles.sectionContainer}>
         <Text style={styles.sectionLabel}>SUPPORTED CATEGORIES</Text>
@@ -179,17 +176,17 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.massive,
   },
   heroCard: {
-    backgroundColor: colors.surface,
+    backgroundColor: "#FAF8F5",
     borderRadius: 32,
-    borderWidth: 1,
-    borderColor: "#EFECE6",
+    borderWidth: 1.5,
+    borderColor: "#FFFFFF",
     padding: spacing.md,
     marginBottom: spacing.xl,
     shadowColor: "#000000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.03,
-    shadowRadius: 12,
-    elevation: 2,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.06,
+    shadowRadius: 16,
+    elevation: 4,
   },
   heroImageContainer: {
     width: "100%",
@@ -235,6 +232,11 @@ const styles = StyleSheet.create({
     borderRadius: radius.full,
     paddingHorizontal: spacing.xxl,
     width: "100%",
+    shadowColor: colors.textPrimary,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.2,
+    shadowRadius: 10,
+    elevation: 3,
   },
   primaryCtaText: {
     ...typography.body,
@@ -264,10 +266,17 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
   },
   categoryChip: {
-    backgroundColor: "#EFECE6",
+    backgroundColor: "#FAF8F5",
     paddingHorizontal: spacing.lg,
-    paddingVertical: 10,
+    paddingVertical: 11,
     borderRadius: radius.full,
+    borderWidth: 1.5,
+    borderColor: "#FFFFFF",
+    shadowColor: "#000000",
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 2,
   },
   categoryChipText: {
     fontFamily: "serif",
@@ -279,16 +288,18 @@ const styles = StyleSheet.create({
     gap: spacing.md,
   },
   bentoCard: {
-    backgroundColor: colors.surface,
-    borderRadius: 24,
-    borderWidth: 1,
-    borderColor: "#EFECE6",
+    backgroundColor: "#FAF8F5",
+    borderRadius: 26,
+    borderWidth: 1.5,
+    borderColor: "#FFFFFF",
     padding: spacing.lg,
+    minHeight: 185,
+    justifyContent: "space-between",
     shadowColor: "#000000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.02,
-    shadowRadius: 8,
-    elevation: 1,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.05,
+    shadowRadius: 14,
+    elevation: 3,
   },
   bentoCardHeader: {
     flexDirection: "row",
@@ -297,22 +308,31 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
   },
   bentoIconBox: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: "#FAF8F5",
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: "#FFFFFF",
     alignItems: "center",
     justifyContent: "center",
-    borderWidth: 1,
-    borderColor: "#EFECE6",
+    borderWidth: 1.5,
+    borderColor: "#FFFFFF",
+    shadowColor: "#000000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 1,
   },
   bentoBadge: {
-    backgroundColor: "#FAF8F5",
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 4,
-    borderRadius: radius.sm,
-    borderWidth: 1,
-    borderColor: "#EFECE6",
+    backgroundColor: "#FFFFFF",
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: radius.full,
+    borderWidth: 1.5,
+    borderColor: "#FFFFFF",
+    shadowColor: "#000000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.03,
+    shadowRadius: 4,
   },
   bentoBadgeText: {
     ...typography.caption,

@@ -17,8 +17,11 @@ interface InsufficientWardrobeDashboardProps {
   requiredTops: number;
   bottomsCount: number;
   requiredBottoms: number;
+  footwearCount?: number;
+  requiredFootwear?: number;
   topsProgress: number;
   bottomsProgress: number;
+  footwearProgress?: number;
   recentItems: ClothingItemBrief[];
   onAddClothing: () => void;
   onItemPress: (id: string) => void;
@@ -30,8 +33,11 @@ export function InsufficientWardrobeDashboard({
   requiredTops,
   bottomsCount,
   requiredBottoms,
+  footwearCount = 0,
+  requiredFootwear = 1,
   topsProgress,
   bottomsProgress,
+  footwearProgress = 0,
   recentItems,
   onAddClothing,
   onItemPress,
@@ -43,6 +49,7 @@ export function InsufficientWardrobeDashboard({
   // Animated progress bar fills
   const topsFillWidth = useRef(new Animated.Value(0)).current;
   const bottomsFillWidth = useRef(new Animated.Value(0)).current;
+  const footwearFillWidth = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     Animated.parallel([
@@ -66,8 +73,22 @@ export function InsufficientWardrobeDashboard({
         duration: 600,
         useNativeDriver: false,
       }),
+      Animated.timing(footwearFillWidth, {
+        toValue: Math.min(1, footwearProgress),
+        duration: 600,
+        useNativeDriver: false,
+      }),
     ]).start();
-  }, [fadeAnim, slideAnim, topsFillWidth, bottomsFillWidth, topsProgress, bottomsProgress]);
+  }, [
+    fadeAnim,
+    slideAnim,
+    topsFillWidth,
+    bottomsFillWidth,
+    footwearFillWidth,
+    topsProgress,
+    bottomsProgress,
+    footwearProgress,
+  ]);
 
   const topsWidthInterpolated = topsFillWidth.interpolate({
     inputRange: [0, 1],
@@ -75,6 +96,11 @@ export function InsufficientWardrobeDashboard({
   });
 
   const bottomsWidthInterpolated = bottomsFillWidth.interpolate({
+    inputRange: [0, 1],
+    outputRange: ["0%", "100%"],
+  });
+
+  const footwearWidthInterpolated = footwearFillWidth.interpolate({
     inputRange: [0, 1],
     outputRange: ["0%", "100%"],
   });
@@ -111,7 +137,7 @@ export function InsufficientWardrobeDashboard({
       <View style={styles.headerTitleContainer}>
         <Text style={styles.headingTitle}>Almost There</Text>
         <Text style={styles.headingSubtitle}>
-          Add at least 2 tops and 2 bottoms to unlock AI outfit generation.
+          Add at least 2 tops, 2 bottoms, and 1 footwear item to unlock AI outfit generation.
         </Text>
       </View>
 
@@ -172,6 +198,28 @@ export function InsufficientWardrobeDashboard({
           </View>
         </View>
 
+        {/* Footwear Progress Row */}
+        <View style={styles.counterRow}>
+          <View style={styles.counterLabelRow}>
+            <Text style={styles.counterTitle}>Footwear</Text>
+            <Text style={styles.counterValueText}>
+              {footwearCount} / {requiredFootwear}
+            </Text>
+          </View>
+
+          <View style={styles.trackBg}>
+            <Animated.View
+              style={[styles.trackFill, { width: footwearWidthInterpolated }]}
+            />
+          </View>
+
+          <View style={styles.dotsRow}>
+            <View
+              style={[styles.dot, footwearCount >= 1 && styles.activeDot]}
+            />
+          </View>
+        </View>
+
         {/* Add More Clothing CTA */}
         <TouchableOpacity
           onPress={onAddClothing}
@@ -182,7 +230,7 @@ export function InsufficientWardrobeDashboard({
           testID="insufficient-wardrobe-add-more-cta"
         >
           <Ionicons name="add" size={18} color={colors.textPrimary} />
-          <Text style={styles.addMoreBtnText}>Add More Clothing</Text>
+          <Text style={styles.addMoreBtnText}>Add More Items</Text>
         </TouchableOpacity>
       </View>
 
@@ -190,7 +238,7 @@ export function InsufficientWardrobeDashboard({
       {recentItems.length > 0 && (
         <View style={styles.sectionContainer}>
           <View style={styles.sectionHeaderRow}>
-            <Text style={styles.sectionLabel}>ALREADY ADDED</Text>
+            <Text style={styles.sectionLabel}>RECENTLY ADDED</Text>
             <TouchableOpacity onPress={onViewWardrobe} activeOpacity={0.7}>
               <Text style={styles.viewAllText}>View All ({recentItems.length})</Text>
             </TouchableOpacity>
@@ -240,7 +288,7 @@ export function InsufficientWardrobeDashboard({
         </View>
       )}
 
-      {/* Locked AI Outfit Generator Card (Mirroring Image 3 Curated Outfit Card in Locked State) */}
+      {/* Locked AI Outfit Generator Card */}
       <View style={styles.lockedCard}>
         <View style={styles.lockedCardHeader}>
           <Text style={styles.lockedCardTag}>STITCH - DESIGN WITH AI</Text>
@@ -261,7 +309,7 @@ export function InsufficientWardrobeDashboard({
           </View>
           <Text style={styles.lockedVisualTitle}>AI Outfit Generator</Text>
           <Text style={styles.lockedVisualSubtitle}>
-            Locked — Unlock by adding: 2 Tops, 2 Bottoms
+            Locked — Unlock by adding: 2 Tops, 2 Bottoms, 1 Footwear
           </Text>
         </View>
 
@@ -322,6 +370,35 @@ export function InsufficientWardrobeDashboard({
               ]}
             >
               Bottoms: {bottomsCount}/{requiredBottoms}
+            </Text>
+          </View>
+
+          <View
+            style={[
+              styles.reqPill,
+              footwearCount >= requiredFootwear && styles.completedReqPill,
+            ]}
+          >
+            <Ionicons
+              name={
+                footwearCount >= requiredFootwear
+                  ? "checkmark-circle"
+                  : "ellipse-outline"
+              }
+              size={14}
+              color={
+                footwearCount >= requiredFootwear
+                  ? colors.textPrimary
+                  : colors.textSecondary
+              }
+            />
+            <Text
+              style={[
+                styles.reqPillText,
+                footwearCount >= requiredFootwear && styles.completedReqPillText,
+              ]}
+            >
+              Footwear: {footwearCount}/{requiredFootwear}
             </Text>
           </View>
         </View>

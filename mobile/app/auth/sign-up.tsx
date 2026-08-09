@@ -1,7 +1,7 @@
 import { Alert, StyleSheet, Text, View } from "react-native";
 import { router } from "expo-router";
-import { Button, Input } from "@/components/ui";
-import { colors, radius, spacing, typography } from "@/theme";
+import { DoorAuthButton, Input } from "@/components/ui";
+import { colors, spacing, typography } from "@/theme";
 import {
   AuthDivider,
   AuthFooterLink,
@@ -14,7 +14,7 @@ import {
  * Sign Up screen — STYRA branded design.
  *
  * Layout: STYRA logo → "Create Your Stylist" → name/email/password inputs →
- *         Create Account CTA → OR CONTINUE WITH → Google → footer link.
+ *         Create Account Door Portal CTA → OR CONTINUE WITH → Google → footer link.
  */
 export default function SignUp() {
   const {
@@ -101,16 +101,14 @@ export default function SignUp() {
         )}
       </View>
 
-      {/* Primary CTA */}
-      <Button
+      {/* Primary CTA with Micro-Animation */}
+      <DoorAuthButton
         label="Create Account"
+        subtext="Opening portal..."
         onPress={handleSubmit}
+        onSuccess={() => router.replace("/onboarding")}
         loading={loading}
         disabled={loading}
-        variant="primary"
-        size="lg"
-        fullWidth
-        style={styles.primaryBtn}
         testID="sign-up-submit"
       />
 
@@ -159,9 +157,5 @@ const styles = StyleSheet.create({
     textAlign: "center",
     marginTop: spacing.xs,
   },
-  primaryBtn: {
-    backgroundColor: colors.textPrimary,
-    borderRadius: radius.full,
-    alignSelf: "stretch",
-  },
 });
+

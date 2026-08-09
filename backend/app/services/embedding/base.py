@@ -8,7 +8,7 @@ Implementations must return a 512-dimensional vector (the schema's
 from abc import ABC, abstractmethod
 from typing import Optional
 
-EMBEDDING_DIM = 512
+EMBEDDING_DIM = 1024
 
 
 class BaseEmbedder(ABC):

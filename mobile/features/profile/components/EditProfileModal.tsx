@@ -16,10 +16,13 @@ import type { EditProfileModalProps } from "../types/profile";
 export function EditProfileModal({
   visible,
   name,
+  email,
+  phone,
   avatarUrl,
   saving,
   error,
   onChangeName,
+  onChangePhone,
   onChangeAvatarUrl,
   onSave,
   onClose,
@@ -46,7 +49,7 @@ export function EditProfileModal({
             <Ionicons name="close" size={24} color={colors.textPrimary} />
           </TouchableOpacity>
           <Text style={styles.headerTitle} accessibilityRole="header">
-            Edit Profile
+            Personal Information
           </Text>
           <TouchableOpacity
             onPress={onSave}
@@ -63,22 +66,43 @@ export function EditProfileModal({
         <View style={styles.formContent}>
           {error && <Text style={styles.errorText}>{error}</Text>}
 
+          {/* Username Input (Editable) */}
           <Input
-            label="Full Name"
-            placeholder="Enter your name..."
+            label="Username / Full Name"
+            placeholder="Enter your username..."
             value={name}
             onChangeText={onChangeName}
+            hint="You can edit your username anytime."
             testID="edit-name-input"
           />
 
+          {/* Email Input (Read-Only with Light Muted Color Indicator) */}
+          <View style={styles.readOnlyWrapper}>
+            <View style={styles.readOnlyHeader}>
+              <Text style={styles.readOnlyLabel}>Email Address</Text>
+              <View style={styles.lockBadge}>
+                <Ionicons name="lock-closed-outline" size={12} color="#8E8B82" />
+                <Text style={styles.lockBadgeText}>Cannot be changed</Text>
+              </View>
+            </View>
+            <Input
+              value={email}
+              editable={false}
+              placeholder="No email registered"
+              hint="Registered account email is fixed for security."
+              testID="edit-email-input"
+            />
+          </View>
+
+          {/* Phone Number Input (Editable) */}
           <Input
-            label="Avatar URL (Optional)"
-            placeholder="https://example.com/avatar.jpg"
-            value={avatarUrl}
-            onChangeText={onChangeAvatarUrl}
-            autoCapitalize="none"
-            keyboardType="url"
-            testID="edit-avatar-input"
+            label="Phone Number"
+            placeholder="Enter contact number..."
+            value={phone}
+            onChangeText={onChangePhone}
+            keyboardType="phone-pad"
+            hint="Contact number for account updates."
+            testID="edit-phone-input"
           />
 
           <View style={styles.spacer} />
@@ -126,6 +150,35 @@ const styles = StyleSheet.create({
   formContent: {
     padding: spacing.xl,
     flex: 1,
+  },
+  readOnlyWrapper: {
+    marginBottom: 0,
+  },
+  readOnlyHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: spacing.xxs,
+  },
+  readOnlyLabel: {
+    ...typography.caption,
+    fontWeight: "600",
+    color: colors.textPrimary,
+  },
+  lockBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: "#F5F3ED",
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: radius.full,
+  },
+  lockBadgeText: {
+    ...typography.caption,
+    fontSize: 11,
+    fontWeight: "500",
+    color: "#8E8B82",
   },
   errorText: {
     ...typography.caption,

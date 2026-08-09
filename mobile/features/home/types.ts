@@ -18,14 +18,19 @@ export interface HomeHeaderProps {
 
 export interface HomeQuickActionsProps {
   onAddClothing: () => void;
-  onViewWardrobe: () => void;
+  onGenerateOutfit: () => void;
+  hasOutfitForSelectedDate?: boolean;
+  onViewOutfit?: () => void;
 }
+
+
 
 export interface HomeWardrobeStatsProps {
   totalItems: number;
   categoryCount: number;
-  topCategory: string | null;
+  savedOutfitsCount: number;
 }
+
 
 export interface RecentClothingStripProps {
   items: ClothingItemBrief[];
@@ -40,16 +45,6 @@ export interface HomePlaceholdersProps {
     condition: string;
     suggestion: string;
     icon: string;
-  };
-  todayOutfit: {
-    title: string;
-    subtitle: string;
-    tag: string;
-  };
-  aiTeaser: {
-    title: string;
-    description: string;
-    badge: string;
   };
   /** Live weather from Open-Meteo. When present, overrides the static weather config */
   liveWeather?: WeatherData | null;

@@ -35,6 +35,7 @@ function RootNavigator() {
       <Stack.Screen name="wardrobe" redirect={!session} />
       <Stack.Screen name="looks" redirect={!session} />
       <Stack.Screen name="recommendations" redirect={!session} />
+      <Stack.Screen name="outfits" redirect={!session} />
       <Stack.Screen name="upload" redirect={!session} />
       <Stack.Screen name="items" redirect={!session} />
       <Stack.Screen name="profile" redirect={!session} />

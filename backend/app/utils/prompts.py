@@ -1,22 +1,65 @@
+"""Structured extraction prompt for the Qwen VL clothing attribute extractor.
+
+The ``type`` field is strictly constrained to the exact subcategory
+values shown in the mobile app's taxonomy.  The AI MUST select from
+these options and never invent new ones.
+
+All allowed-value lists come from ``app.utils.taxonomy`` — the single
+source of truth shared with the extractor's snapping logic and the
+save-time attribute normaliser.
+"""
+
+from app.utils.taxonomy import (
+    TAXONOMY_CATEGORIES,
+    TAXONOMY_TYPES,
+    TAXONOMY_MATERIALS,
+    TAXONOMY_PATTERNS,
+    TAXONOMY_STYLES,
+    TAXONOMY_FITS,
+    TAXONOMY_NECKLINES,
+    TAXONOMY_SLEEVES,
+    TAXONOMY_SEASONS,
+    TAXONOMY_OCCASIONS,
+    TAXONOMY_GENDERS,
+)
+
+
+def _q(values: list[str]) -> str:
+    """Quote-join taxonomy values for prompt display."""
+    return ", ".join(f'"{v}"' for v in values)
+
+
+def _type_lines() -> str:
+    """Render the per-category allowed type lists."""
+    return "".join(
+        f'  * If category is "{category}": one of {_q(types)}\n'
+        for category, types in TAXONOMY_TYPES.items()
+    )
+
+
 SYSTEM_PROMPT_STRUCTURED = (
     "You are a personal stylist clothing attribute extractor. "
     "Given an image of exactly ONE garment, return a JSON object with the following fields. "
     "Use null for anything you cannot determine with high confidence.\n\n"
 
-    "- category (string): one of \"top\", \"bottom\", \"dress\", \"outerwear\", \"suit\", \"traditional\", \"ethnic\", \"activewear\", \"footwear\", \"accessory\"\n"
-    "- type (string): specific garment type e.g. \"T-Shirt\", \"Polo Shirt\", \"Jeans\", \"Blazer\", \"Sneakers\", \"Saree\", \"Kurta\", \"Heels\"\n"
+    f"- category (string): MUST be one of: {_q(TAXONOMY_CATEGORIES)}\n"
+
+    "- type (string): The specific garment type. You MUST select from the allowed values below based on the category:\n"
+    f"{_type_lines()}"
+    "  IMPORTANT: You MUST pick exactly one value from the list above. Do NOT invent new type names.\n\n"
+
     "- size (string or null): estimated garment size e.g. \"M\", \"32\", \"UK 8\" or null\n"
     "- color (string): dominant primary color name in English\n"
     "- color_hex (string or null): closest hex color code for primary color\n"
     "- secondary_color (string or null): secondary accent/graphic/print color name or null if monochrome\n"
     "- secondary_color_hex (string or null): hex code for secondary color or null\n"
-    "- gender (string or null): one of \"men\", \"women\", \"unisex\", or null\n"
-    "- pattern (string or null): one of \"Solid\", \"Graphic\", \"Printed\", \"Floral\", \"Striped\", \"Checked\", \"Plaid\", \"Polka Dot\", \"Paisley\", \"Animal Print\", \"Abstract\", \"Geometric\", \"Tie Dye\", \"Textured\"\n"
-    "- material (string or null): one of \"Cotton\", \"Linen\", \"Denim\", \"Polyester\", \"Wool\", \"Silk\", \"Satin\", \"Leather\", \"Faux Leather\", \"Suede\", \"Velvet\", \"Nylon\", \"Rayon\", \"Viscose\", \"Cashmere\", \"Chiffon\", \"Georgette\", \"Lace\", \"Knit\"\n"
-    "- style (string or null): one of \"Casual\", \"Smart Casual\", \"Business Casual\", \"Formal\", \"Party\", \"Wedding\", \"Festive\", \"Office\", \"College\", \"Date Night\", \"Travel\", \"Beach\", \"Gym\", \"Lounge\"\n"
-    "- neckline (string or null): one of \"Crew Neck\", \"Round Neck\", \"V Neck\", \"U Neck\", \"Square Neck\", \"Boat Neck\", \"Scoop Neck\", \"Sweetheart\", \"High Neck\", \"Mock Neck\", \"Turtleneck\", \"Halter\", \"Off Shoulder\", \"Collared\"\n"
-    "- sleeve_length (string or null): one of \"Sleeveless\", \"Cap Sleeve\", \"Short\", \"Half\", \"Three Quarter\", \"Long\", \"Bell Sleeve\", \"Puff Sleeve\"\n"
-    "- fit (string or null): one of \"Slim\", \"Regular\", \"Relaxed\", \"Loose\", \"Oversized\", \"Tailored\", \"Straight\", \"Bodycon\"\n"
+    f"- gender (string or null): one of {_q(TAXONOMY_GENDERS)}, or null\n"
+    f"- pattern (string or null): one of {_q(TAXONOMY_PATTERNS)}\n"
+    f"- material (string or null): one of {_q(TAXONOMY_MATERIALS)}\n"
+    f"- style (string or null): one of {_q(TAXONOMY_STYLES)}\n"
+    f"- neckline (string or null): one of {_q(TAXONOMY_NECKLINES)}\n"
+    f"- sleeve_length (string or null): one of {_q(TAXONOMY_SLEEVES)}\n"
+    f"- fit (string or null): one of {_q(TAXONOMY_FITS)}\n"
     "- length (string or null): garment length e.g. \"Cropped\", \"Regular\", \"Longline\", \"Short\", \"Knee Length\", \"Ankle Length\", \"Full Length\", \"Mini\", \"Midi\", \"Maxi\"\n"
     "- bottom_fit (string or null): leg fit for bottoms e.g. \"Skinny\", \"Slim\", \"Straight\", \"Wide Leg\", \"Bootcut\", \"Flared\", \"Relaxed\", \"Cargo\"\n"
     "- waist_rise (string or null): waist rise for bottoms e.g. \"Low Rise\", \"Mid Rise\", \"High Rise\", \"Ultra High Rise\"\n"
@@ -25,8 +68,8 @@ SYSTEM_PROMPT_STRUCTURED = (
     "- layer_type (string or null): layering role e.g. \"Base Layer\", \"Main Piece\", \"Outer Layer\"\n"
     "- transparency (string or null): e.g. \"Opaque\", \"Semi Sheer\", \"Sheer\"\n"
     "- stretch (string or null): e.g. \"No Stretch\", \"Medium Stretch\", \"High Stretch\"\n"
-    "- season (array of strings): one or more of \"Summer\", \"Winter\", \"Spring\", \"Autumn\", \"All Season\"\n"
-    "- occasion (array of strings): one or more of \"Casual\", \"Smart Casual\", \"Work\", \"Party\", \"Formal\", \"Sport\", \"Travel\", \"Date Night\", \"Loungewear\"\n"
+    f"- season (array of strings): one or more of {_q(TAXONOMY_SEASONS)}\n"
+    f"- occasion (array of strings): one or more of {_q(TAXONOMY_OCCASIONS)}\n"
     "- brand (string or null): detected brand name or logo\n"
     "- description (string): a one-sentence natural-language description of the garment\n\n"
 

@@ -132,6 +132,21 @@ class ImageValidator:
         # verify() can leave the file in a bad state; reopen properly
         try:
             pil_image = Image.open(io.BytesIO(image_bytes))
+        except Exception as exc:
+            raise ImageValidationError(
+                f"Failed to open image: {exc}"
+            )
+
+        # Reject oversized images from the header alone — before any pixel
+        # data is expanded into memory (decompression-bomb guard).
+        width, height = pil_image.size
+        if width * height > MAX_PIXELS:
+            raise ImageValidationError(
+                f"Image has too many pixels: {width}x{height}. "
+                f"Maximum: {MAX_PIXELS // 1_000_000} MP."
+            )
+
+        try:
             # Load pixel data to catch truncated / partial files
             pil_image.load()
         except Exception as exc:

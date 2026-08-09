@@ -75,17 +75,21 @@ export async function saveSavedLooks(looks: SavedLook[]): Promise<void> {
 
 export async function createSavedLook(
   data: Omit<SavedLook, "id" | "created_at" | "updated_at">,
+  options?: { id?: string },
 ): Promise<SavedLook> {
   const looks = await getSavedLooks();
   const now = new Date().toISOString();
   const newLook: SavedLook = {
     ...data,
-    id: generateId(),
+    id: options?.id ?? generateId(),
     created_at: now,
     updated_at: now,
   };
 
-  const updatedLooks = [newLook, ...looks];
+  // An explicit id makes the write idempotent: re-saving the same look
+  // replaces the previous entry instead of accumulating duplicates.
+  const rest = options?.id ? looks.filter((l) => l.id !== newLook.id) : looks;
+  const updatedLooks = [newLook, ...rest];
   await saveSavedLooks(updatedLooks);
   return newLook;
 }

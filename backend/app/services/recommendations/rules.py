@@ -4,6 +4,7 @@ Colour harmony, style compatibility, occasion mapping, and season
 suitability are defined here so the engine stays purely rule-based.
 """
 
+import re
 from typing import Optional
 
 # ── Outfit categories mapped to required slots ──
@@ -195,18 +196,40 @@ class ColourHarmony:
 class StyleCompatibility:
     """Deterministic style compatibility rules."""
 
+    # Aesthetic styles plus the occasion-like style vocabulary the extractor
+    # emits ("Smart Casual", "Office", "Gym"...). Mappings are symmetric so
+    # pair order doesn't matter in score().
     _COMPATIBLE: dict[str, set[str]] = {
-        "casual": {"casual", "minimalist", "sporty", "athleisure", "streetwear", "bohemian"},
-        "formal": {"formal", "minimalist", "vintage", "preppy", "romantic"},
-        "sporty": {"casual", "sporty", "athleisure", "streetwear"},
-        "bohemian": {"casual", "bohemian", "vintage", "romantic"},
-        "minimalist": {"minimalist", "casual", "formal", "preppy", "sporty"},
-        "vintage": {"vintage", "bohemian", "romantic", "preppy", "formal"},
-        "edgy": {"edgy", "streetwear", "casual"},
-        "preppy": {"preppy", "formal", "minimalist", "casual"},
-        "romantic": {"romantic", "bohemian", "vintage", "formal"},
-        "athleisure": {"athleisure", "casual", "sporty", "streetwear"},
-        "streetwear": {"streetwear", "casual", "edgy", "sporty", "athleisure"},
+        "casual": {"casual", "minimalist", "sporty", "athleisure", "streetwear", "bohemian",
+                   "smart_casual", "college", "travel", "beach", "lounge"},
+        "formal": {"formal", "minimalist", "vintage", "preppy", "romantic",
+                   "business_casual", "office", "wedding"},
+        "sporty": {"casual", "sporty", "athleisure", "streetwear", "gym", "college", "travel"},
+        "bohemian": {"casual", "bohemian", "vintage", "romantic", "beach", "festive"},
+        "minimalist": {"minimalist", "casual", "formal", "preppy", "sporty",
+                       "smart_casual", "business_casual", "office", "date_night"},
+        "vintage": {"vintage", "bohemian", "romantic", "preppy", "formal", "wedding", "festive"},
+        "edgy": {"edgy", "streetwear", "casual", "party"},
+        "preppy": {"preppy", "formal", "minimalist", "casual",
+                   "smart_casual", "business_casual", "office", "college"},
+        "romantic": {"romantic", "bohemian", "vintage", "formal", "date_night", "wedding", "festive"},
+        "athleisure": {"athleisure", "casual", "sporty", "streetwear", "gym", "travel", "lounge"},
+        "streetwear": {"streetwear", "casual", "edgy", "sporty", "athleisure",
+                       "college", "party", "travel"},
+        "smart_casual": {"smart_casual", "casual", "minimalist", "preppy", "business_casual",
+                         "office", "college", "date_night"},
+        "business_casual": {"business_casual", "smart_casual", "formal", "minimalist",
+                            "preppy", "office"},
+        "office": {"office", "business_casual", "smart_casual", "formal", "minimalist", "preppy"},
+        "college": {"college", "casual", "streetwear", "sporty", "smart_casual", "preppy"},
+        "party": {"party", "edgy", "streetwear", "date_night", "festive", "wedding"},
+        "wedding": {"wedding", "formal", "romantic", "vintage", "festive", "party"},
+        "festive": {"festive", "wedding", "party", "bohemian", "romantic", "vintage"},
+        "date_night": {"date_night", "romantic", "smart_casual", "party", "minimalist"},
+        "travel": {"travel", "casual", "sporty", "athleisure", "streetwear", "beach"},
+        "beach": {"beach", "casual", "bohemian", "travel", "lounge"},
+        "gym": {"gym", "sporty", "athleisure"},
+        "lounge": {"lounge", "casual", "athleisure", "beach"},
     }
 
     @staticmethod
@@ -231,13 +254,16 @@ class StyleCompatibility:
 # ── Occasion mapping (outfit category → acceptable item occasion values) ──
 
 OCCASION_MAP: dict[str, list[str]] = {
-    "casual": ["everyday", "travel", "loungewear"],
-    "formal": ["formal", "wedding_guest"],
-    "office": ["work", "everyday"],
-    "college": ["everyday", "work"],
-    "party": ["party", "formal", "festival"],
+    # Item-side values are taxonomy-snapped occasions (normalised), so
+    # "casual"/"smart_casual" must appear here — they are the most common
+    # tags produced by the extraction pipeline.
+    "casual": ["casual", "everyday", "travel", "loungewear"],
+    "formal": ["formal", "wedding_guest", "smart_casual"],
+    "office": ["work", "everyday", "smart_casual"],
+    "college": ["everyday", "work", "casual"],
+    "party": ["party", "formal", "festival", "smart_casual"],
     "date_night": ["date_night", "party", "everyday"],
-    "travel": ["travel", "everyday", "beach"],
+    "travel": ["travel", "everyday", "beach", "casual"],
     "gym": ["sport"],
     "ethnic": ["festival", "wedding_guest", "formal"],
 }
@@ -341,14 +367,24 @@ OCCASION_EXPLANATIONS: dict[str, str] = {
 }
 
 
+_NORM_ALIASES: dict[str, str] = {
+    "autumn": "fall",
+}
+
+
 def _norm(value: str) -> str:
     """Normalise an attribute value for rule lookups.
 
     The extraction model returns display-case values ("Summer", "Date Night")
-    while the rule tables are lowercase snake_case — comparisons must go
-    through this or they silently never match.
+    and parenthesised variants ("Dress Shirt (Formal)") while the rule tables
+    are lowercase snake_case — comparisons must go through this or they
+    silently never match. Parenthetical qualifiers are dropped and known
+    synonyms (e.g. "Autumn") are aliased to their canonical key.
     """
-    return value.strip().lower().replace(" ", "_").replace("-", "_")
+    v = re.sub(r"\([^)]*\)", "", value)
+    v = v.strip().lower().replace(" ", "_").replace("-", "_")
+    v = re.sub(r"_+", "_", v).strip("_")
+    return _NORM_ALIASES.get(v, v)
 
 
 # Map every category the extractor / mobile taxonomy can produce onto the
@@ -376,11 +412,32 @@ _CATEGORY_CANONICAL: dict[str, str] = {
 }
 
 
-def _canonical_category(value: Optional[str]) -> Optional[str]:
-    """Return the engine wardrobe slot for a raw category value, or None."""
+# Activewear garment types that belong in the bottom slot (gym shorts and
+# leggings are not tops — without this a gym outfit could be two "tops").
+_ACTIVEWEAR_BOTTOM_TYPES = frozenset({
+    "shorts", "training_shorts", "running_shorts", "leggings",
+    "track_pants", "joggers", "sweatpants", "yoga_pants",
+})
+
+
+def _canonical_category(
+    value: Optional[str],
+    type_value: Optional[str] = None,
+) -> Optional[str]:
+    """Return the engine wardrobe slot for a raw category value, or None.
+
+    ``activewear`` is disambiguated by garment type when provided:
+    bottom-style pieces (shorts, leggings, track pants…) map to
+    ``bottom``; everything else stays ``top``.
+    """
     if not value:
         return None
-    return _CATEGORY_CANONICAL.get(_norm(value))
+    normed = _norm(value)
+    slot = _CATEGORY_CANONICAL.get(normed)
+    if slot == "top" and normed == "activewear" and type_value:
+        if _norm(type_value) in _ACTIVEWEAR_BOTTOM_TYPES:
+            return "bottom"
+    return slot
 
 
 def _attr_value(attributes: dict, key: str) -> Optional[str]:
@@ -395,7 +452,13 @@ def _attr_value(attributes: dict, key: str) -> Optional[str]:
 def _attr_confidence(attributes: dict, key: str, default: float = 0.5) -> float:
     if isinstance(attributes.get(key), dict):
         c = attributes[key].get("confidence")
-        return float(c) if c is not None else default
+        if c is not None:
+            try:
+                return float(c)
+            except (TypeError, ValueError):
+                # A poisoned row (non-numeric confidence) must not crash
+                # scoring for the whole wardrobe.
+                return default
     return default
 
 

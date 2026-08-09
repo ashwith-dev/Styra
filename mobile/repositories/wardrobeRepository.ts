@@ -36,16 +36,23 @@ export async function getClothingItemDetail(
   return api.getClothingItem(id, signal);
 }
 
+function revalidateCacheInBackground(): void {
+  if (!isOnline()) return;
+  void api
+    .listClothing()
+    .then(wardrobeCache.setCachedWardrobe)
+    .catch(() => {
+      // Stale cache is acceptable; the next screen refresh revalidates.
+    });
+}
+
 export async function updateClothingItemAttributes(
   id: string,
   attributes: Record<string, unknown>,
   signal?: AbortSignal,
 ): Promise<ClothingItemDetail> {
   const updated = await api.updateClothingItem(id, attributes, signal);
-  // Revalidate cache asynchronously
-  if (isOnline()) {
-    void api.listClothing().then(wardrobeCache.setCachedWardrobe);
-  }
+  revalidateCacheInBackground();
   return updated;
 }
 
@@ -54,8 +61,5 @@ export async function removeClothingItem(
   signal?: AbortSignal,
 ): Promise<void> {
   await api.deleteClothingItem(id, signal);
-  // Revalidate cache asynchronously
-  if (isOnline()) {
-    void api.listClothing().then(wardrobeCache.setCachedWardrobe);
-  }
+  revalidateCacheInBackground();
 }

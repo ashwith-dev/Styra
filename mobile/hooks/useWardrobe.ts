@@ -95,15 +95,18 @@ export function useWardrobe() {
         setError(msg);
       }
     } finally {
-      setLoading(false);
+      // Only the latest request may clear the loading flag — an aborted
+      // predecessor must not hide its successor's loading state.
+      if (abortControllerRef.current === controller) {
+        setLoading(false);
+      }
     }
   }, []);
 
   useEffect(() => {
     return () => {
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
-      }
+      abortControllerRef.current?.abort();
+      abortControllerRef.current = null;
     };
   }, []);
 

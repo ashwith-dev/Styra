@@ -14,6 +14,7 @@ import { Ionicons } from "@expo/vector-icons";
 import type { ClothingItemBrief } from "@/lib/types";
 import { colors, radius, spacing, typography } from "@/theme";
 import { ClothingCard } from "@/components/wardrobe/ClothingCard";
+import { CategoryItemsSheet } from "./CategoryItemsSheet";
 
 interface PopulatedWardrobeViewProps {
   items: ClothingItemBrief[];
@@ -125,6 +126,7 @@ export function PopulatedWardrobeView({
   onAddClothing,
 }: PopulatedWardrobeViewProps) {
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
+  const [sheetCategoryKey, setSheetCategoryKey] = useState<string | null>(null);
 
   // ── Dynamic Category Counts Calculation ──
   const categoryStats = useMemo(() => {
@@ -209,7 +211,7 @@ export function PopulatedWardrobeView({
             styles.featuredHeroCard,
             selectedCategory === "tops" && styles.selectedCategoryCard,
           ]}
-          onPress={() => setSelectedCategory(selectedCategory === "tops" ? "all" : "tops")}
+          onPress={() => setSheetCategoryKey("tops")}
           activeOpacity={0.85}
         >
           <View style={styles.featuredBadge}>
@@ -234,7 +236,7 @@ export function PopulatedWardrobeView({
                 styles.categoryCard,
                 selectedCategory === "bottoms" && styles.selectedCategoryCard,
               ]}
-              onPress={() => setSelectedCategory(selectedCategory === "bottoms" ? "all" : "bottoms")}
+              onPress={() => setSheetCategoryKey("bottoms")}
               activeOpacity={0.85}
             >
               <Text style={styles.categoryName}>Bottom Wear</Text>
@@ -253,7 +255,7 @@ export function PopulatedWardrobeView({
                 styles.categoryCard,
                 selectedCategory === "outerwear" && styles.selectedCategoryCard,
               ]}
-              onPress={() => setSelectedCategory(selectedCategory === "outerwear" ? "all" : "outerwear")}
+              onPress={() => setSheetCategoryKey("outerwear")}
               activeOpacity={0.85}
             >
               <Text style={styles.categoryName}>Outerwear</Text>
@@ -275,7 +277,7 @@ export function PopulatedWardrobeView({
                 styles.categoryCard,
                 selectedCategory === "shoes" && styles.selectedCategoryCard,
               ]}
-              onPress={() => setSelectedCategory(selectedCategory === "shoes" ? "all" : "shoes")}
+              onPress={() => setSheetCategoryKey("shoes")}
               activeOpacity={0.85}
             >
               <Text style={styles.categoryName}>Shoes</Text>
@@ -294,7 +296,7 @@ export function PopulatedWardrobeView({
                 styles.categoryCard,
                 selectedCategory === "accessories" && styles.selectedCategoryCard,
               ]}
-              onPress={() => setSelectedCategory(selectedCategory === "accessories" ? "all" : "accessories")}
+              onPress={() => setSheetCategoryKey("accessories")}
               activeOpacity={0.85}
             >
               <Text style={styles.categoryName}>Accessories</Text>
@@ -317,7 +319,7 @@ export function PopulatedWardrobeView({
                   styles.categoryCard,
                   selectedCategory === "other" && styles.selectedCategoryCard,
                 ]}
-                onPress={() => setSelectedCategory(selectedCategory === "other" ? "all" : "other")}
+                onPress={() => setSheetCategoryKey("other")}
                 activeOpacity={0.85}
               >
                 <Text style={styles.categoryName}>Other</Text>
@@ -403,33 +405,49 @@ export function PopulatedWardrobeView({
   );
 
   return (
-    <FlatList
-      data={filteredItems}
-      numColumns={2}
-      keyExtractor={(item) => item.id}
-      ListHeaderComponent={ListHeaderComponent}
-      ListEmptyComponent={ListEmptyComponent}
-      contentContainerStyle={styles.flatListContent}
-      columnWrapperStyle={filteredItems.length > 0 ? styles.columnWrapper : undefined}
-      refreshControl={
-        <RefreshControl
-          refreshing={loading}
-          onRefresh={onRefresh}
-          tintColor={colors.textSecondary}
-        />
-      }
-      renderItem={({ item }) => (
-        <ClothingCard
-          item={item}
-          onPress={() => onPressItem(item.id)}
-          onLongPress={() => onLongPressItem(item.id)}
-        />
-      )}
-      removeClippedSubviews
-      initialNumToRender={10}
-      maxToRenderPerBatch={10}
-      windowSize={5}
-    />
+    <>
+      <FlatList
+        data={filteredItems}
+        numColumns={2}
+        keyExtractor={(item) => item.id}
+        ListHeaderComponent={ListHeaderComponent}
+        ListEmptyComponent={ListEmptyComponent}
+        contentContainerStyle={styles.flatListContent}
+        columnWrapperStyle={filteredItems.length > 0 ? styles.columnWrapper : undefined}
+        refreshControl={
+          <RefreshControl
+            refreshing={loading}
+            onRefresh={onRefresh}
+            tintColor={colors.textSecondary}
+          />
+        }
+        renderItem={({ item }) => (
+          <ClothingCard
+            item={item}
+            onPress={() => onPressItem(item.id)}
+            onLongPress={() => onLongPressItem(item.id)}
+          />
+        )}
+        removeClippedSubviews
+        initialNumToRender={10}
+        maxToRenderPerBatch={10}
+        windowSize={5}
+      />
+
+      <CategoryItemsSheet
+        visible={Boolean(sheetCategoryKey)}
+        categoryLabel={
+          CATEGORIES.find((c) => c.key === sheetCategoryKey)?.label || "Items"
+        }
+        items={allItems.filter((item) =>
+          sheetCategoryKey ? matchesCategoryKey(item, sheetCategoryKey) : false
+        )}
+        onClose={() => setSheetCategoryKey(null)}
+        onPressItem={onPressItem}
+        onLongPressItem={onLongPressItem}
+        onAddClothing={onAddClothing}
+      />
+    </>
   );
 }
 
