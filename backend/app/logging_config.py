@@ -22,8 +22,9 @@ class _CorrelationIdFilter(logging.Filter):
 
 
 def configure_logging(level: str = "INFO") -> None:
+    log_level = getattr(logging, level.upper(), logging.INFO)
     logging.basicConfig(
-        level=getattr(logging, level.upper(), logging.INFO),
+        level=log_level,
         format="%(levelname)-5s  [%(correlation_id)s]  %(name)s  %(message)s",
         stream=sys.stdout,
         force=True,
@@ -32,16 +33,23 @@ def configure_logging(level: str = "INFO") -> None:
     _filter = _CorrelationIdFilter()
     root = logging.getLogger()
 
-    # Register filter on handlers, not the root logger, so the filter
-    # always runs before the handler's formatter expands %(correlation_id)s.
+    # Register filter on root logger and all handlers
     for handler in root.handlers:
         handler.addFilter(_filter)
-
-    # Also register on the root logger as a belt-and-suspenders for any
-    # loggers that add their own handler after this point.
     root.addFilter(_filter)
+
+    # Configure uvicorn loggers so request logs also carry correlation_id
+    # and print cleanly to stdout
+    for logger_name in ("uvicorn", "uvicorn.access", "uvicorn.error"):
+        uv_logger = logging.getLogger(logger_name)
+        uv_logger.setLevel(log_level)
+        uv_logger.addFilter(_filter)
+        for handler in uv_logger.handlers:
+            handler.addFilter(_filter)
 
     # Quiet noisy third-party loggers
     logging.getLogger("supabase").setLevel(logging.WARNING)
     logging.getLogger("httpx").setLevel(logging.WARNING)
     logging.getLogger("urllib3").setLevel(logging.WARNING)
+    logging.getLogger("onnxruntime").setLevel(logging.ERROR)
+

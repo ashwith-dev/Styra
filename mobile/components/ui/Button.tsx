@@ -25,13 +25,13 @@ interface ButtonProps {
 }
 
 const heightMap: Record<ButtonSize, number> = {
-  sm: 36,
+  sm: 38,
   md: 48,
-  lg: 56,
+  lg: 54,
 };
 
 const paddingMap: Record<ButtonSize, number> = {
-  sm: spacing.sm,
+  sm: spacing.md,
   md: spacing.lg,
   lg: spacing.xl,
 };
@@ -68,14 +68,14 @@ export const Button = forwardRef<View, ButtonProps>(function Button(
       ]}
       onPress={onPress}
       disabled={isDisabled}
-      activeOpacity={0.8}
+      activeOpacity={0.85}
       accessibilityRole="button"
       accessibilityLabel={label}
       accessibilityState={{ disabled: isDisabled }}
     >
       {loading ? (
         <ActivityIndicator
-          color={variant === "primary" ? colors.surface : colors.accent}
+          color={variant === "primary" ? "#FFFFFF" : colors.textPrimary}
           size="small"
         />
       ) : (
@@ -97,7 +97,7 @@ export const Button = forwardRef<View, ButtonProps>(function Button(
 
 const styles = StyleSheet.create({
   base: {
-    borderRadius: radius.md,
+    borderRadius: radius.full,
     alignItems: "center",
     justifyContent: "center",
     alignSelf: "flex-start",
@@ -106,34 +106,46 @@ const styles = StyleSheet.create({
     alignSelf: "stretch",
   },
   primary: {
-    backgroundColor: colors.accent,
-  },
+    backgroundColor: "#141412",
+    boxShadow: "0px 6px 16px rgba(20, 20, 18, 0.3)",
+    shadowColor: "#141412",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.25,
+    shadowRadius: 10,
+    elevation: 4,
+  } as ViewStyle & { boxShadow?: string },
   outline: {
-    backgroundColor: "transparent",
-    borderWidth: 1,
-    borderColor: colors.accent,
-  },
+    backgroundColor: "#F7F5F0",
+    borderWidth: 0,
+    boxShadow: "-6px -6px 16px #FFFFFF, 6px 6px 16px rgba(185, 175, 158, 0.65)",
+    shadowColor: "#000000",
+    shadowOffset: { width: 5, height: 5 },
+    shadowOpacity: 0.08,
+    shadowRadius: 14,
+    elevation: 3,
+  } as ViewStyle & { boxShadow?: string },
   ghost: {
     backgroundColor: "transparent",
   },
   disabled: {
-    opacity: 0.4,
+    opacity: 0.45,
   },
   label: {
     ...typography.button,
-    color: colors.accent,
+    color: colors.textPrimary,
+    fontWeight: "600",
   },
   labelLg: {
-    fontSize: 18,
-    letterSpacing: 0.3,
+    fontSize: 16,
+    letterSpacing: 0.2,
   },
   labelPrimary: {
-    color: colors.surface,
+    color: "#FFFFFF",
   },
   labelOutline: {
-    color: colors.accent,
+    color: colors.textPrimary,
   },
   labelGhost: {
-    color: colors.accent,
+    color: colors.textPrimary,
   },
 });

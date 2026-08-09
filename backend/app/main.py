@@ -23,9 +23,9 @@ from app.services.validation.image_validator import ImageValidator
 from app.services.segmentation.rembg_segmenter import RembgSegmenter
 from app.services.extraction.qwen_extractor import QwenExtractor
 from app.services.storage_service import get_storage_service
-
 import logging
 
+configure_logging(settings.log_level)
 logger = logging.getLogger(__name__)
 
 # ── Sentry (best-effort — disabled when SENTRY_DSN is empty) ──

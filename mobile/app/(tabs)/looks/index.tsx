@@ -9,7 +9,7 @@ import {
 import { router, useFocusEffect } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuth } from "@/providers/AuthProvider";
-import { BottomNavBar, ErrorMessage } from "@/components/ui";
+import { ErrorMessage } from "@/components/ui";
 import { LoadingSkeletonCard } from "@/components/ui/LoadingSkeleton";
 import { WardrobeScreenHeader } from "@/features/wardrobe";
 import { colors, spacing, typography } from "@/theme";
@@ -18,7 +18,6 @@ import {
   groupLooksByDate,
   SavedLook,
   SavedLookCard,
-  SavedLooksFilterBar,
   SavedLooksHeaderSection,
   useSavedLooks,
 } from "@/features/looks";
@@ -26,9 +25,6 @@ import {
 export default function SavedLooksListScreen() {
   const { looks, saveState, error, actions } = useSavedLooks();
   const { user } = useAuth();
-
-  const [searchQuery, setSearchQuery] = useState("");
-  const [selectedFilter, setSelectedFilter] = useState("");
 
   useFocusEffect(
     useCallback(() => {
@@ -46,37 +42,10 @@ export default function SavedLooksListScreen() {
     router.push(`/looks/edit?id=${look.id}`);
   }, []);
 
-  // ── Real-time Search & Filter logic ──
-  const filteredLooks = useMemo(() => {
-    let result = looks;
-
-    if (searchQuery.trim()) {
-      const q = searchQuery.trim().toLowerCase();
-      result = result.filter((look) => {
-        const nameMatch = look.name.toLowerCase().includes(q);
-        const categoryMatch = look.category?.toLowerCase().includes(q);
-        const tagMatch = look.tags?.some((t: string) => t.toLowerCase().includes(q));
-        return nameMatch || categoryMatch || tagMatch;
-      });
-    }
-
-    if (selectedFilter) {
-      const filter = selectedFilter.toLowerCase();
-      result = result.filter((look) => {
-        const catMatch = look.category?.toLowerCase() === filter;
-        const seasonMatch = look.season?.toLowerCase() === filter;
-        const tagMatch = look.tags?.some((t: string) => t.toLowerCase() === filter);
-        return catMatch || seasonMatch || tagMatch;
-      });
-    }
-
-    return result;
-  }, [looks, searchQuery, selectedFilter]);
-
   // ── Date Grouping ──
   const dateGroups = useMemo(() => {
-    return groupLooksByDate(filteredLooks);
-  }, [filteredLooks]);
+    return groupLooksByDate(looks);
+  }, [looks]);
 
   // Format display name for Avatar
   const rawName =
@@ -151,9 +120,6 @@ export default function SavedLooksListScreen() {
             )}
           />
         )}
-
-        {/* Floating Bottom Navigation Bar */}
-        <BottomNavBar activeTab="looks" />
       </View>
     </SafeAreaView>
   );

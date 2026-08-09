@@ -1,7 +1,6 @@
 import { useCallback, useState } from "react";
 import { ScrollView, StyleSheet, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { BottomNavBar } from "@/components/ui";
 import { PermissionDialog } from "@/components/ui/PermissionDialog";
 import { colors, spacing } from "@/theme";
 import {
@@ -426,9 +425,6 @@ export default function ProfileScreen() {
             onEditTemperature={() => handleOpenSelectionModal("temperatureUnit")}
           />
         </ScrollView>
-
-        {/* Floating Bottom Navigation Bar */}
-        <BottomNavBar activeTab="profile" />
       </View>
 
       {/* Edit Profile Modal */}

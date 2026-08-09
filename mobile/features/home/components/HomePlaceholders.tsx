@@ -1,8 +1,7 @@
-import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Platform, ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { Badge } from "@/components/ui/Badge";
-import { Card } from "@/components/ui/Card";
-import { colors, spacing, typography } from "@/theme";
+import { spacing, typography } from "@/theme";
+import { homeTokens, neumorphicStyles } from "../theme/homeTokens";
 import type { HomePlaceholdersProps } from "../types";
 
 export function HomePlaceholders({
@@ -27,7 +26,7 @@ export function HomePlaceholders({
 
   return (
     <View style={styles.container}>
-      {/* Weather Card — tappable to trigger location fetch */}
+      {/* Weather Card — Neumorphic Soft Raised Panel */}
       <TouchableOpacity
         onPress={onWeatherCardPress}
         activeOpacity={onWeatherCardPress ? 0.85 : 1}
@@ -39,44 +38,48 @@ export function HomePlaceholders({
             : "Tap to fetch live weather"
         }
         testID="home-weather-card"
+        style={styles.card}
       >
-        <Card variant="outlined" padding="md" style={styles.card}>
-          <View style={styles.rowBetween}>
-            <View style={styles.weatherLeft}>
-              {isLoadingWeather ? (
-                <ActivityIndicator
-                  size="small"
-                  color={colors.textPrimary}
-                  style={styles.loadingSpinner}
-                />
-              ) : (
-                <Ionicons
-                  name={displayIcon as React.ComponentProps<typeof Ionicons>["name"]}
-                  size={24}
-                  color={colors.textPrimary}
-                />
-              )}
-              <Text style={styles.tempText}>
-                {isLoadingWeather ? "—" : displayTemp}
-              </Text>
-              <Text style={styles.conditionText}>
-                {isLoadingWeather ? "Fetching…" : displayCondition}
-              </Text>
-            </View>
-            <View style={styles.badgeRow}>
-              {isLive && (
-                <View style={styles.liveDot} accessibilityLabel="Live weather data" />
-              )}
-              <Badge label="WEATHER" variant="default" size="sm" />
+        <View style={styles.rowBetween}>
+          <View style={styles.weatherLeft}>
+            {isLoadingWeather ? (
+              <ActivityIndicator
+                size="small"
+                color={homeTokens.textPrimary}
+                style={styles.loadingSpinner}
+              />
+            ) : (
+              <Ionicons
+                name={displayIcon as React.ComponentProps<typeof Ionicons>["name"]}
+                size={22}
+                color={homeTokens.textPrimary}
+              />
+            )}
+            <Text style={styles.tempText}>
+              {isLoadingWeather ? "—" : displayTemp}
+            </Text>
+            <Text style={styles.conditionText}>
+              {isLoadingWeather ? "Fetching…" : displayCondition}
+            </Text>
+          </View>
+
+          <View style={styles.badgeRow}>
+            {isLive && (
+              <View style={styles.liveDot} accessibilityLabel="Live weather data" />
+            )}
+            <View style={styles.neumorphicBadge}>
+              <Text style={styles.badgeText}>● WEATHER</Text>
             </View>
           </View>
-          <Text style={styles.suggestionText}>
-            {isLoadingWeather ? "Getting your local weather…" : displaySuggestion}
-          </Text>
-          {!isLive && !isLoadingWeather && onWeatherCardPress && (
-            <Text style={styles.tapHint}>Tap to use your location ↗</Text>
-          )}
-        </Card>
+        </View>
+
+        <Text style={styles.suggestionText}>
+          {isLoadingWeather ? "Getting your local weather…" : displaySuggestion}
+        </Text>
+
+        {!isLive && !isLoadingWeather && onWeatherCardPress && (
+          <Text style={styles.tapHint}>Tap to use your location ↗</Text>
+        )}
       </TouchableOpacity>
     </View>
   );
@@ -110,8 +113,9 @@ const styles = StyleSheet.create({
     gap: spacing.md,
   },
   card: {
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
+    ...neumorphicStyles.subtle,
+    borderRadius: 24,
+    padding: spacing.lg,
   },
   rowBetween: {
     flexDirection: "row",
@@ -136,26 +140,50 @@ const styles = StyleSheet.create({
     width: 7,
     height: 7,
     borderRadius: 4,
-    backgroundColor: "#4CAF50",
+    backgroundColor: "#3F7D58",
+  },
+  neumorphicBadge: {
+    backgroundColor: homeTokens.surface,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 9999,
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.9)",
+    shadowColor: "#000000",
+    shadowOffset: { width: 1, height: 2 },
+    shadowOpacity: 0.03,
+    shadowRadius: 4,
+  },
+  badgeText: {
+    ...typography.caption,
+    fontSize: 10,
+    fontWeight: "700",
+    letterSpacing: 1.2,
+    color: homeTokens.textSecondary,
   },
   tempText: {
-    ...typography.h3,
-    color: colors.textPrimary,
+    fontFamily: Platform.OS === "ios" ? "Georgia" : "serif",
+    fontSize: 22,
+    fontWeight: "700",
+    color: homeTokens.textPrimary,
   },
   conditionText: {
     ...typography.caption,
-    color: colors.textSecondary,
+    fontSize: 13,
+    color: homeTokens.textSecondary,
     marginLeft: spacing.xxs,
   },
   suggestionText: {
     ...typography.caption,
-    color: colors.textSecondary,
+    fontSize: 13,
+    color: "#666460",
+    lineHeight: 19,
     marginTop: spacing.xs,
   },
   tapHint: {
     ...typography.caption,
     fontSize: 11,
-    color: colors.textSecondary,
+    color: homeTokens.textSecondary,
     marginTop: spacing.xs,
     fontStyle: "italic",
   },

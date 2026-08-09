@@ -1,4 +1,4 @@
-import { Platform, StyleSheet, Text, View } from "react-native";
+import { Platform, StyleSheet, Text, View, type ViewStyle } from "react-native";
 import { colors, spacing, typography } from "@/theme";
 
 interface WardrobeSummaryCardProps {
@@ -46,18 +46,18 @@ export function WardrobeSummaryCard({ stats }: WardrobeSummaryCardProps) {
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: colors.surface,
-    borderRadius: 24,
+    backgroundColor: "#F7F5F0",
+    borderRadius: 26,
     padding: spacing.xl,
     marginBottom: spacing.xl,
-    borderWidth: 1,
-    borderColor: "#EFECE6",
+    borderWidth: 0,
+    boxShadow: "-8px -8px 20px #FFFFFF, 8px 8px 20px rgba(185, 175, 158, 0.7)",
     shadowColor: "#000000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.04,
-    shadowRadius: 12,
-    elevation: 3,
-  },
+    shadowOffset: { width: 6, height: 6 },
+    shadowOpacity: 0.1,
+    shadowRadius: 16,
+    elevation: 4,
+  } as ViewStyle & { boxShadow?: string },
   sectionHeaderLabel: {
     ...typography.caption,
     fontSize: 11,

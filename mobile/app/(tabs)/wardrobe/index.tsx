@@ -5,7 +5,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useWardrobe } from "@/hooks/useWardrobe";
 import { useAuth } from "@/providers/AuthProvider";
-import { BottomNavBar, ErrorMessage, SearchBar } from "@/components/ui";
+import { ErrorMessage, SearchBar } from "@/components/ui";
 import { colors, spacing } from "@/theme";
 import {
   EmptyWardrobeView,
@@ -119,9 +119,6 @@ export default function WardrobeScreen() {
         >
           <Ionicons name="add" size={30} color="#FFFFFF" />
         </TouchableOpacity>
-
-        {/* Floating Bottom Navigation Bar */}
-        <BottomNavBar activeTab="wardrobe" />
       </View>
     </SafeAreaView>
   );

@@ -5,9 +5,10 @@ import {
   Text,
   TouchableOpacity,
   View,
+  type ViewStyle,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { colors, spacing, typography } from "@/theme";
+import { colors, radius, spacing, typography } from "@/theme";
 import type {
   SettingsSectionConfig,
   UserPreferences,
@@ -63,8 +64,8 @@ export function SettingsSectionList({
                           val,
                         )
                       }
-                      trackColor={{ false: colors.border, true: colors.textPrimary }}
-                      thumbColor="#ffffff"
+                      trackColor={{ false: "#E5E1D8", true: "#141412" }}
+                      thumbColor="#FFFFFF"
                       accessibilityRole="switch"
                       accessibilityLabel={item.label}
                     />
@@ -97,7 +98,7 @@ export function SettingsSectionList({
                   accessibilityLabel={item.label}
                 >
                   <Text style={styles.rowLabel}>{item.label}</Text>
-                  <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
+                  <Ionicons name="chevron-forward" size={18} color="#7F7C76" />
                 </TouchableOpacity>
               );
             })}
@@ -116,7 +117,7 @@ export function SettingsSectionList({
         </View>
       </View>
 
-      {/* Sign Out Row */}
+      {/* Sign Out Section */}
       <View style={styles.section}>
         <View style={styles.sectionBody}>
           <TouchableOpacity
@@ -142,42 +143,52 @@ const styles = StyleSheet.create({
   },
   section: {},
   sectionTitle: {
-    ...typography.label,
+    ...typography.caption,
     fontSize: 11,
-    color: colors.textSecondary,
-    marginBottom: spacing.xs,
+    fontWeight: "700",
+    letterSpacing: 1.5,
+    color: "#7F7C76",
     textTransform: "uppercase",
+    marginBottom: spacing.xs + 2,
   },
   sectionBody: {
-    backgroundColor: colors.surface,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: colors.border,
+    backgroundColor: "#F7F5F0",
+    borderRadius: 22,
+    borderWidth: 0,
+    boxShadow: "-8px -8px 20px #FFFFFF, 8px 8px 20px rgba(185, 175, 158, 0.7)",
+    shadowColor: "#000000",
+    shadowOffset: { width: 6, height: 6 },
+    shadowOpacity: 0.1,
+    shadowRadius: 16,
+    elevation: 4,
     overflow: "hidden",
-  },
+  } as ViewStyle & { boxShadow?: string },
   row: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: spacing.md,
-    paddingVertical: 14,
-    minHeight: 48,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: 16,
+    minHeight: 52,
   },
   rowBorder: {
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.border,
+    borderBottomWidth: 1,
+    borderBottomColor: "rgba(0, 0, 0, 0.05)",
   },
   rowLabel: {
     ...typography.body,
+    fontSize: 15,
+    fontWeight: "500",
     color: colors.textPrimary,
     flex: 1,
   },
   placeholderText: {
-    color: colors.textSecondary,
+    color: "#7F7C76",
   },
   rowValue: {
     ...typography.caption,
-    color: colors.textSecondary,
+    fontSize: 14,
+    color: "#7F7C76",
     textTransform: "capitalize",
   },
   signOutText: {

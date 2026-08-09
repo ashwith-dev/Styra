@@ -6,9 +6,9 @@ import {
 } from "react-native";
 import { router, useFocusEffect } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { BottomNavBar } from "@/components/ui/BottomNavBar";
 import { LoadingSkeletonCard } from "@/components/ui/LoadingSkeleton";
 import { colors, spacing } from "@/theme";
+import { homeTokens } from "@/features/home/theme/homeTokens";
 import {
   EmptyWardrobeDashboard,
   HOME_CONFIG,
@@ -288,19 +288,17 @@ export default function HomeScreen() {
             />
           )}
 
-          {/* Quick Actions (Show when wardrobe is unlocked) */}
-          {wardrobeValidation.isUnlocked && (
-            <HomeQuickActions
-              onAddClothing={handleAddClothing}
-              onGenerateOutfit={handleGenerateOutfit}
-              hasOutfitForSelectedDate={
-                selectedDayObj?.isToday
-                  ? Boolean(todayOutfit)
-                  : Boolean(selectedDateOutfit || selectedDayObj?.hasOutfit)
-              }
-              onViewOutfit={handleViewOutfit}
-            />
-          )}
+          {/* Quick Actions (Generate Outfit & Add Clothing) */}
+          <HomeQuickActions
+            onAddClothing={handleAddClothing}
+            onGenerateOutfit={handleGenerateOutfit}
+            hasOutfitForSelectedDate={
+              selectedDayObj?.isToday
+                ? Boolean(todayOutfit)
+                : Boolean(selectedDateOutfit || selectedDayObj?.hasOutfit)
+            }
+            onViewOutfit={handleViewOutfit}
+          />
 
           {/* Outfit Card for Selected Date */}
           {selectedDateOutfit && wardrobeValidation.isUnlocked && (
@@ -382,9 +380,6 @@ export default function HomeScreen() {
             </>
           )}
         </ScrollView>
-
-        {/* Floating Bottom Navigation Bar */}
-        <BottomNavBar activeTab="home" />
       </View>
     </SafeAreaView>
   );
@@ -393,7 +388,7 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   safe: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: homeTokens.background,
   },
   contentContainer: {
     flex: 1,

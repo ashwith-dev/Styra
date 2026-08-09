@@ -1,4 +1,4 @@
-import { Image, Platform, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Image, Platform, StyleSheet, Text, TouchableOpacity, View, type ViewStyle } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { colors, radius, spacing, typography } from "@/theme";
 import type { ProfileUser } from "../types/profile";
@@ -54,19 +54,19 @@ export function ProfileHeroCard({ user, onEditProfile }: ProfileHeroCardProps) {
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: colors.surface,
-    borderRadius: 24,
+    backgroundColor: "#F7F5F0",
+    borderRadius: 26,
     padding: spacing.xl,
     alignItems: "center",
     marginBottom: spacing.xl,
-    borderWidth: 1,
-    borderColor: "#EFECE6",
+    borderWidth: 0,
+    boxShadow: "-8px -8px 20px #FFFFFF, 8px 8px 20px rgba(185, 175, 158, 0.7)",
     shadowColor: "#000000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.04,
-    shadowRadius: 12,
-    elevation: 3,
-  },
+    shadowOffset: { width: 6, height: 6 },
+    shadowOpacity: 0.1,
+    shadowRadius: 16,
+    elevation: 4,
+  } as ViewStyle & { boxShadow?: string },
   avatarWrapper: {
     position: "relative",
     marginBottom: spacing.md,
@@ -81,17 +81,22 @@ const styles = StyleSheet.create({
     width: 96,
     height: 96,
     borderRadius: 48,
-    backgroundColor: "#F4F1EA",
+    backgroundColor: "#F7F5F0",
     alignItems: "center",
     justifyContent: "center",
-    borderWidth: 1,
-    borderColor: "#E5E1D8",
-  },
+    borderWidth: 0,
+    boxShadow: "-5px -5px 12px #FFFFFF, 5px 5px 12px rgba(185, 175, 158, 0.6)",
+    shadowColor: "#000000",
+    shadowOffset: { width: 4, height: 4 },
+    shadowOpacity: 0.06,
+    shadowRadius: 10,
+    elevation: 3,
+  } as ViewStyle & { boxShadow?: string },
   initialText: {
     fontFamily: Platform.OS === "ios" ? "Georgia" : "serif",
     fontSize: 36,
     fontWeight: "700",
-    color: "#1A1A1A",
+    color: colors.textPrimary,
   },
   cameraBadge: {
     position: "absolute",
@@ -100,7 +105,7 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: "#000000",
+    backgroundColor: "#141412",
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 2,
@@ -120,14 +125,21 @@ const styles = StyleSheet.create({
     marginBottom: spacing.lg,
   },
   editBtn: {
-    backgroundColor: "#1A1A1A",
+    backgroundColor: "#141412",
     borderRadius: radius.full,
-    paddingVertical: 10,
+    paddingVertical: 12,
     paddingHorizontal: spacing.xxl,
-  },
+    boxShadow: "0px 8px 20px rgba(20, 20, 18, 0.35)",
+    shadowColor: "#141412",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.25,
+    shadowRadius: 12,
+    elevation: 5,
+  } as ViewStyle & { boxShadow?: string },
   editBtnText: {
     ...typography.button,
-    color: colors.surface,
+    color: "#FFFFFF",
     fontSize: 14,
+    fontWeight: "600",
   },
 });

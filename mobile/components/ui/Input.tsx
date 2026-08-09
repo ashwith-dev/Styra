@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   View,
   type TextInputProps,
+  type ViewStyle,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { colors, radius, spacing, typography } from "@/theme";
@@ -88,14 +89,15 @@ const styles = StyleSheet.create({
   input: {
     ...typography.body,
     borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.sm,
+    borderColor: "rgba(0, 0, 0, 0.04)",
+    borderRadius: radius.md,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
-    backgroundColor: colors.surface,
+    backgroundColor: "#F2EFE8",
     color: colors.textPrimary,
-    minHeight: 48,
-  },
+    minHeight: 50,
+    boxShadow: "inset 2px 2px 5px rgba(185, 175, 158, 0.5), inset -2px -2px 5px #FFFFFF",
+  } as ViewStyle & { boxShadow?: string },
   inputWithIcon: {
     paddingRight: 48,
   },

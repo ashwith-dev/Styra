@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import {
   Animated,
   Image,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -9,10 +10,10 @@ import {
   View,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { colors, radius, spacing, typography } from "@/theme";
+import { radius, spacing, typography } from "@/theme";
 import { STEP1_IMAGES } from "@/features/onboarding/config";
+import { homeTokens, neumorphicStyles } from "../theme/homeTokens";
 import { MinItemsRequirementsCard } from "./MinItemsRequirementsCard";
-
 
 interface EmptyWardrobeDashboardProps {
   userName?: string | null;
@@ -79,7 +80,7 @@ export function EmptyWardrobeDashboard({
         },
       ]}
     >
-      {/* Hero Closet Card */}
+      {/* Hero Closet Card — Neumorphic Raised Panel molded from #F7F5F0 */}
       <View style={styles.heroCard}>
         <View style={styles.heroImageContainer}>
           <Image
@@ -105,7 +106,7 @@ export function EmptyWardrobeDashboard({
             testID="empty-wardrobe-add-first-cta"
           >
             <Text style={styles.primaryCtaText}>Add Your First Item</Text>
-            <Ionicons name="add" size={20} color={colors.surface} />
+            <Ionicons name="add" size={20} color="#FFFFFF" />
           </TouchableOpacity>
         </View>
       </View>
@@ -127,12 +128,24 @@ export function EmptyWardrobeDashboard({
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
+          style={styles.chipsScrollView}
           contentContainerStyle={styles.chipsScrollContent}
         >
           {SUPPORTED_CATEGORIES.map((cat) => (
-            <View key={cat.id} style={styles.categoryChip}>
+            <TouchableOpacity
+              key={cat.id}
+              style={styles.categoryChip}
+              activeOpacity={0.8}
+            >
+              <View style={styles.chipIconBox}>
+                <Ionicons
+                  name={cat.icon as any}
+                  size={15}
+                  color={homeTokens.textPrimary}
+                />
+              </View>
               <Text style={styles.categoryChipText}>{cat.label}</Text>
-            </View>
+            </TouchableOpacity>
           ))}
         </ScrollView>
       </View>
@@ -151,7 +164,7 @@ export function EmptyWardrobeDashboard({
                   <Ionicons
                     name={feature.iconName}
                     size={20}
-                    color={colors.textPrimary}
+                    color={homeTokens.textPrimary}
                   />
                 </View>
                 <View style={styles.bentoBadge}>
@@ -176,24 +189,17 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.massive,
   },
   heroCard: {
-    backgroundColor: "#FAF8F5",
+    ...neumorphicStyles.raised,
     borderRadius: 32,
-    borderWidth: 1.5,
-    borderColor: "#FFFFFF",
     padding: spacing.md,
     marginBottom: spacing.xl,
-    shadowColor: "#000000",
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.06,
-    shadowRadius: 16,
-    elevation: 4,
   },
   heroImageContainer: {
     width: "100%",
-    height: 220,
+    height: 210,
     borderRadius: 24,
     overflow: "hidden",
-    backgroundColor: "#F5F3EF",
+    backgroundColor: "#EFECE6",
   },
   heroImage: {
     width: "100%",
@@ -206,43 +212,38 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   heroTitle: {
-    fontFamily: "serif",
-    fontSize: 28,
+    fontFamily: Platform.OS === "ios" ? "Georgia" : "serif",
+    fontSize: 26,
     fontWeight: "700",
-    color: colors.textPrimary,
+    color: homeTokens.textPrimary,
     textAlign: "center",
     marginBottom: spacing.xs,
   },
   heroSubtitle: {
     ...typography.body,
     fontSize: 14,
-    color: "#666666",
+    color: homeTokens.textSecondary,
     textAlign: "center",
     lineHeight: 22,
     marginBottom: spacing.xl,
     maxWidth: 320,
   },
   primaryCta: {
+    ...neumorphicStyles.elevatedDark,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: spacing.xs,
-    backgroundColor: colors.textPrimary,
     height: 52,
     borderRadius: radius.full,
     paddingHorizontal: spacing.xxl,
     width: "100%",
-    shadowColor: colors.textPrimary,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.2,
-    shadowRadius: 10,
-    elevation: 3,
   },
   primaryCtaText: {
     ...typography.body,
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: "600",
-    color: colors.surface,
+    color: "#FFFFFF",
   },
   sectionContainer: {
     marginBottom: spacing.xl,
@@ -258,48 +259,66 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: "700",
     letterSpacing: 1.4,
-    color: "#7F7C76",
+    color: homeTokens.textSecondary,
     textTransform: "uppercase",
     marginBottom: spacing.sm,
   },
+  chipsScrollView: {
+    overflow: "visible",
+  },
   chipsScrollContent: {
-    gap: spacing.xs,
+    gap: spacing.sm,
+    paddingVertical: 14,
+    paddingHorizontal: 4,
+    overflow: "visible",
   },
   categoryChip: {
-    backgroundColor: "#FAF8F5",
-    paddingHorizontal: spacing.lg,
-    paddingVertical: 11,
-    borderRadius: radius.full,
-    borderWidth: 1.5,
-    borderColor: "#FFFFFF",
+    backgroundColor: "#F7F5F0",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 9999,
+    borderWidth: 0,
+    boxShadow: "-4px -4px 10px #FFFFFF, 4px 4px 10px rgba(185, 175, 158, 0.55)",
     shadowColor: "#000000",
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.04,
-    shadowRadius: 6,
-    elevation: 2,
+    shadowOffset: { width: 3, height: 3 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  chipIconBox: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: "#F7F5F0",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 0,
   },
   categoryChipText: {
-    fontFamily: "serif",
+    fontFamily: Platform.OS === "ios" ? "Georgia" : "serif",
     fontSize: 14,
     fontWeight: "600",
-    color: colors.textPrimary,
+    color: homeTokens.textPrimary,
   },
   bentoGrid: {
     gap: spacing.md,
   },
   bentoCard: {
-    backgroundColor: "#FAF8F5",
+    backgroundColor: "#F7F5F0",
     borderRadius: 26,
-    borderWidth: 1.5,
-    borderColor: "#FFFFFF",
     padding: spacing.lg,
     minHeight: 185,
     justifyContent: "space-between",
+    borderWidth: 0,
+    boxShadow: "-8px -8px 20px #FFFFFF, 8px 8px 20px rgba(185, 175, 158, 0.7)",
     shadowColor: "#000000",
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.05,
-    shadowRadius: 14,
-    elevation: 3,
+    shadowOffset: { width: 6, height: 6 },
+    shadowOpacity: 0.1,
+    shadowRadius: 16,
+    elevation: 4,
   },
   bentoCardHeader: {
     flexDirection: "row",
@@ -308,50 +327,45 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
   },
   bentoIconBox: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: "#FFFFFF",
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: homeTokens.surface,
     alignItems: "center",
     justifyContent: "center",
-    borderWidth: 1.5,
-    borderColor: "#FFFFFF",
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.9)",
     shadowColor: "#000000",
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: { width: 1, height: 2 },
     shadowOpacity: 0.04,
-    shadowRadius: 6,
-    elevation: 1,
+    shadowRadius: 4,
   },
   bentoBadge: {
-    backgroundColor: "#FFFFFF",
+    backgroundColor: homeTokens.surface,
     paddingHorizontal: 12,
     paddingVertical: 5,
     borderRadius: radius.full,
-    borderWidth: 1.5,
-    borderColor: "#FFFFFF",
-    shadowColor: "#000000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.03,
-    shadowRadius: 4,
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.9)",
   },
   bentoBadgeText: {
     ...typography.caption,
     fontSize: 10,
     fontWeight: "700",
     letterSpacing: 1,
-    color: "#7F7C76",
+    color: homeTokens.textSecondary,
   },
   bentoTitle: {
-    fontFamily: "serif",
+    fontFamily: Platform.OS === "ios" ? "Georgia" : "serif",
     fontSize: 20,
     fontWeight: "700",
-    color: colors.textPrimary,
+    color: homeTokens.textPrimary,
     marginBottom: spacing.xs,
   },
   bentoDescription: {
     ...typography.body,
     fontSize: 13,
-    color: "#666666",
+    color: "#666460",
     lineHeight: 19,
   },
 });

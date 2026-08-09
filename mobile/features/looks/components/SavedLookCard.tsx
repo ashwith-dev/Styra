@@ -1,5 +1,5 @@
 import { memo } from "react";
-import { Platform, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Platform, StyleSheet, Text, TouchableOpacity, View, type ViewStyle } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import type { SavedLook } from "../types/looks";
 import { formatSavedTimestamp } from "../utils/dateGrouping";
@@ -83,18 +83,18 @@ export const SavedLookCard = memo(function SavedLookCard({
 
 const styles = StyleSheet.create({
   cardContainer: {
-    backgroundColor: colors.surface,
-    borderRadius: 24,
+    backgroundColor: "#F7F5F0",
+    borderRadius: 26,
     padding: spacing.lg,
     marginBottom: spacing.xl,
-    borderWidth: 1,
-    borderColor: "#EFECE6",
+    borderWidth: 0,
+    boxShadow: "-8px -8px 20px #FFFFFF, 8px 8px 20px rgba(185, 175, 158, 0.7)",
     shadowColor: "#000000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.04,
-    shadowRadius: 12,
-    elevation: 3,
-  },
+    shadowOffset: { width: 6, height: 6 },
+    shadowOpacity: 0.1,
+    shadowRadius: 16,
+    elevation: 4,
+  } as ViewStyle & { boxShadow?: string },
   topRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -107,17 +107,24 @@ const styles = StyleSheet.create({
     flexWrap: "wrap",
   },
   tagChip: {
-    backgroundColor: "#F4F1EA",
+    backgroundColor: "#F7F5F0",
     borderRadius: radius.full,
     paddingVertical: 4,
     paddingHorizontal: spacing.sm,
-  },
+    borderWidth: 0,
+    boxShadow: "-3px -3px 8px #FFFFFF, 3px 3px 8px rgba(185, 175, 158, 0.5)",
+    shadowColor: "#000000",
+    shadowOffset: { width: 2, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 2,
+  } as ViewStyle & { boxShadow?: string },
   tagText: {
     ...typography.caption,
     fontSize: 11,
     fontWeight: "700",
     letterSpacing: 0.8,
-    color: "#1A1A1A",
+    color: colors.textPrimary,
   },
   infoSection: {
     marginBottom: spacing.md,
@@ -136,27 +143,41 @@ const styles = StyleSheet.create({
   },
   editBtn: {
     flex: 1,
-    borderWidth: 1,
-    borderColor: "#E0DDD5",
+    backgroundColor: "#F7F5F0",
+    borderWidth: 0,
     borderRadius: radius.full,
     paddingVertical: 12,
     alignItems: "center",
-  },
+    boxShadow: "-4px -4px 10px #FFFFFF, 4px 4px 10px rgba(185, 175, 158, 0.55)",
+    shadowColor: "#000000",
+    shadowOffset: { width: 3, height: 3 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 3,
+  } as ViewStyle & { boxShadow?: string },
   editBtnText: {
     ...typography.button,
     fontSize: 14,
-    color: "#1A1A1A",
+    fontWeight: "600",
+    color: colors.textPrimary,
   },
   wearAgainBtn: {
     flex: 1,
-    backgroundColor: "#1A1A1A",
+    backgroundColor: "#141412",
     borderRadius: radius.full,
     paddingVertical: 12,
     alignItems: "center",
-  },
+    boxShadow: "0px 8px 20px rgba(20, 20, 18, 0.35)",
+    shadowColor: "#141412",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.25,
+    shadowRadius: 12,
+    elevation: 5,
+  } as ViewStyle & { boxShadow?: string },
   wearAgainBtnText: {
     ...typography.button,
     fontSize: 14,
-    color: colors.surface,
+    fontWeight: "600",
+    color: "#FFFFFF",
   },
 });

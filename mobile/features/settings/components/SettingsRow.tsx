@@ -25,11 +25,11 @@ export const SettingsRow = memo(function SettingsRow({
       accessibilityLabel={title}
     >
       <View style={styles.leftGroup}>
-        <Ionicons name={iconName} size={20} color="#1A1A1A" style={styles.icon} />
+        <Ionicons name={iconName} size={20} color={colors.textPrimary} style={styles.icon} />
         <Text style={styles.titleText}>{title}</Text>
       </View>
 
-      <Ionicons name="chevron-forward" size={16} color="#A09C94" />
+      <Ionicons name="chevron-forward" size={16} color="#7F7C76" />
     </TouchableOpacity>
   );
 });
@@ -41,11 +41,11 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     paddingVertical: 16,
     paddingHorizontal: spacing.lg,
-    backgroundColor: colors.surface,
+    backgroundColor: "#F7F5F0",
   },
   rowBorder: {
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: "#EFECE6",
+    borderBottomWidth: 1,
+    borderBottomColor: "rgba(0, 0, 0, 0.05)",
   },
   leftGroup: {
     flexDirection: "row",

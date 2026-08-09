@@ -6,8 +6,9 @@ import {
   Text,
   TouchableOpacity,
   View,
+  type ViewStyle,
 } from "react-native";
-import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { colors, radius, spacing, typography } from "@/theme";
 
 interface EmptyWardrobeViewProps {
@@ -62,6 +63,7 @@ export function EmptyWardrobeView({ onAddClothing }: EmptyWardrobeViewProps) {
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
+          style={styles.chipsScrollView}
           contentContainerStyle={styles.chipsScroll}
         >
           {CATEGORY_CHIPS.map((chip, idx) => (
@@ -98,21 +100,6 @@ export function EmptyWardrobeView({ onAddClothing }: EmptyWardrobeViewProps) {
           </TouchableOpacity>
         </View>
       </View>
-
-      {/* ── Locked AI Outfit Generator Card ── */}
-      <View style={styles.aiLockedCard}>
-        <View style={styles.aiHeaderRow}>
-          <Text style={styles.aiTitle}>AI Outfit Generator</Text>
-          <Ionicons name="lock-closed" size={16} color="#7F7C76" />
-        </View>
-        <Text style={styles.aiSubtitle}>
-          Add at least 2 Tops and 2 Bottoms to unlock outfit generation.
-        </Text>
-        <View style={styles.progressTrackContainer}>
-          <View style={styles.progressLine} />
-          <View style={styles.progressLine} />
-        </View>
-      </View>
     </ScrollView>
   );
 }
@@ -124,19 +111,19 @@ const styles = StyleSheet.create({
     paddingBottom: 120,
   },
   heroCard: {
-    backgroundColor: colors.surface,
-    borderRadius: 24,
+    backgroundColor: "#F7F5F0",
+    borderRadius: 26,
     padding: spacing.xl,
     alignItems: "center",
     marginBottom: spacing.xxl,
-    borderWidth: 1,
-    borderColor: "#EFECE6",
+    borderWidth: 0,
+    boxShadow: "-8px -8px 20px #FFFFFF, 8px 8px 20px rgba(185, 175, 158, 0.7)",
     shadowColor: "#000000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.04,
-    shadowRadius: 12,
-    elevation: 3,
-  },
+    shadowOffset: { width: 6, height: 6 },
+    shadowOpacity: 0.1,
+    shadowRadius: 16,
+    elevation: 4,
+  } as ViewStyle & { boxShadow?: string },
   heroImage: {
     width: "100%",
     height: 180,
@@ -161,17 +148,24 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.sm,
   },
   heroCtaBtn: {
-    backgroundColor: "#1A1A1A",
+    backgroundColor: "#141412",
     borderRadius: radius.full,
     paddingVertical: 14,
     paddingHorizontal: spacing.xxl,
     width: "100%",
     alignItems: "center",
-  },
+    boxShadow: "0px 8px 20px rgba(20, 20, 18, 0.35)",
+    shadowColor: "#141412",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.25,
+    shadowRadius: 12,
+    elevation: 5,
+  } as ViewStyle & { boxShadow?: string },
   heroCtaText: {
     ...typography.button,
-    color: colors.surface,
+    color: "#FFFFFF",
     fontSize: 15,
+    fontWeight: "600",
   },
   categoriesSection: {
     marginBottom: spacing.xxl,
@@ -185,20 +179,33 @@ const styles = StyleSheet.create({
     textTransform: "uppercase",
     marginBottom: spacing.sm,
   },
+  chipsScrollView: {
+    overflow: "visible",
+  },
   chipsScroll: {
-    gap: spacing.xs,
+    gap: spacing.sm,
+    paddingVertical: 10,
+    paddingHorizontal: 4,
+    overflow: "visible",
   },
   chip: {
-    backgroundColor: "#F4F1EA",
+    backgroundColor: "#F7F5F0",
     borderRadius: radius.full,
     paddingVertical: 8,
     paddingHorizontal: spacing.md,
-  },
+    borderWidth: 0,
+    boxShadow: "-4px -4px 10px #FFFFFF, 4px 4px 10px rgba(185, 175, 158, 0.55)",
+    shadowColor: "#000000",
+    shadowOffset: { width: 3, height: 3 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 3,
+  } as ViewStyle & { boxShadow?: string },
   chipText: {
     ...typography.caption,
     fontSize: 13,
     fontWeight: "600",
-    color: "#1A1A1A",
+    color: colors.textPrimary,
   },
   allClothesSection: {
     marginBottom: spacing.xxl,
@@ -211,27 +218,34 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
   },
   emptyCard: {
-    backgroundColor: colors.surface,
-    borderRadius: 24,
+    backgroundColor: "#F7F5F0",
+    borderRadius: 26,
     padding: spacing.xxl,
     alignItems: "center",
-    borderWidth: 1,
-    borderColor: "#EFECE6",
+    borderWidth: 0,
+    boxShadow: "-8px -8px 20px #FFFFFF, 8px 8px 20px rgba(185, 175, 158, 0.7)",
     shadowColor: "#000000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.04,
-    shadowRadius: 12,
-    elevation: 3,
-  },
+    shadowOffset: { width: 6, height: 6 },
+    shadowOpacity: 0.1,
+    shadowRadius: 16,
+    elevation: 4,
+  } as ViewStyle & { boxShadow?: string },
   hangerCircle: {
     width: 64,
     height: 64,
     borderRadius: 32,
-    backgroundColor: "#F4F1EA",
+    backgroundColor: "#F7F5F0",
     alignItems: "center",
     justifyContent: "center",
     marginBottom: spacing.lg,
-  },
+    borderWidth: 0,
+    boxShadow: "-4px -4px 10px #FFFFFF, 4px 4px 10px rgba(185, 175, 158, 0.55)",
+    shadowColor: "#000000",
+    shadowOffset: { width: 3, height: 3 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 3,
+  } as ViewStyle & { boxShadow?: string },
   emptyTitle: {
     fontFamily: Platform.OS === "ios" ? "Georgia" : "serif",
     fontSize: 22,
@@ -249,24 +263,36 @@ const styles = StyleSheet.create({
     maxWidth: 280,
   },
   uploadBtn: {
-    borderWidth: 1,
-    borderColor: "#1A1A1A",
+    backgroundColor: "#F7F5F0",
+    borderWidth: 0,
     borderRadius: radius.full,
     paddingVertical: 10,
     paddingHorizontal: spacing.xl,
-  },
+    boxShadow: "-4px -4px 10px #FFFFFF, 4px 4px 10px rgba(185, 175, 158, 0.55)",
+    shadowColor: "#000000",
+    shadowOffset: { width: 3, height: 3 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 3,
+  } as ViewStyle & { boxShadow?: string },
   uploadBtnText: {
     ...typography.button,
     fontSize: 14,
-    color: "#1A1A1A",
+    fontWeight: "600",
+    color: colors.textPrimary,
   },
   aiLockedCard: {
-    backgroundColor: "#FAF7F2",
-    borderRadius: 20,
+    backgroundColor: "#F7F5F0",
+    borderRadius: 22,
     padding: spacing.lg,
-    borderWidth: 1,
-    borderColor: "#EFECE6",
-  },
+    borderWidth: 0,
+    boxShadow: "-8px -8px 20px #FFFFFF, 8px 8px 20px rgba(185, 175, 158, 0.7)",
+    shadowColor: "#000000",
+    shadowOffset: { width: 6, height: 6 },
+    shadowOpacity: 0.1,
+    shadowRadius: 16,
+    elevation: 4,
+  } as ViewStyle & { boxShadow?: string },
   aiHeaderRow: {
     flexDirection: "row",
     alignItems: "center",

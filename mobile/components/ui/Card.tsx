@@ -4,7 +4,7 @@ import {
   StyleSheet,
   type ViewStyle,
 } from "react-native";
-import { colors, spacing, radius, shadows } from "@/theme";
+import { colors, spacing } from "@/theme";
 
 interface CardProps {
   children: React.ReactNode;
@@ -36,7 +36,7 @@ export function Card({
   const containerProps = onPress
     ? {
         onPress,
-        activeOpacity: 0.9,
+        activeOpacity: 0.88,
         accessibilityRole: "button" as const,
         accessibilityLabel: accessibilityLabel ?? "Card",
       }
@@ -62,15 +62,26 @@ export function Card({
 
 const styles = StyleSheet.create({
   base: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.lg,
-  },
+    backgroundColor: "#F7F5F0",
+    borderRadius: 22,
+    borderWidth: 0,
+    boxShadow: "-8px -8px 20px #FFFFFF, 8px 8px 20px rgba(185, 175, 158, 0.7)",
+    shadowColor: "#000000",
+    shadowOffset: { width: 6, height: 6 },
+    shadowOpacity: 0.1,
+    shadowRadius: 16,
+    elevation: 4,
+  } as ViewStyle & { boxShadow?: string },
   elevated: {
-    ...shadows.small,
-  },
+    boxShadow: "-8px -8px 20px #FFFFFF, 8px 8px 20px rgba(185, 175, 158, 0.7)",
+  } as ViewStyle & { boxShadow?: string },
   outlined: {
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  flat: {},
+    boxShadow: "-6px -6px 16px #FFFFFF, 6px 6px 16px rgba(185, 175, 158, 0.65)",
+    borderWidth: 0,
+  } as ViewStyle & { boxShadow?: string },
+  flat: {
+    boxShadow: "none",
+    shadowOpacity: 0,
+    elevation: 0,
+  } as ViewStyle & { boxShadow?: string },
 });

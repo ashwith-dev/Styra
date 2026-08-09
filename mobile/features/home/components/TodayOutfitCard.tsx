@@ -24,6 +24,7 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { CachedImage } from "@/components/ui/CachedImage";
 import { colors, radius, spacing, typography } from "@/theme";
+import { homeTokens, neumorphicStyles } from "../theme/homeTokens";
 import type { TodayOutfitData } from "@/hooks/useTodayOutfit";
 
 interface TodayOutfitCardProps {
@@ -244,10 +245,8 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
   },
   card: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.lg,
-    borderWidth: 1.5,
-    borderColor: colors.border,
+    ...neumorphicStyles.raised,
+    borderRadius: 28,
     paddingTop: spacing.md,
     paddingHorizontal: spacing.md,
     overflow: "hidden",

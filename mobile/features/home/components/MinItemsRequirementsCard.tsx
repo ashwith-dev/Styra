@@ -1,6 +1,7 @@
-import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Platform, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { colors, radius, spacing, typography } from "@/theme";
+import { homeTokens, neumorphicStyles } from "../theme/homeTokens";
 
 interface MinItemsRequirementsCardProps {
   topsCount?: number;
@@ -13,11 +14,8 @@ interface MinItemsRequirementsCardProps {
 }
 
 /**
- * Card displayed on Home Screen for new users showing the exact
- * minimum item counts needed for AI Outfit Generation stacked as full-width rows:
- * 1. Tops: 2 items minimum
- * 2. Bottoms: 2 items minimum
- * 3. Footwear: 1 item minimum
+ * Card displayed on Home Screen for new users showing minimum requirement items
+ * as neumorphic rows emerging from the warm ivory surface.
  */
 export function MinItemsRequirementsCard({
   topsCount = 0,
@@ -41,7 +39,7 @@ export function MinItemsRequirementsCard({
       <View style={styles.headerRow}>
         <View style={styles.headerLeft}>
           <View style={styles.sparkleBox}>
-            <Ionicons name="sparkles" size={15} color={colors.textPrimary} />
+            <Ionicons name="sparkles" size={14} color={homeTokens.textPrimary} />
           </View>
           <Text style={styles.headerLabel}>OUTFIT GENERATOR REQUIREMENTS</Text>
         </View>
@@ -59,7 +57,7 @@ export function MinItemsRequirementsCard({
         Add these essential pieces to your digital closet to enable AI outfit generation and daily styling.
       </Text>
 
-      {/* Requirement List (3 Rows) */}
+      {/* Requirement List (3 Neumorphic Rows) */}
       <View style={styles.rowsContainer}>
         {/* Row 1: Tops */}
         <View
@@ -77,8 +75,8 @@ export function MinItemsRequirementsCard({
             >
               <Ionicons
                 name={topsCount >= requiredTops ? "checkmark-circle" : "shirt-outline"}
-                size={20}
-                color={topsCount >= requiredTops ? colors.success : colors.textPrimary}
+                size={18}
+                color={topsCount >= requiredTops ? colors.success : homeTokens.textPrimary}
               />
             </View>
 
@@ -111,8 +109,8 @@ export function MinItemsRequirementsCard({
             >
               <Ionicons
                 name={bottomsCount >= requiredBottoms ? "checkmark-circle" : "layers-outline"}
-                size={20}
-                color={bottomsCount >= requiredBottoms ? colors.success : colors.textPrimary}
+                size={18}
+                color={bottomsCount >= requiredBottoms ? colors.success : homeTokens.textPrimary}
               />
             </View>
 
@@ -145,8 +143,8 @@ export function MinItemsRequirementsCard({
             >
               <Ionicons
                 name={footwearCount >= requiredFootwear ? "checkmark-circle" : "footsteps-outline"}
-                size={20}
-                color={footwearCount >= requiredFootwear ? colors.success : colors.textPrimary}
+                size={18}
+                color={footwearCount >= requiredFootwear ? colors.success : homeTokens.textPrimary}
               />
             </View>
 
@@ -172,7 +170,7 @@ export function MinItemsRequirementsCard({
         accessibilityRole="button"
         accessibilityLabel="Add Clothing Items"
       >
-        <Ionicons name="add" size={18} color={colors.surface} />
+        <Ionicons name="add" size={18} color="#FFFFFF" />
         <Text style={styles.ctaButtonText}>
           {totalAdded === 0 ? "Upload Items Now" : "Add Remaining Items"}
         </Text>
@@ -183,17 +181,10 @@ export function MinItemsRequirementsCard({
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: "#FAF8F5",
+    ...neumorphicStyles.raised,
     borderRadius: 28,
-    borderWidth: 1.5,
-    borderColor: "#FFFFFF",
     padding: spacing.lg,
     marginBottom: spacing.xl,
-    shadowColor: "#000000",
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.06,
-    shadowRadius: 16,
-    elevation: 4,
   },
   headerRow: {
     flexDirection: "row",
@@ -207,39 +198,29 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
   },
   sparkleBox: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: "#FFFFFF",
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: homeTokens.surface,
     alignItems: "center",
     justifyContent: "center",
-    borderWidth: 1.5,
-    borderColor: "#FFFFFF",
-    shadowColor: "#000000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 4,
-    elevation: 1,
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.9)",
   },
   headerLabel: {
     ...typography.caption,
     fontSize: 10,
     fontWeight: "700",
     letterSpacing: 1.2,
-    color: "#7F7C76",
+    color: homeTokens.textSecondary,
   },
   statusBadge: {
-    backgroundColor: "#FFFFFF",
-    paddingHorizontal: 12,
-    paddingVertical: 5,
+    backgroundColor: homeTokens.surface,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
     borderRadius: radius.full,
-    borderWidth: 1.5,
-    borderColor: "#FFFFFF",
-    shadowColor: "#000000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.03,
-    shadowRadius: 4,
-    elevation: 1,
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.9)",
   },
   statusBadgeComplete: {
     backgroundColor: "rgba(63, 125, 88, 0.12)",
@@ -250,22 +231,22 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: "700",
     letterSpacing: 0.8,
-    color: colors.textPrimary,
+    color: homeTokens.textPrimary,
   },
   statusTextComplete: {
     color: colors.success,
   },
   title: {
-    fontFamily: "serif",
+    fontFamily: Platform.OS === "ios" ? "Georgia" : "serif",
     fontSize: 22,
     fontWeight: "700",
-    color: colors.textPrimary,
+    color: homeTokens.textPrimary,
     marginBottom: 4,
   },
   subtitle: {
     ...typography.body,
     fontSize: 13,
-    color: "#666666",
+    color: "#666460",
     lineHeight: 19,
     marginBottom: spacing.md,
   },
@@ -274,20 +255,13 @@ const styles = StyleSheet.create({
     marginBottom: spacing.lg,
   },
   reqRow: {
+    ...neumorphicStyles.subtle,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    backgroundColor: "#FAF8F5",
     borderRadius: 20,
-    paddingVertical: 14,
+    paddingVertical: 12,
     paddingHorizontal: spacing.md,
-    borderWidth: 1.5,
-    borderColor: "#FFFFFF",
-    shadowColor: "#000000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.04,
-    shadowRadius: 8,
-    elevation: 2,
   },
   reqRowComplete: {
     backgroundColor: "#FFFFFF",
@@ -299,19 +273,14 @@ const styles = StyleSheet.create({
     gap: spacing.md,
   },
   iconBox: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: "#FFFFFF",
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: homeTokens.surface,
     alignItems: "center",
     justifyContent: "center",
-    borderWidth: 1.5,
-    borderColor: "#FFFFFF",
-    shadowColor: "#000000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 6,
-    elevation: 1,
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.9)",
   },
   iconBoxComplete: {
     backgroundColor: "rgba(63, 125, 88, 0.08)",
@@ -321,60 +290,51 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   categoryName: {
-    fontFamily: "serif",
-    fontSize: 16,
+    fontFamily: Platform.OS === "ios" ? "Georgia" : "serif",
+    fontSize: 15,
     fontWeight: "700",
-    color: colors.textPrimary,
+    color: homeTokens.textPrimary,
     marginBottom: 2,
   },
   categorySub: {
     ...typography.caption,
     fontSize: 12,
-    color: "#7F7C76",
+    color: homeTokens.textSecondary,
   },
   countBadge: {
-    backgroundColor: "#FFFFFF",
+    backgroundColor: homeTokens.surface,
     paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingVertical: 5,
     borderRadius: radius.full,
     borderWidth: 1,
-    borderColor: "#EFECE6",
-    shadowColor: "#000000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.03,
-    shadowRadius: 4,
+    borderColor: "rgba(255, 255, 255, 0.9)",
   },
   countBadgeComplete: {
     backgroundColor: "rgba(63, 125, 88, 0.15)",
     borderColor: "rgba(63, 125, 88, 0.3)",
   },
   countBadgeText: {
-    fontFamily: "serif",
+    fontFamily: Platform.OS === "ios" ? "Georgia" : "serif",
     fontSize: 14,
     fontWeight: "700",
-    color: colors.textPrimary,
+    color: homeTokens.textPrimary,
   },
   countBadgeTextComplete: {
     color: colors.success,
   },
   ctaButton: {
+    ...neumorphicStyles.elevatedDark,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: spacing.xs,
-    backgroundColor: colors.textPrimary,
-    height: 52,
+    height: 48,
     borderRadius: radius.full,
-    shadowColor: colors.textPrimary,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.2,
-    shadowRadius: 10,
-    elevation: 3,
   },
   ctaButtonText: {
     ...typography.body,
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: "600",
-    color: colors.surface,
+    color: "#FFFFFF",
   },
 });

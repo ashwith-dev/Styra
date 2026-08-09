@@ -1,4 +1,4 @@
-import { Platform, StyleSheet, Switch, Text, TouchableOpacity, View } from "react-native";
+import { Platform, StyleSheet, Switch, Text, TouchableOpacity, View, type ViewStyle } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { colors, radius, spacing, typography } from "@/theme";
 import type { UserPreferences } from "../types/profile";
@@ -212,18 +212,18 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
   },
   card: {
-    backgroundColor: colors.surface,
-    borderRadius: 20,
+    backgroundColor: "#F7F5F0",
+    borderRadius: 22,
     padding: spacing.lg,
     marginBottom: spacing.md,
-    borderWidth: 1,
-    borderColor: "#EFECE6",
+    borderWidth: 0,
+    boxShadow: "-8px -8px 20px #FFFFFF, 8px 8px 20px rgba(185, 175, 158, 0.7)",
     shadowColor: "#000000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.03,
-    shadowRadius: 8,
-    elevation: 2,
-  },
+    shadowOffset: { width: 6, height: 6 },
+    shadowOpacity: 0.1,
+    shadowRadius: 16,
+    elevation: 4,
+  } as ViewStyle & { boxShadow?: string },
   cardHeader: {
     flexDirection: "row",
     alignItems: "center",
@@ -245,25 +245,31 @@ const styles = StyleSheet.create({
     marginTop: spacing.xs,
   },
   chip: {
-    backgroundColor: "#F4F1EA",
+    backgroundColor: "#F7F5F0",
     borderRadius: radius.full,
     paddingVertical: 6,
     paddingHorizontal: spacing.md,
-  },
+    borderWidth: 0,
+    boxShadow: "-3px -3px 8px #FFFFFF, 3px 3px 8px rgba(185, 175, 158, 0.5)",
+    shadowColor: "#000000",
+    shadowOffset: { width: 2, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 2,
+  } as ViewStyle & { boxShadow?: string },
   chipText: {
     ...typography.caption,
     fontSize: 13,
     fontWeight: "600",
-    color: "#1A1A1A",
+    color: colors.textPrimary,
   },
   emptyChip: {
-    backgroundColor: "#F8F6F0",
+    backgroundColor: "#F7F5F0",
     borderRadius: radius.full,
     paddingVertical: 8,
     paddingHorizontal: spacing.md,
     borderWidth: 1,
-    borderColor: "#E5E1D8",
-    borderStyle: "dashed",
+    borderColor: "rgba(0, 0, 0, 0.06)",
   },
   emptyChipText: {
     ...typography.caption,

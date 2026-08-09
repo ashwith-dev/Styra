@@ -1,5 +1,5 @@
-import { StyleSheet, Text, TouchableOpacity } from "react-native";
-import { colors, radius, shadows, typography } from "@/theme";
+import { StyleSheet, Text, TouchableOpacity, type ViewStyle } from "react-native";
+import { radius, typography } from "@/theme";
 
 interface AddItemFABProps {
   onPress: () => void;
@@ -8,8 +8,7 @@ interface AddItemFABProps {
 
 /**
  * Floating Action Button to add a new clothing item.
- * Positioned absolutely in the bottom-right corner.
- * Parent screen must have `position: "relative"` on its container.
+ * Positioned absolutely in the bottom-right corner with Neumorphic elevated depth.
  */
 export function AddItemFAB({ onPress, testID }: AddItemFABProps) {
   return (
@@ -34,14 +33,20 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: radius.full,
-    backgroundColor: colors.textPrimary,
+    backgroundColor: "#141412",
     alignItems: "center",
     justifyContent: "center",
-    ...shadows.large,
-  },
+    boxShadow: "0px 8px 20px rgba(20, 20, 18, 0.35)",
+    shadowColor: "#141412",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.25,
+    shadowRadius: 12,
+    elevation: 5,
+    zIndex: 99,
+  } as ViewStyle & { boxShadow?: string },
   icon: {
     ...typography.h2,
-    color: colors.surface,
+    color: "#FFFFFF",
     lineHeight: 32,
     marginTop: -2,
   },

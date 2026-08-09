@@ -1,5 +1,5 @@
 import { memo, useState } from "react";
-import { Platform, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Platform, StyleSheet, Text, TouchableOpacity, View, type ViewStyle } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import type { ClothingItemBrief } from "@/lib/types";
 import { CachedImage } from "@/components/ui";
@@ -117,17 +117,17 @@ const styles = StyleSheet.create({
     marginBottom: spacing.lg,
   },
   cardContainer: {
-    backgroundColor: colors.surface,
-    borderRadius: 20,
+    backgroundColor: "#F7F5F0",
+    borderRadius: 22,
     overflow: "hidden",
-    borderWidth: 1,
-    borderColor: "#EFECE6",
+    borderWidth: 0,
+    boxShadow: "-8px -8px 20px #FFFFFF, 8px 8px 20px rgba(185, 175, 158, 0.7)",
     shadowColor: "#000000",
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.04,
-    shadowRadius: 10,
-    elevation: 3,
-  },
+    shadowOffset: { width: 6, height: 6 },
+    shadowOpacity: 0.1,
+    shadowRadius: 16,
+    elevation: 4,
+  } as ViewStyle & { boxShadow?: string },
   imageWrapper: {
     position: "relative",
     width: "100%",

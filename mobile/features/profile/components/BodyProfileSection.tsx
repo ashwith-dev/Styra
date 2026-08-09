@@ -1,4 +1,4 @@
-import { Platform, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Platform, StyleSheet, Text, TouchableOpacity, View, type ViewStyle } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { colors, spacing, typography } from "@/theme";
 import type { BodyProfile } from "../types/profile";
@@ -85,17 +85,17 @@ const styles = StyleSheet.create({
   },
   card: {
     width: "47.5%",
-    backgroundColor: colors.surface,
+    backgroundColor: "#F7F5F0",
     borderRadius: 20,
     padding: spacing.md,
-    borderWidth: 1,
-    borderColor: "#EFECE6",
+    borderWidth: 0,
+    boxShadow: "-6px -6px 16px #FFFFFF, 6px 6px 16px rgba(185, 175, 158, 0.65)",
     shadowColor: "#000000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.03,
-    shadowRadius: 8,
-    elevation: 2,
-  },
+    shadowOffset: { width: 5, height: 5 },
+    shadowOpacity: 0.08,
+    shadowRadius: 14,
+    elevation: 3,
+  } as ViewStyle & { boxShadow?: string },
   cardHeader: {
     flexDirection: "row",
     alignItems: "center",

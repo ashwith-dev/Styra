@@ -26,19 +26,17 @@ function RootNavigator() {
       screenOptions={{
         headerShown: false,
         animation: "fade",
-        animationDuration: 150,
+        animationDuration: 280,
+        contentStyle: { backgroundColor: "#F7F5F0" },
       }}
     >
       <Stack.Screen name="auth" redirect={!!session} />
       <Stack.Screen name="onboarding" redirect={!session} />
-      <Stack.Screen name="home" redirect={!session} />
-      <Stack.Screen name="wardrobe" redirect={!session} />
-      <Stack.Screen name="looks" redirect={!session} />
+      <Stack.Screen name="(tabs)" redirect={!session} options={{ animation: "none" }} />
       <Stack.Screen name="recommendations" redirect={!session} />
       <Stack.Screen name="outfits" redirect={!session} />
       <Stack.Screen name="upload" redirect={!session} />
       <Stack.Screen name="items" redirect={!session} />
-      <Stack.Screen name="profile" redirect={!session} />
       <Stack.Screen name="settings/index" redirect={!session} />
       <Stack.Screen name="+not-found" />
     </Stack>

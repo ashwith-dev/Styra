@@ -1,13 +1,16 @@
 /**
  * HomeQuickActions.tsx
  *
- * Premium two-button action row for the home screen.
- * Generate Outfit (dark full-width pill) + Add Clothing (secondary pill).
+ * Premium action row for the home screen following Neumorphic hierarchy:
+ * 1. Generate Outfit: Strongest emphasis (#141412 dark elevated surface)
+ * 2. Add Clothing: Raised Neumorphic control molded out of #F7F5F0 base material.
  */
 
-import { StyleSheet, View, TouchableOpacity, Text } from "react-native";
+import { useRef } from "react";
+import { Animated, StyleSheet, View, TouchableOpacity, Text, type ViewStyle } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { colors, radius, spacing } from "@/theme";
+import { radius, spacing } from "@/theme";
+import { homeTokens, neumorphicStyles } from "../theme/homeTokens";
 import type { HomeQuickActionsProps } from "../types";
 
 export function HomeQuickActions({
@@ -15,36 +18,63 @@ export function HomeQuickActions({
   onGenerateOutfit,
   hasOutfitForSelectedDate = false,
 }: HomeQuickActionsProps) {
+  const genScale = useRef(new Animated.Value(1)).current;
+  const addScale = useRef(new Animated.Value(1)).current;
+
+  const handlePressIn = (anim: Animated.Value) => {
+    Animated.spring(anim, {
+      toValue: 0.96,
+      useNativeDriver: true,
+      speed: 20,
+    }).start();
+  };
+
+  const handlePressOut = (anim: Animated.Value) => {
+    Animated.spring(anim, {
+      toValue: 1,
+      friction: 4,
+      useNativeDriver: true,
+    }).start();
+  };
+
   return (
     <View style={styles.container}>
-      {/* Primary: Generate Outfit OR Outfit Generated */}
-      <TouchableOpacity
-        style={styles.generateBtn}
-        onPress={hasOutfitForSelectedDate ? undefined : onGenerateOutfit}
-        disabled={hasOutfitForSelectedDate}
-        activeOpacity={hasOutfitForSelectedDate ? 1 : 0.85}
-        testID="home-generate-outfit"
-      >
-        <Ionicons
-          name={hasOutfitForSelectedDate ? "checkmark-circle" : "sparkles"}
-          size={16}
-          color={colors.surface}
-        />
-        <Text style={styles.generateText}>
-          {hasOutfitForSelectedDate ? "Outfit Generated" : "Generate Outfit"}
-        </Text>
-      </TouchableOpacity>
+      {/* Primary: Generate Outfit (Strongest Visual Emphasis) */}
+      <Animated.View style={[{ flex: 1, transform: [{ scale: genScale }] }]}>
+        <TouchableOpacity
+          style={styles.generateBtn}
+          onPress={hasOutfitForSelectedDate ? undefined : onGenerateOutfit}
+          onPressIn={() => handlePressIn(genScale)}
+          onPressOut={() => handlePressOut(genScale)}
+          disabled={hasOutfitForSelectedDate}
+          activeOpacity={hasOutfitForSelectedDate ? 1 : 0.9}
+          testID="home-generate-outfit"
+        >
+          <Ionicons
+            name={hasOutfitForSelectedDate ? "checkmark-circle" : "sparkles"}
+            size={16}
+            color="#FFFFFF"
+          />
+          <Text style={styles.generateText}>
+            {hasOutfitForSelectedDate ? "Outfit Generated" : "Generate Outfit"}
+          </Text>
+        </TouchableOpacity>
+      </Animated.View>
 
-      {/* Secondary: Add Clothing — outlined pill, same row */}
-      <TouchableOpacity
-        style={styles.addBtn}
-        onPress={onAddClothing}
-        activeOpacity={0.8}
-        testID="home-quick-add"
-      >
-        <Ionicons name="add" size={17} color={colors.textPrimary} />
-        <Text style={styles.addText}>Add Clothing</Text>
-      </TouchableOpacity>
+      {/* Secondary: Add Clothing (Raised Neumorphic Ivory Control) */}
+      <Animated.View style={[{ transform: [{ scale: addScale }] }]}>
+        <TouchableOpacity
+          style={styles.addBtn}
+          onPress={onAddClothing}
+          onPressIn={() => handlePressIn(addScale)}
+          onPressOut={() => handlePressOut(addScale)}
+          activeOpacity={0.88}
+          testID="home-quick-add"
+        >
+          <Ionicons name="add" size={17} color={homeTokens.textPrimary} />
+          <Text style={styles.addText}>Add Clothing</Text>
+        </TouchableOpacity>
+      </Animated.View>
     </View>
   );
 }
@@ -52,47 +82,56 @@ export function HomeQuickActions({
 const styles = StyleSheet.create({
   container: {
     paddingHorizontal: spacing.xl,
-    marginBottom: spacing.lg,
+    paddingVertical: 6,
+    marginBottom: spacing.md,
     flexDirection: "row",
     gap: spacing.sm,
     alignItems: "center",
+    overflow: "visible",
   },
   generateBtn: {
-    flex: 1,
+    backgroundColor: "#141412",
+    borderRadius: radius.full,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 6,
-    backgroundColor: colors.textPrimary,
-    borderRadius: radius.full,
     paddingVertical: 14,
-    shadowColor: colors.textPrimary,
+    borderWidth: 0,
+    boxShadow: "0px 6px 16px rgba(20, 20, 18, 0.3)",
+    shadowColor: "#141412",
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.18,
-    shadowRadius: 8,
+    shadowOpacity: 0.25,
+    shadowRadius: 10,
     elevation: 4,
-  },
+  } as ViewStyle & { boxShadow?: string },
   generateText: {
     fontSize: 14,
     fontWeight: "700",
-    color: colors.surface,
+    color: "#FFFFFF",
     letterSpacing: 0.2,
   },
   addBtn: {
+    backgroundColor: "#F7F5F0",
+    borderRadius: radius.full,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 5,
-    borderRadius: radius.full,
-    borderWidth: 1.5,
-    borderColor: colors.textPrimary,
     paddingVertical: 13,
     paddingHorizontal: spacing.lg,
-  },
+    borderWidth: 0,
+    boxShadow: "-6px -6px 14px #FFFFFF, 6px 6px 14px rgba(185, 175, 158, 0.6)",
+    shadowColor: "#000000",
+    shadowOffset: { width: 4, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 3,
+  } as ViewStyle & { boxShadow?: string },
   addText: {
     fontSize: 13,
     fontWeight: "600",
-    color: colors.textPrimary,
+    color: homeTokens.textPrimary,
     letterSpacing: 0.1,
   },
 });

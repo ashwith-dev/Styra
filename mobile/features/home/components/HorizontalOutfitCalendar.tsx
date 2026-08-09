@@ -1,8 +1,8 @@
 /**
  * HorizontalOutfitCalendar.tsx
  *
- * Reusable premium 10-day horizontal mini calendar component for STYRA home screen.
- * Displays a rolling window of 3 past days, Today, and 6 future days.
+ * Premium 10-day horizontal mini calendar component for STYRA home screen.
+ * Soft, smooth Neumorphic depth with zero shadow clipping or box smudges.
  */
 
 import React, { useCallback, useMemo, useRef } from "react";
@@ -13,6 +13,7 @@ import {
   TouchableOpacity,
   View,
   Dimensions,
+  type ViewStyle,
 } from "react-native";
 import { colors, radius, spacing } from "@/theme";
 import type { CalendarDay } from "@/hooks/useOutfitCalendar";
@@ -26,7 +27,6 @@ interface HorizontalOutfitCalendarProps {
 const ITEM_WIDTH = 48;
 const ITEM_MARGIN = 6;
 const CARD_TOTAL_WIDTH = ITEM_WIDTH + ITEM_MARGIN * 2;
-// The Today card renders slightly wider than the others (see styles).
 const TODAY_EXTRA_WIDTH = 4;
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
@@ -37,8 +37,6 @@ export function HorizontalOutfitCalendar({
 }: HorizontalOutfitCalendarProps) {
   const flatListRef = useRef<FlatList>(null);
 
-  // Per-card snap offsets — a fixed snapToInterval drifts because the
-  // Today card is wider and the content has a horizontal inset.
   const snapOffsets = useMemo(() => {
     const offsets: number[] = [];
     let acc = 0;
@@ -49,8 +47,6 @@ export function HorizontalOutfitCalendar({
     return offsets;
   }, [days.length, todayIndex]);
 
-  // Center Today once the list has laid out (scrollToOffset before first
-  // layout is unreliable, especially on Android).
   const didInitialScroll = useRef(false);
   const handleLayout = useCallback(() => {
     if (didInitialScroll.current) return;
@@ -76,7 +72,7 @@ export function HorizontalOutfitCalendar({
             styles.dayCard,
             isToday && styles.todayCard,
             isSelected && !isToday && styles.selectedCard,
-            isPast && styles.pastCard,
+            isPast && !isToday && styles.pastCard,
           ]}
         >
           {/* Top: Status Dot */}
@@ -84,7 +80,7 @@ export function HorizontalOutfitCalendar({
             style={[
               styles.dot,
               { backgroundColor: dotColor },
-              isPast && styles.pastDot,
+              isPast && !isToday && styles.pastDot,
             ]}
           />
 
@@ -94,7 +90,7 @@ export function HorizontalOutfitCalendar({
               styles.dayNum,
               isToday && styles.todayText,
               isSelected && !isToday && styles.selectedText,
-              isPast && styles.pastText,
+              isPast && !isToday && styles.pastText,
             ]}
           >
             {dayNum}
@@ -106,7 +102,7 @@ export function HorizontalOutfitCalendar({
               styles.weekday,
               isToday && styles.todaySubtext,
               isSelected && !isToday && styles.selectedSubtext,
-              isPast && styles.pastSubtext,
+              isPast && !isToday && styles.pastSubtext,
             ]}
           >
             {isToday ? "Today" : weekday}
@@ -130,6 +126,7 @@ export function HorizontalOutfitCalendar({
         decelerationRate="fast"
         snapToOffsets={snapOffsets}
         onLayout={handleLayout}
+        style={{ overflow: "visible" }}
       />
     </View>
   );
@@ -137,48 +134,50 @@ export function HorizontalOutfitCalendar({
 
 const styles = StyleSheet.create({
   container: {
-    marginBottom: spacing.md,
+    marginBottom: spacing.xs,
+    overflow: "visible",
   },
   scrollContent: {
     paddingHorizontal: spacing.xl,
+    paddingVertical: 12,
     alignItems: "center",
   },
   dayCard: {
+    backgroundColor: "#F7F5F0",
     width: ITEM_WIDTH,
     height: 72,
     marginHorizontal: ITEM_MARGIN,
-    borderRadius: radius.md,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
+    borderRadius: 22,
     alignItems: "center",
     justifyContent: "space-between",
     paddingVertical: spacing.xs + 2,
-  },
+    borderWidth: 0,
+    boxShadow: "-5px -5px 12px #FFFFFF, 5px 5px 12px rgba(185, 175, 158, 0.55)",
+    shadowColor: "#000000",
+    shadowOffset: { width: 4, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+    elevation: 3,
+  } as ViewStyle & { boxShadow?: string },
   todayCard: {
-    backgroundColor: colors.textPrimary,
-    borderColor: colors.textPrimary,
+    backgroundColor: "#141412",
     width: ITEM_WIDTH + 4,
     height: 76,
-    shadowColor: colors.textPrimary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 6,
-    elevation: 3,
-  },
+    borderRadius: 24,
+    borderWidth: 0,
+    boxShadow: "0px 6px 16px rgba(20, 20, 18, 0.35)",
+    shadowColor: "#141412",
+    shadowOffset: { width: 0, height: 5 },
+    shadowOpacity: 0.25,
+    shadowRadius: 10,
+    elevation: 5,
+  } as ViewStyle & { boxShadow?: string },
   selectedCard: {
     borderColor: colors.textPrimary,
     borderWidth: 2,
-    backgroundColor: colors.surface,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 4,
-    elevation: 2,
   },
   pastCard: {
-    opacity: 0.55,
-    backgroundColor: colors.background,
+    opacity: 0.65,
   },
   dot: {
     width: 6,
@@ -195,7 +194,7 @@ const styles = StyleSheet.create({
     letterSpacing: -0.3,
   },
   todayText: {
-    color: colors.surface,
+    color: "#FFFFFF",
     fontSize: 17,
   },
   selectedText: {
@@ -213,7 +212,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.3,
   },
   todaySubtext: {
-    color: colors.surface,
+    color: "#FFFFFF",
     opacity: 0.9,
     fontSize: 9,
     fontWeight: "700",

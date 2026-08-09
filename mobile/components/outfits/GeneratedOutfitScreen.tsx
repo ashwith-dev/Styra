@@ -15,7 +15,7 @@ import {
   Animated,
   Easing,
   Dimensions,
-  ActivityIndicator,
+  type LayoutChangeEvent,
 } from "react-native";
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
@@ -39,6 +39,13 @@ interface GeneratedOutfitScreenProps {
 }
 
 const SLOT_ORDER = ["top", "bottom", "dress", "footwear", "outerwear"];
+type WearCtaPhase = "idle" | "animating" | "saved";
+
+function runAnimation(animation: Animated.CompositeAnimation): Promise<void> {
+  return new Promise((resolve) => {
+    animation.start(() => resolve());
+  });
+}
 
 export function GeneratedOutfitScreen({
   result,
@@ -52,9 +59,27 @@ export function GeneratedOutfitScreen({
   const savedRef = useRef(false);
   const [wearing, setWearing] = useState(false);
   const [worn, setWorn] = useState(false);
+  const [wearCtaPhase, setWearCtaPhase] = useState<WearCtaPhase>("idle");
+  const [wearBtnWidth, setWearBtnWidth] = useState(0);
   const { saveTodayOutfit } = useTodayOutfit();
+  const wearButtonScaleAnim = useRef(new Animated.Value(1)).current;
+  const wearLabelOpacityAnim = useRef(new Animated.Value(1)).current;
+  const wearLabelTranslateAnim = useRef(new Animated.Value(0)).current;
+  const wearRunnerOpacityAnim = useRef(new Animated.Value(0)).current;
+  const wearRunnerTranslateAnim = useRef(new Animated.Value(-40)).current;
+  const wearSuccessOpacityAnim = useRef(new Animated.Value(0)).current;
+  const wearSuccessScaleAnim = useRef(new Animated.Value(0.96)).current;
 
   const effectiveDate = targetDate || todayString();
+  const isToday = effectiveDate === todayString();
+  const savedDateLabel = isToday
+    ? "Today"
+    : new Date(`${effectiveDate}T00:00:00`).toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+      });
+  const savedWearLabel = `Saved for ${savedDateLabel}`;
+  const idleWearLabel = isToday ? "Wear Today" : `Wear on ${effectiveDate}`;
 
   useEffect(() => {
     Animated.parallel([
@@ -99,6 +124,124 @@ export function GeneratedOutfitScreen({
     };
   }, []);
 
+  const resetWearCtaAnimation = useCallback(() => {
+    wearButtonScaleAnim.stopAnimation();
+    wearLabelOpacityAnim.stopAnimation();
+    wearLabelTranslateAnim.stopAnimation();
+    wearRunnerOpacityAnim.stopAnimation();
+    wearRunnerTranslateAnim.stopAnimation();
+    wearSuccessOpacityAnim.stopAnimation();
+    wearSuccessScaleAnim.stopAnimation();
+    wearButtonScaleAnim.setValue(1);
+    wearLabelOpacityAnim.setValue(1);
+    wearLabelTranslateAnim.setValue(0);
+    wearRunnerOpacityAnim.setValue(0);
+    wearRunnerTranslateAnim.setValue(-40);
+    wearSuccessOpacityAnim.setValue(0);
+    wearSuccessScaleAnim.setValue(0.96);
+  }, [
+    wearButtonScaleAnim,
+    wearLabelOpacityAnim,
+    wearLabelTranslateAnim,
+    wearRunnerOpacityAnim,
+    wearRunnerTranslateAnim,
+    wearSuccessOpacityAnim,
+    wearSuccessScaleAnim,
+  ]);
+
+  const playWearCtaTravelAnimation = useCallback(() => {
+    const travelDistance = Math.max(84, wearBtnWidth * 0.36);
+    resetWearCtaAnimation();
+    wearRunnerTranslateAnim.setValue(-travelDistance);
+
+    return runAnimation(
+      Animated.parallel([
+        Animated.sequence([
+          Animated.timing(wearButtonScaleAnim, {
+            toValue: 0.985,
+            duration: 90,
+            easing: Easing.out(Easing.cubic),
+            useNativeDriver: true,
+          }),
+          Animated.timing(wearButtonScaleAnim, {
+            toValue: 1,
+            duration: 180,
+            easing: Easing.out(Easing.cubic),
+            useNativeDriver: true,
+          }),
+        ]),
+        Animated.parallel([
+          Animated.timing(wearLabelOpacityAnim, {
+            toValue: 0,
+            duration: 150,
+            easing: Easing.out(Easing.cubic),
+            useNativeDriver: true,
+          }),
+          Animated.timing(wearLabelTranslateAnim, {
+            toValue: -16,
+            duration: 190,
+            easing: Easing.out(Easing.cubic),
+            useNativeDriver: true,
+          }),
+        ]),
+        Animated.sequence([
+          Animated.delay(80),
+          Animated.parallel([
+            Animated.timing(wearRunnerOpacityAnim, {
+              toValue: 1,
+              duration: 120,
+              easing: Easing.out(Easing.cubic),
+              useNativeDriver: true,
+            }),
+            Animated.timing(wearRunnerTranslateAnim, {
+              toValue: travelDistance,
+              duration: 780,
+              easing: Easing.inOut(Easing.cubic),
+              useNativeDriver: true,
+            }),
+          ]),
+          Animated.timing(wearRunnerOpacityAnim, {
+            toValue: 0,
+            duration: 120,
+            easing: Easing.out(Easing.cubic),
+            useNativeDriver: true,
+          }),
+        ]),
+      ]),
+    );
+  }, [
+    resetWearCtaAnimation,
+    wearBtnWidth,
+    wearButtonScaleAnim,
+    wearLabelOpacityAnim,
+    wearLabelTranslateAnim,
+    wearRunnerOpacityAnim,
+    wearRunnerTranslateAnim,
+  ]);
+
+  const playWearCtaSuccessAnimation = useCallback(() => {
+    wearSuccessOpacityAnim.setValue(0);
+    wearSuccessScaleAnim.setValue(0.96);
+
+    return runAnimation(
+      Animated.parallel([
+        Animated.timing(wearSuccessOpacityAnim, {
+          toValue: 1,
+          duration: 220,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: true,
+        }),
+        Animated.spring(wearSuccessScaleAnim, {
+          toValue: 1,
+          stiffness: 220,
+          damping: 22,
+          mass: 0.8,
+          useNativeDriver: true,
+        }),
+      ]),
+    );
+  }, [wearSuccessOpacityAnim, wearSuccessScaleAnim]);
+
   const handleSave = useCallback(async () => {
     if (savedRef.current) return;
     try {
@@ -130,6 +273,8 @@ export function GeneratedOutfitScreen({
   const handleWearToday = useCallback(async () => {
     if (wearing || worn) return;
     setWearing(true);
+    setWearCtaPhase("animating");
+    const travelAnimation = playWearCtaTravelAnimation();
     try {
       const outfitId = result.metadata.request_id || `gen-${Date.now()}`;
       try {
@@ -145,16 +290,39 @@ export function GeneratedOutfitScreen({
         score: result.score.overall,
         reason: result.stylist.reason,
       }, effectiveDate);
+      await travelAnimation;
       setWorn(true);
+      setWearCtaPhase("saved");
+      await playWearCtaSuccessAnimation();
       navTimerRef.current = setTimeout(() => {
         router.replace("/home");
-      }, 1000);
+      }, 1200);
     } catch {
+      setWearCtaPhase("idle");
+      resetWearCtaAnimation();
       // best-effort
     } finally {
       setWearing(false);
     }
-  }, [wearing, worn, result, mainSlots, accessories, effectiveDate, saveTodayOutfit]);
+  }, [
+    wearing,
+    worn,
+    result,
+    mainSlots,
+    accessories,
+    effectiveDate,
+    saveTodayOutfit,
+    playWearCtaTravelAnimation,
+    playWearCtaSuccessAnimation,
+    resetWearCtaAnimation,
+  ]);
+
+  const handleWearButtonLayout = useCallback((event: LayoutChangeEvent) => {
+    const { width } = event.nativeEvent.layout;
+    if (width > 0) {
+      setWearBtnWidth(width);
+    }
+  }, []);
 
   return (
     <Animated.View
@@ -269,29 +437,62 @@ export function GeneratedOutfitScreen({
       {/* Footer — two-row layout */}
       <View style={styles.footer}>
         {/* Primary CTA: full-width Wear Today */}
-        <TouchableOpacity
-          style={[styles.wearBtn, worn && styles.wearBtnWorn]}
-          onPress={handleWearToday}
-          disabled={wearing || worn}
-          activeOpacity={0.8}
-        >
-          {wearing ? (
-            <ActivityIndicator size="small" color={colors.surface} />
-          ) : (
-            <Ionicons
-              name={worn ? "checkmark-circle" : "sunny-outline"}
-              size={18}
-              color={colors.surface}
-            />
-          )}
-          <Text style={styles.wearBtnText} numberOfLines={1}>
-            {worn
-              ? "Saved for Date ✓"
-              : effectiveDate === todayString()
-              ? "Wear Today"
-              : `Save for ${effectiveDate}`}
-          </Text>
-        </TouchableOpacity>
+        <Animated.View style={{ transform: [{ scale: wearButtonScaleAnim }] }}>
+          <TouchableOpacity
+            style={[
+              styles.wearBtn,
+              wearCtaPhase === "saved" && styles.wearBtnWorn,
+            ]}
+            onPress={handleWearToday}
+            onLayout={handleWearButtonLayout}
+            disabled={wearing || worn}
+            activeOpacity={0.8}
+          >
+            <Animated.View
+              style={[
+                styles.wearBtnContent,
+                {
+                  opacity: wearLabelOpacityAnim,
+                  transform: [{ translateX: wearLabelTranslateAnim }],
+                },
+              ]}
+            >
+              <Ionicons name="sunny-outline" size={18} color={colors.surface} />
+              <Text style={styles.wearBtnText} numberOfLines={1}>
+                {idleWearLabel}
+              </Text>
+            </Animated.View>
+
+            <Animated.View
+              pointerEvents="none"
+              style={[
+                styles.wearRunner,
+                {
+                  opacity: wearRunnerOpacityAnim,
+                  transform: [{ translateX: wearRunnerTranslateAnim }],
+                },
+              ]}
+            >
+              <Ionicons name="shirt-outline" size={22} color={colors.surface} />
+            </Animated.View>
+
+            <Animated.View
+              pointerEvents="none"
+              style={[
+                styles.wearSuccessContent,
+                {
+                  opacity: wearSuccessOpacityAnim,
+                  transform: [{ scale: wearSuccessScaleAnim }],
+                },
+              ]}
+            >
+              <Ionicons name="checkmark-circle" size={18} color={colors.surface} />
+              <Text style={styles.wearBtnText} numberOfLines={1}>
+                {savedWearLabel}
+              </Text>
+            </Animated.View>
+          </TouchableOpacity>
+        </Animated.View>
 
         {/* Secondary row: Save + Regenerate */}
         <View style={styles.secondaryRow}>
@@ -492,13 +693,32 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: spacing.xs,
     backgroundColor: colors.textPrimary,
     borderRadius: radius.full,
     paddingVertical: 14,
+    minHeight: 48,
+    overflow: "hidden",
   },
   wearBtnWorn: {
     backgroundColor: colors.success,
+  },
+  wearBtnContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: spacing.xs,
+  },
+  wearRunner: {
+    position: "absolute",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  wearSuccessContent: {
+    position: "absolute",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: spacing.xs,
   },
   wearBtnText: {
     fontSize: 14,

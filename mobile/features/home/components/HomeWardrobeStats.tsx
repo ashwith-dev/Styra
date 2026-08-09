@@ -1,8 +1,7 @@
-import { StyleSheet, Text, View } from "react-native";
-import { Card } from "@/components/ui/Card";
-import { colors, spacing, typography } from "@/theme";
+import { Platform, StyleSheet, Text, View } from "react-native";
+import { spacing, typography } from "@/theme";
+import { homeTokens, neumorphicStyles } from "../theme/homeTokens";
 import type { HomeWardrobeStatsProps } from "../types";
-
 
 export function HomeWardrobeStats({
   totalItems,
@@ -13,20 +12,23 @@ export function HomeWardrobeStats({
     <View style={styles.container}>
       <Text style={styles.sectionTitle}>Wardrobe Insights</Text>
       <View style={styles.statsGrid}>
-        <Card variant="flat" padding="md" style={styles.statCard}>
+        {/* Stat Tile 1: Total Items */}
+        <View style={styles.statCard}>
           <Text style={styles.statNumber}>{totalItems}</Text>
           <Text style={styles.statLabel}>Total Items</Text>
-        </Card>
+        </View>
 
-        <Card variant="flat" padding="md" style={styles.statCard}>
+        {/* Stat Tile 2: Categories */}
+        <View style={styles.statCard}>
           <Text style={styles.statNumber}>{categoryCount}</Text>
           <Text style={styles.statLabel}>Categories</Text>
-        </Card>
+        </View>
 
-        <Card variant="flat" padding="md" style={styles.statCard}>
+        {/* Stat Tile 3: Saved Outfits */}
+        <View style={styles.statCard}>
           <Text style={styles.statNumber}>{savedOutfitsCount}</Text>
-          <Text style={styles.statLabel}>Saved Outfits</Text>
-        </Card>
+          <Text style={styles.statLabel}>Saved Looks</Text>
+        </View>
       </View>
     </View>
   );
@@ -38,10 +40,10 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xl,
   },
   sectionTitle: {
-    fontFamily: "serif",
+    fontFamily: Platform.OS === "ios" ? "Georgia" : "serif",
     fontSize: 20,
     fontWeight: "700",
-    color: colors.textPrimary,
+    color: homeTokens.textPrimary,
     marginBottom: spacing.md,
   },
   statsGrid: {
@@ -49,33 +51,25 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   statCard: {
+    ...neumorphicStyles.subtle,
     flex: 1,
-    backgroundColor: "#FAF8F5",
-    borderRadius: 22,
-    borderWidth: 1.5,
-    borderColor: "#FFFFFF",
     paddingVertical: spacing.md,
     paddingHorizontal: spacing.xs,
     alignItems: "center",
     justifyContent: "center",
-    shadowColor: "#000000",
-    shadowOffset: { width: 0, height: 5 },
-    shadowOpacity: 0.04,
-    shadowRadius: 10,
-    elevation: 3,
   },
   statNumber: {
-    fontFamily: "serif",
-    fontSize: 24,
-    fontWeight: "800",
-    color: colors.textPrimary,
+    fontFamily: Platform.OS === "ios" ? "Georgia" : "serif",
+    fontSize: 26,
+    fontWeight: "700",
+    color: homeTokens.textPrimary,
     textAlign: "center",
   },
   statLabel: {
     ...typography.caption,
     fontSize: 11,
     fontWeight: "600",
-    color: "#7F7C76",
+    color: homeTokens.textSecondary,
     textAlign: "center",
     marginTop: spacing.xxs,
   },

@@ -10,6 +10,7 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { colors, radius, spacing, typography } from "@/theme";
+import { homeTokens, neumorphicStyles } from "../theme/homeTokens";
 import type { ClothingItemBrief } from "@/lib/types";
 
 interface InsufficientWardrobeDashboardProps {
@@ -234,60 +235,6 @@ export function InsufficientWardrobeDashboard({
         </TouchableOpacity>
       </View>
 
-      {/* Already Added Clothing Strip (If items exist) */}
-      {recentItems.length > 0 && (
-        <View style={styles.sectionContainer}>
-          <View style={styles.sectionHeaderRow}>
-            <Text style={styles.sectionLabel}>RECENTLY ADDED</Text>
-            <TouchableOpacity onPress={onViewWardrobe} activeOpacity={0.7}>
-              <Text style={styles.viewAllText}>View All ({recentItems.length})</Text>
-            </TouchableOpacity>
-          </View>
-
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.itemsScrollContent}
-          >
-            {recentItems.map((item) => {
-              const imgUrl = getItemImage(item);
-              const title = getItemTitle(item);
-              const sub = getItemSub(item);
-              return (
-                <TouchableOpacity
-                  key={item.id}
-                  onPress={() => onItemPress(item.id)}
-                  style={styles.itemCard}
-                  activeOpacity={0.85}
-                >
-                  <View style={styles.itemImageContainer}>
-                    {imgUrl ? (
-                      <Image
-                        source={{ uri: imgUrl }}
-                        style={styles.itemImage}
-                        resizeMode="cover"
-                      />
-                    ) : (
-                      <Ionicons
-                        name="shirt-outline"
-                        size={28}
-                        color="#A09D96"
-                      />
-                    )}
-                  </View>
-                  <Text style={styles.itemName} numberOfLines={1}>
-                    {title}
-                  </Text>
-                  <Text style={styles.itemMeta} numberOfLines={1}>
-                    {sub}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </ScrollView>
-        </View>
-      )}
-
       {/* Locked AI Outfit Generator Card */}
       <View style={styles.lockedCard}>
         <View style={styles.lockedCardHeader}>
@@ -313,92 +260,125 @@ export function InsufficientWardrobeDashboard({
           </Text>
         </View>
 
-        {/* Progress Requirements Pills */}
-        <View style={styles.requirementsRow}>
+        {/* Progress Requirements List (vertical rows) */}
+        <View style={styles.requirementsList}>
+          {/* Tops Row */}
           <View
             style={[
-              styles.reqPill,
-              topsCount >= requiredTops && styles.completedReqPill,
+              styles.reqRowPill,
+              topsCount >= requiredTops && styles.completedReqRowPill,
             ]}
           >
-            <Ionicons
-              name={
-                topsCount >= requiredTops
-                  ? "checkmark-circle"
-                  : "ellipse-outline"
-              }
-              size={14}
-              color={
-                topsCount >= requiredTops
-                  ? colors.textPrimary
-                  : colors.textSecondary
-              }
-            />
+            <View style={styles.reqRowLeft}>
+              <Ionicons
+                name={
+                  topsCount >= requiredTops
+                    ? "checkmark-circle"
+                    : "ellipse-outline"
+                }
+                size={18}
+                color={
+                  topsCount >= requiredTops
+                    ? colors.textPrimary
+                    : colors.textSecondary
+                }
+              />
+              <Text
+                style={[
+                  styles.reqRowLabel,
+                  topsCount >= requiredTops && styles.completedReqRowLabel,
+                ]}
+              >
+                Tops
+              </Text>
+            </View>
             <Text
               style={[
-                styles.reqPillText,
-                topsCount >= requiredTops && styles.completedReqPillText,
+                styles.reqRowValue,
+                topsCount >= requiredTops && styles.completedReqRowValue,
               ]}
             >
-              Tops: {topsCount}/{requiredTops}
+              {topsCount} / {requiredTops}
             </Text>
           </View>
 
+          {/* Bottoms Row */}
           <View
             style={[
-              styles.reqPill,
-              bottomsCount >= requiredBottoms && styles.completedReqPill,
+              styles.reqRowPill,
+              bottomsCount >= requiredBottoms && styles.completedReqRowPill,
             ]}
           >
-            <Ionicons
-              name={
-                bottomsCount >= requiredBottoms
-                  ? "checkmark-circle"
-                  : "ellipse-outline"
-              }
-              size={14}
-              color={
-                bottomsCount >= requiredBottoms
-                  ? colors.textPrimary
-                  : colors.textSecondary
-              }
-            />
+            <View style={styles.reqRowLeft}>
+              <Ionicons
+                name={
+                  bottomsCount >= requiredBottoms
+                    ? "checkmark-circle"
+                    : "ellipse-outline"
+                }
+                size={18}
+                color={
+                  bottomsCount >= requiredBottoms
+                    ? colors.textPrimary
+                    : colors.textSecondary
+                }
+              />
+              <Text
+                style={[
+                  styles.reqRowLabel,
+                  bottomsCount >= requiredBottoms && styles.completedReqRowLabel,
+                ]}
+              >
+                Bottoms
+              </Text>
+            </View>
             <Text
               style={[
-                styles.reqPillText,
-                bottomsCount >= requiredBottoms && styles.completedReqPillText,
+                styles.reqRowValue,
+                bottomsCount >= requiredBottoms && styles.completedReqRowValue,
               ]}
             >
-              Bottoms: {bottomsCount}/{requiredBottoms}
+              {bottomsCount} / {requiredBottoms}
             </Text>
           </View>
 
+          {/* Footwear Row */}
           <View
             style={[
-              styles.reqPill,
-              footwearCount >= requiredFootwear && styles.completedReqPill,
+              styles.reqRowPill,
+              footwearCount >= requiredFootwear && styles.completedReqRowPill,
             ]}
           >
-            <Ionicons
-              name={
-                footwearCount >= requiredFootwear
-                  ? "checkmark-circle"
-                  : "ellipse-outline"
-              }
-              size={14}
-              color={
-                footwearCount >= requiredFootwear
-                  ? colors.textPrimary
-                  : colors.textSecondary
-              }
-            />
+            <View style={styles.reqRowLeft}>
+              <Ionicons
+                name={
+                  footwearCount >= requiredFootwear
+                    ? "checkmark-circle"
+                    : "ellipse-outline"
+                }
+                size={18}
+                color={
+                  footwearCount >= requiredFootwear
+                    ? colors.textPrimary
+                    : colors.textSecondary
+                }
+              />
+              <Text
+                style={[
+                  styles.reqRowLabel,
+                  footwearCount >= requiredFootwear && styles.completedReqRowLabel,
+                ]}
+              >
+                Footwear
+              </Text>
+            </View>
             <Text
               style={[
-                styles.reqPillText,
-                footwearCount >= requiredFootwear && styles.completedReqPillText,
+                styles.reqRowValue,
+                footwearCount >= requiredFootwear && styles.completedReqRowValue,
               ]}
             >
-              Footwear: {footwearCount}/{requiredFootwear}
+              {footwearCount} / {requiredFootwear}
             </Text>
           </View>
         </View>
@@ -434,17 +414,10 @@ const styles = StyleSheet.create({
     maxWidth: 320,
   },
   progressCard: {
-    backgroundColor: colors.surface,
+    ...neumorphicStyles.raised,
     borderRadius: 32,
-    borderWidth: 1,
-    borderColor: "#EFECE6",
     padding: spacing.xl,
     marginBottom: spacing.xl,
-    shadowColor: "#000000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.03,
-    shadowRadius: 12,
-    elevation: 2,
   },
   progressCardHeader: {
     flexDirection: "row",
@@ -587,16 +560,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 2,
   },
   lockedCard: {
-    backgroundColor: colors.surface,
+    ...neumorphicStyles.raised,
     borderRadius: 32,
-    borderWidth: 1,
-    borderColor: "#EFECE6",
     padding: spacing.lg,
-    shadowColor: "#000000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.03,
-    shadowRadius: 12,
-    elevation: 2,
   },
   lockedCardHeader: {
     flexDirection: "row",
@@ -613,15 +579,13 @@ const styles = StyleSheet.create({
     textTransform: "uppercase",
   },
   lockedBadge: {
+    ...neumorphicStyles.subtle,
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
-    backgroundColor: "#FAF8F5",
-    paddingHorizontal: 10,
-    paddingVertical: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 5,
     borderRadius: radius.full,
-    borderWidth: 1,
-    borderColor: "#EFECE6",
   },
   lockedBadgeText: {
     ...typography.caption,
@@ -631,30 +595,22 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
   },
   lockedVisualContainer: {
-    backgroundColor: "#FAF8F5",
+    ...neumorphicStyles.subtle,
     borderRadius: 24,
     paddingVertical: spacing.xl,
     paddingHorizontal: spacing.lg,
     alignItems: "center",
     justifyContent: "center",
-    borderWidth: 1,
-    borderColor: "#EFECE6",
     marginBottom: spacing.md,
   },
   lockIconCircle: {
+    ...neumorphicStyles.raised,
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: colors.surface,
     alignItems: "center",
     justifyContent: "center",
     marginBottom: spacing.md,
-    borderWidth: 1,
-    borderColor: "#EFECE6",
-    shadowColor: "#000000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 6,
   },
   lockedVisualTitle: {
     fontFamily: "serif",
@@ -671,33 +627,44 @@ const styles = StyleSheet.create({
     color: "#787571",
     textAlign: "center",
   },
-  requirementsRow: {
-    flexDirection: "row",
-    gap: spacing.sm,
+  requirementsList: {
+    gap: spacing.md,
   },
-  reqPill: {
-    flex: 1,
+  reqRowPill: {
+    ...neumorphicStyles.subtle,
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
-    gap: 6,
-    backgroundColor: "#FAF8F5",
-    paddingVertical: 10,
-    paddingHorizontal: spacing.xs,
-    borderRadius: radius.full,
+    justifyContent: "space-between",
+    paddingVertical: 14,
+    paddingHorizontal: spacing.lg,
+    borderRadius: 20,
+  },
+  completedReqRowPill: {
+    backgroundColor: "#FFFFFF",
+    borderColor: "rgba(63, 125, 88, 0.4)",
     borderWidth: 1,
-    borderColor: "#EFECE6",
   },
-  completedReqPill: {
-    borderColor: colors.textPrimary,
+  reqRowLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
   },
-  reqPillText: {
-    ...typography.caption,
-    fontSize: 12,
+  reqRowLabel: {
+    ...typography.body,
+    fontSize: 14,
     fontWeight: "600",
     color: colors.textSecondary,
   },
-  completedReqPillText: {
+  completedReqRowLabel: {
+    color: colors.textPrimary,
+  },
+  reqRowValue: {
+    ...typography.body,
+    fontSize: 14,
+    fontWeight: "700",
+    color: colors.textSecondary,
+  },
+  completedReqRowValue: {
     color: colors.textPrimary,
   },
 });

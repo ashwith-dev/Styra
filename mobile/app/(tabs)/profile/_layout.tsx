@@ -1,5 +1,5 @@
 import { Stack } from "expo-router";
-import { ErrorBoundary } from "../../components/ui/ErrorBoundary";
+import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 
 /**
  * Profile stack navigator layout.

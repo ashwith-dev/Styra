@@ -1,4 +1,4 @@
-import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { StyleSheet, Text, TouchableOpacity, View, type ViewStyle } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { colors, spacing, typography } from "@/theme";
 
@@ -23,7 +23,7 @@ export function AppPreferencesSection({
         accessibilityLabel="Edit Temperature Unit"
       >
         <View style={styles.leftRow}>
-          <Ionicons name="thermometer-outline" size={22} color="#1A1A1A" style={styles.icon} />
+          <Ionicons name="thermometer-outline" size={22} color={colors.textPrimary} style={styles.icon} />
           <Text style={styles.titleText}>Temperature Unit</Text>
         </View>
 
@@ -50,20 +50,20 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
   },
   card: {
-    backgroundColor: colors.surface,
-    borderRadius: 20,
+    backgroundColor: "#F7F5F0",
+    borderRadius: 22,
     padding: spacing.lg,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    borderWidth: 1,
-    borderColor: "#EFECE6",
+    borderWidth: 0,
+    boxShadow: "-8px -8px 20px #FFFFFF, 8px 8px 20px rgba(185, 175, 158, 0.7)",
     shadowColor: "#000000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.03,
-    shadowRadius: 8,
-    elevation: 2,
-  },
+    shadowOffset: { width: 6, height: 6 },
+    shadowOpacity: 0.1,
+    shadowRadius: 16,
+    elevation: 4,
+  } as ViewStyle & { boxShadow?: string },
   leftRow: {
     flexDirection: "row",
     alignItems: "center",
