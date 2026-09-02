@@ -49,12 +49,15 @@ export function useNotificationPermission(): NotificationPermissionState {
 
   // Store callbacks across re-renders without causing extra effects
   const onDeniedRef = useRef<(() => void) | undefined>(undefined);
+  // Use a ref-based guard to prevent duplicate requests (avoids stale closure)
+  const isRequestingRef = useRef(false);
 
   // ── Sync with real OS state on mount ───────────────────────────────────────
   useEffect(() => {
     let mounted = true;
     void (async () => {
       const status = await getNotificationPermissionStatus();
+      console.log("[useNotificationPermission] Initial status:", status);
       if (mounted) setPermissionStatus(status);
     })();
     return () => {
@@ -68,6 +71,7 @@ export function useNotificationPermission(): NotificationPermissionState {
       if (nextState === "active") {
         void (async () => {
           const status = await getNotificationPermissionStatus();
+          console.log("[useNotificationPermission] Foreground re-sync status:", status);
           setPermissionStatus(status);
         })();
       }
@@ -89,30 +93,40 @@ export function useNotificationPermission(): NotificationPermissionState {
   // ── Main action ────────────────────────────────────────────────────────────
   const requestAndHandlePermission = useCallback(
     async (onGranted?: () => void, onDenied?: () => void) => {
-      if (isRequesting) return;
+      if (isRequestingRef.current) {
+        console.log("[useNotificationPermission] Already requesting, skipping");
+        return;
+      }
 
       onDeniedRef.current = onDenied;
+      isRequestingRef.current = true;
 
       try {
         setIsRequesting(true);
+        console.log("[useNotificationPermission] Starting permission request flow...");
 
         const current = await getNotificationPermissionStatus();
+        console.log("[useNotificationPermission] Current status before request:", current);
 
         if (current === "denied") {
           // Already denied — show in-app dialog, skip re-requesting
+          console.log("[useNotificationPermission] Already denied, showing in-app dialog");
           setPermissionStatus("denied");
           setShowDeniedDialog(true);
           return;
         }
 
         if (current === "granted") {
+          console.log("[useNotificationPermission] Already granted");
           setPermissionStatus("granted");
           onGranted?.();
           return;
         }
 
         // Show native OS dialog
+        console.log("[useNotificationPermission] Requesting native OS permission...");
         const result = await requestNotificationPermission();
+        console.log("[useNotificationPermission] Native dialog result:", result);
         setPermissionStatus(result);
 
         if (result === "granted") {
@@ -120,13 +134,14 @@ export function useNotificationPermission(): NotificationPermissionState {
         } else {
           setShowDeniedDialog(true);
         }
-      } catch {
-        // Safety net — never crash
+      } catch (error) {
+        console.warn("[useNotificationPermission] Error during permission flow:", error);
       } finally {
         setIsRequesting(false);
+        isRequestingRef.current = false;
       }
     },
-    [isRequesting],
+    [],
   );
 
   // ── Dialog button handlers ─────────────────────────────────────────────────
@@ -150,3 +165,4 @@ export function useNotificationPermission(): NotificationPermissionState {
     refreshPermissionStatus,
   };
 }
+

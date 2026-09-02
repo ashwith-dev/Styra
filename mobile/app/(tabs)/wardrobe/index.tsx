@@ -65,36 +65,32 @@ export default function WardrobeScreen() {
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
       <View style={styles.container}>
-        {/* Header: STYRA Logo + Search Icon + Profile Avatar */}
-        <WardrobeScreenHeader
-          userAvatar={userAvatar}
-          userName={userName}
-          onSearchPress={toggleSearch}
-        />
-
-        {/* Optional Search Bar Toggle */}
-        {showSearch && (
-          <View style={styles.searchContainer}>
-            <SearchBar
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-              placeholder="Search wardrobe..."
-              autoFocus
-              testID="wardrobe-search-input"
-            />
-          </View>
-        )}
-
         {/* Main Content: Automatic Switching between Empty & Populated Wardrobe States */}
         {loading && allItems.length === 0 && !error ? (
-          <WardrobeLoadingSkeleton />
+          <View style={{ flex: 1, paddingHorizontal: spacing.xl }}>
+            <WardrobeScreenHeader
+              userAvatar={userAvatar}
+              userName={userName}
+              onSearchPress={toggleSearch}
+              style={{ paddingHorizontal: 0 }}
+            />
+            <WardrobeLoadingSkeleton />
+          </View>
         ) : error && allItems.length === 0 ? (
           <View style={styles.centered}>
             <ErrorMessage message={error} onRetry={refresh} />
           </View>
         ) : allItems.length === 0 ? (
           /* STATE 1: EMPTY WARDROBE */
-          <EmptyWardrobeView onAddClothing={handleAddClothing} />
+          <EmptyWardrobeView
+            onAddClothing={handleAddClothing}
+            userAvatar={userAvatar}
+            userName={userName}
+            onSearchPress={toggleSearch}
+            showSearch={showSearch}
+            searchQuery={searchQuery}
+            onSearchChangeText={setSearchQuery}
+          />
         ) : (
           /* STATE 2: WARDROBE WITH CLOTHES */
           <PopulatedWardrobeView
@@ -105,6 +101,12 @@ export default function WardrobeScreen() {
             onPressItem={handleItemPress}
             onLongPressItem={confirmDelete}
             onAddClothing={handleAddClothing}
+            userAvatar={userAvatar}
+            userName={userName}
+            onSearchPress={toggleSearch}
+            showSearch={showSearch}
+            searchQuery={searchQuery}
+            onSearchChangeText={setSearchQuery}
           />
         )}
 

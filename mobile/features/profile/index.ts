@@ -17,7 +17,7 @@ export { ProfileHeaderCard } from "./components/ProfileHeaderCard";
 export { ProfileStatsRow } from "./components/ProfileStatsRow";
 export { SettingsSectionList } from "./components/SettingsSectionList";
 
-export { ProfileTopHeader } from "./components/ProfileTopHeader";
+export { ProfileTopHeader, StickySettingsButton } from "./components/ProfileTopHeader";
 export { ProfileHeroCard } from "./components/ProfileHeroCard";
 export { WardrobeSummaryCard } from "./components/WardrobeSummaryCard";
 export { AiStyleProfileSection } from "./components/AiStyleProfileSection";

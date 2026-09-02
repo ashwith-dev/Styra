@@ -11,11 +11,17 @@ import {
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { colors, radius, spacing, typography } from "@/theme";
+import { WardrobeScreenHeader } from "@/features/wardrobe";
 import { SavedLooksHeaderSection } from "./SavedLooksHeaderSection";
 
 const HERO_LOOKS_IMAGE = "https://images.unsplash.com/photo-1490481651871-ab68de25d43d?q=80&w=800&auto=format&fit=crop";
 
-export function EmptySavedLooksView() {
+interface EmptySavedLooksViewProps {
+  userAvatar?: string | null;
+  userName?: string;
+}
+
+export function EmptySavedLooksView({ userAvatar, userName }: EmptySavedLooksViewProps) {
   const handleCreateOutfit = () => {
     router.push("/recommendations");
   };
@@ -29,6 +35,12 @@ export function EmptySavedLooksView() {
       contentContainerStyle={styles.scrollContent}
       showsVerticalScrollIndicator={false}
     >
+      <WardrobeScreenHeader
+        userAvatar={userAvatar}
+        userName={userName}
+        style={{ paddingHorizontal: spacing.xl, paddingTop: spacing.xs }}
+      />
+
       {/* ── Title Header Section inside ScrollView ── */}
       <SavedLooksHeaderSection count={0} />
 

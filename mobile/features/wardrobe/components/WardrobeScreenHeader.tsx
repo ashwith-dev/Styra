@@ -1,4 +1,4 @@
-import { Platform, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Platform, StyleSheet, Text, TouchableOpacity, View, type ViewStyle } from "react-native";
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { Avatar } from "@/components/ui/Avatar";
@@ -9,6 +9,7 @@ interface WardrobeScreenHeaderProps {
   userName?: string;
   onSearchPress?: () => void;
   onAvatarPress?: () => void;
+  style?: ViewStyle;
 }
 
 export function WardrobeScreenHeader({
@@ -16,6 +17,7 @@ export function WardrobeScreenHeader({
   userName = "Alex",
   onSearchPress,
   onAvatarPress,
+  style,
 }: WardrobeScreenHeaderProps) {
   const handleAvatarPress = () => {
     if (onAvatarPress) {
@@ -26,7 +28,7 @@ export function WardrobeScreenHeader({
   };
 
   return (
-    <View style={styles.header}>
+    <View style={[styles.header, style]}>
       {/* Left: High-Contrast Serif STYRA Logo */}
       <Text style={styles.logoText}>STYRA</Text>
 

@@ -5,7 +5,7 @@
  */
 
 import * as Notifications from "expo-notifications";
-import { Linking, Platform } from "react-native";
+import { Alert, Linking, Platform } from "react-native";
 
 export type NotificationPermissionStatus =
   | "granted"
@@ -18,9 +18,12 @@ export type NotificationPermissionStatus =
 export async function getNotificationPermissionStatus(): Promise<NotificationPermissionStatus> {
   try {
     const { status } = await Notifications.getPermissionsAsync();
+    console.log("[NotificationService] getPermissions status:", status);
     return mapStatus(status);
-  } catch {
-    return "denied";
+  } catch (error) {
+    console.warn("[NotificationService] getPermissionsAsync failed:", error);
+    // Return undetermined instead of denied so we still attempt to request
+    return "undetermined";
   }
 }
 
@@ -30,6 +33,7 @@ export async function getNotificationPermissionStatus(): Promise<NotificationPer
  */
 export async function requestNotificationPermission(): Promise<NotificationPermissionStatus> {
   try {
+    console.log("[NotificationService] Requesting notification permission...");
     const { status } = await Notifications.requestPermissionsAsync({
       ios: {
         allowAlert: true,
@@ -37,8 +41,23 @@ export async function requestNotificationPermission(): Promise<NotificationPermi
         allowSound: true,
       },
     });
+    console.log("[NotificationService] requestPermissions result:", status);
     return mapStatus(status);
-  } catch {
+  } catch (error) {
+    console.warn("[NotificationService] requestPermissionsAsync failed:", error);
+
+    // On simulators / Expo Go, push-notification APIs can fail.
+    // Show a user-visible alert so the failure isn't invisible.
+    if (__DEV__) {
+      Alert.alert(
+        "Notification Permission Error",
+        "Could not request notification permission. " +
+          "Push notifications are not supported on the iOS Simulator. " +
+          "Please test on a physical device or a development build.\n\n" +
+          `Error: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
+
     return "denied";
   }
 }
@@ -55,8 +74,8 @@ export async function openNotificationSettings(): Promise<void> {
     } else {
       await Linking.openSettings();
     }
-  } catch {
-    // Silently swallow — settings navigation is best-effort
+  } catch (error) {
+    console.warn("[NotificationService] openSettings failed:", error);
   }
 }
 

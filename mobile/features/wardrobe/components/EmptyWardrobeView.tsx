@@ -10,9 +10,17 @@ import {
 } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { colors, radius, spacing, typography } from "@/theme";
+import { SearchBar } from "@/components/ui/SearchBar";
+import { WardrobeScreenHeader } from "./WardrobeScreenHeader";
 
 interface EmptyWardrobeViewProps {
   onAddClothing: () => void;
+  userAvatar?: string | null;
+  userName?: string;
+  onSearchPress?: () => void;
+  showSearch?: boolean;
+  searchQuery?: string;
+  onSearchChangeText?: (text: string) => void;
 }
 
 const HERO_CLOSET_IMAGE = "https://images.unsplash.com/photo-1558769132-cb1aea458c5e?q=80&w=800&auto=format&fit=crop";
@@ -26,12 +34,41 @@ const CATEGORY_CHIPS = [
   "Accessories (0)",
 ];
 
-export function EmptyWardrobeView({ onAddClothing }: EmptyWardrobeViewProps) {
+export function EmptyWardrobeView({
+  onAddClothing,
+  userAvatar,
+  userName,
+  onSearchPress,
+  showSearch,
+  searchQuery,
+  onSearchChangeText,
+}: EmptyWardrobeViewProps) {
   return (
     <ScrollView
       contentContainerStyle={styles.scrollContent}
       showsVerticalScrollIndicator={false}
     >
+      {/* ── Top Header Bar ── */}
+      <WardrobeScreenHeader
+        userAvatar={userAvatar}
+        userName={userName}
+        onSearchPress={onSearchPress}
+        style={styles.embeddedHeader}
+      />
+
+      {/* Optional Search Bar Toggle */}
+      {showSearch && onSearchChangeText && (
+        <View style={styles.searchContainer}>
+          <SearchBar
+            value={searchQuery || ""}
+            onChangeText={onSearchChangeText}
+            placeholder="Search wardrobe..."
+            autoFocus
+            testID="wardrobe-search-input"
+          />
+        </View>
+      )}
+
       {/* ── Top Hero Card ── */}
       <View style={styles.heroCard}>
         <Image
@@ -107,8 +144,16 @@ export function EmptyWardrobeView({ onAddClothing }: EmptyWardrobeViewProps) {
 const styles = StyleSheet.create({
   scrollContent: {
     paddingHorizontal: spacing.xl,
-    paddingTop: spacing.sm,
+    paddingTop: spacing.xs,
     paddingBottom: 120,
+  },
+  embeddedHeader: {
+    paddingHorizontal: 0,
+    paddingTop: spacing.xs,
+    paddingBottom: spacing.sm,
+  },
+  searchContainer: {
+    marginBottom: spacing.md,
   },
   heroCard: {
     backgroundColor: "#F7F5F0",

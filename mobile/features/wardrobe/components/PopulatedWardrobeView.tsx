@@ -15,7 +15,9 @@ import { Ionicons } from "@expo/vector-icons";
 import type { ClothingItemBrief } from "@/lib/types";
 import { colors, radius, spacing, typography } from "@/theme";
 import { ClothingCard } from "@/components/wardrobe/ClothingCard";
+import { SearchBar } from "@/components/ui/SearchBar";
 import { CategoryItemsSheet } from "./CategoryItemsSheet";
+import { WardrobeScreenHeader } from "./WardrobeScreenHeader";
 
 interface PopulatedWardrobeViewProps {
   items: ClothingItemBrief[];
@@ -25,6 +27,12 @@ interface PopulatedWardrobeViewProps {
   onPressItem: (id: string) => void;
   onLongPressItem: (id: string) => void;
   onAddClothing: () => void;
+  userAvatar?: string | null;
+  userName?: string;
+  onSearchPress?: () => void;
+  showSearch?: boolean;
+  searchQuery?: string;
+  onSearchChangeText?: (text: string) => void;
 }
 
 const DEFAULT_CATEGORY_IMAGES = {
@@ -125,6 +133,12 @@ export function PopulatedWardrobeView({
   onPressItem,
   onLongPressItem,
   onAddClothing,
+  userAvatar,
+  userName,
+  onSearchPress,
+  showSearch,
+  searchQuery,
+  onSearchChangeText,
 }: PopulatedWardrobeViewProps) {
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [sheetCategoryKey, setSheetCategoryKey] = useState<string | null>(null);
@@ -198,6 +212,27 @@ export function PopulatedWardrobeView({
   const ListHeaderComponent = useMemo(
     () => (
       <View style={styles.headerContainer}>
+        {/* Top Header Bar (STYRA Logo + Search + Profile Avatar) */}
+        <WardrobeScreenHeader
+          userAvatar={userAvatar}
+          userName={userName}
+          onSearchPress={onSearchPress}
+          style={styles.embeddedHeader}
+        />
+
+        {/* Optional Search Bar Toggle */}
+        {showSearch && onSearchChangeText && (
+          <View style={styles.searchContainer}>
+            <SearchBar
+              value={searchQuery || ""}
+              onChangeText={onSearchChangeText}
+              placeholder="Search wardrobe..."
+              autoFocus
+              testID="wardrobe-search-input"
+            />
+          </View>
+        )}
+
         {/* Title Header */}
         <View style={styles.titleSection}>
           <Text style={styles.mainTitle}>Your Wardrobe</Text>
@@ -374,7 +409,17 @@ export function PopulatedWardrobeView({
         </View>
       </View>
     ),
-    [categoryStats, selectedCategory, selectedCategoryLabel],
+    [
+      categoryStats,
+      selectedCategory,
+      selectedCategoryLabel,
+      userAvatar,
+      userName,
+      onSearchPress,
+      showSearch,
+      searchQuery,
+      onSearchChangeText,
+    ],
   );
 
   // ── List Empty Component for Specific Category ──
@@ -455,13 +500,21 @@ export function PopulatedWardrobeView({
 const styles = StyleSheet.create({
   flatListContent: {
     paddingHorizontal: spacing.xl,
-    paddingTop: spacing.sm,
+    paddingTop: spacing.xs,
     paddingBottom: 140,
   },
   columnWrapper: {
     justifyContent: "space-between",
   },
   headerContainer: {
+    marginBottom: spacing.md,
+  },
+  embeddedHeader: {
+    paddingHorizontal: 0,
+    paddingTop: spacing.xs,
+    paddingBottom: spacing.sm,
+  },
+  searchContainer: {
     marginBottom: spacing.md,
   },
   titleSection: {

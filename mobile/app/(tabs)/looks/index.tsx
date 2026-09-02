@@ -65,22 +65,25 @@ export default function SavedLooksListScreen() {
   // Header component inside FlatList so it scrolls with content in State 2
   const ListHeaderComponent = useMemo(
     () => (
-      <View>
+      <View style={{ paddingHorizontal: spacing.xl }}>
+        <WardrobeScreenHeader
+          userAvatar={userAvatar}
+          userName={userName}
+          style={{ paddingHorizontal: 0 }}
+        />
         <SavedLooksHeaderSection count={looks.length} />
       </View>
     ),
-    [looks.length],
+    [looks.length, userAvatar, userName],
   );
 
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
       <View style={styles.container}>
-        {/* Top Navigation Bar: STYRA Logo + Avatar */}
-        <WardrobeScreenHeader userAvatar={userAvatar} userName={userName} />
-
         {/* Content Area */}
         {loading ? (
           <View style={styles.skeletonWrapper}>
+            <WardrobeScreenHeader userAvatar={userAvatar} userName={userName} style={{ paddingHorizontal: 0 }} />
             <LoadingSkeletonCard />
           </View>
         ) : error && looks.length === 0 ? (
@@ -88,10 +91,10 @@ export default function SavedLooksListScreen() {
             <ErrorMessage message={error} onRetry={actions.refresh} />
           </View>
         ) : looks.length === 0 ? (
-          /* STATE 1: EMPTY SAVED LOOKS (IMAGE 1) - No Search/Filter, Header section scrolls inside EmptySavedLooksView */
-          <EmptySavedLooksView />
+          /* STATE 1: EMPTY SAVED LOOKS (IMAGE 1) */
+          <EmptySavedLooksView userAvatar={userAvatar} userName={userName} />
         ) : (
-          /* STATE 2: SAVED LOOKS AVAILABLE (IMAGE 2) - Search/Filter & Header section scroll inside FlatList */
+          /* STATE 2: SAVED LOOKS AVAILABLE (IMAGE 2) */
           <FlatList
             data={dateGroups}
             keyExtractor={(group) => group.title}

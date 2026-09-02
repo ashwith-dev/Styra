@@ -7,18 +7,22 @@ export function ProfileTopHeader() {
   return (
     <View style={styles.header}>
       <Text style={styles.logoText}>STYRA</Text>
-
-      <TouchableOpacity
-        onPress={() => router.push("/settings")}
-        style={styles.settingsBtn}
-        activeOpacity={0.7}
-        accessibilityRole="button"
-        accessibilityLabel="Settings"
-        testID="profile-settings-btn"
-      >
-        <Ionicons name="settings-outline" size={20} color="#1A1A1A" />
-      </TouchableOpacity>
     </View>
+  );
+}
+
+export function StickySettingsButton() {
+  return (
+    <TouchableOpacity
+      onPress={() => router.push("/settings")}
+      style={styles.stickySettingsBtn}
+      activeOpacity={0.8}
+      accessibilityRole="button"
+      accessibilityLabel="Settings"
+      testID="profile-settings-btn"
+    >
+      <Ionicons name="settings-outline" size={20} color="#1A1A1A" />
+    </TouchableOpacity>
   );
 }
 
@@ -27,9 +31,8 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: spacing.xl,
-    paddingTop: spacing.md,
-    paddingBottom: spacing.sm,
+    paddingTop: spacing.xs,
+    paddingBottom: spacing.md,
   },
   logoText: {
     fontFamily: Platform.OS === "ios" ? "Georgia" : "serif",
@@ -39,12 +42,21 @@ const styles = StyleSheet.create({
     color: "#000000",
     textTransform: "uppercase",
   },
-  settingsBtn: {
+  stickySettingsBtn: {
+    position: "absolute",
+    top: spacing.xs,
+    right: spacing.xl,
+    zIndex: 100,
     width: 38,
     height: 38,
     borderRadius: 19,
     backgroundColor: "#F4F1EA",
     alignItems: "center",
     justifyContent: "center",
+    shadowColor: "#000000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 6,
+    elevation: 4,
   },
 });

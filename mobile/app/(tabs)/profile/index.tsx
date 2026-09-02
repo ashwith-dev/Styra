@@ -13,6 +13,7 @@ import {
   HeightWeightRulerModal,
   ProfileHeroCard,
   ProfileTopHeader,
+  StickySettingsButton,
   SelectionModal,
   SizeMultiSelectionModal,
   useProfileData,
@@ -368,13 +369,15 @@ export default function ProfileScreen() {
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
       <View style={styles.container}>
-        {/* Top Header: STYRA Logo + Settings Button */}
-        <ProfileTopHeader />
+        {/* Sticky Settings Button on Top Right */}
+        <StickySettingsButton />
 
         <ScrollView
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
         >
+          {/* Top STYRA Logo Header (Scrolls naturally with profile content) */}
+          <ProfileTopHeader />
           {/* Profile Hero Card (Avatar, Name, Email, Edit Button) */}
           <ProfileHeroCard
             user={user}
