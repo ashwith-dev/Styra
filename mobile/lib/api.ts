@@ -18,9 +18,12 @@ import type {
 import { AppError } from "./errors";
 
 function resolveApiUrl(): string {
-  // Physical devices in Expo Go reach the dev machine over Wi-Fi via the
-  // packager host IP. This takes precedence: an env var pointing at
-  // localhost/10.0.2.2 is unreachable from a phone.
+  // 1. If an explicit cloud/remote URL (https://) is configured in .env, use it directly
+  if (process.env.EXPO_PUBLIC_API_URL && process.env.EXPO_PUBLIC_API_URL.startsWith("https://")) {
+    return process.env.EXPO_PUBLIC_API_URL.replace(/\/$/, "");
+  }
+
+  // 2. Physical devices in Expo Go reach dev machine over Wi-Fi
   const hostUri = Constants.expoConfig?.hostUri || (Constants as unknown as Record<string, any>).manifest2?.extra?.expoGo?.debuggerHost;
   if (hostUri) {
     const hostIp = String(hostUri).split(":")[0];
@@ -30,7 +33,7 @@ function resolveApiUrl(): string {
   }
 
   if (process.env.EXPO_PUBLIC_API_URL) {
-    const envUrl = process.env.EXPO_PUBLIC_API_URL;
+    const envUrl = process.env.EXPO_PUBLIC_API_URL.replace(/\/$/, "");
     if (Platform.OS === "android" && envUrl.includes("localhost")) {
       return envUrl.replace("localhost", "10.0.2.2");
     }
