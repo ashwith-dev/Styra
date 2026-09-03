@@ -1,8 +1,6 @@
 name: Trigger auto deployment for styra-backend
 
-# When this action will be executed
 on:
-  # Automatically trigger it when detected changes in repo
   push:
     branches: 
       [ main ]
@@ -10,19 +8,38 @@ on:
       - 'backend/**'
       - '.github/workflows/styra-backend-AutoDeployTrigger-a5a779ac-9cb9-4321-bb6b-7480ca0ba4f9.yml'
 
-  # Allow manual trigger 
   workflow_dispatch:      
 
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
     permissions: 
-      id-token: write # This is required for requesting the OIDC JWT Token
-      contents: read  # Required when GH token is used to authenticate with private repo
+      id-token: write # Required for Azure OIDC login
+      contents: read
+      packages: write # Required to push image to GitHub Packages
 
     steps:
-      - name: Checkout to the branch
+      - name: Checkout repository
         uses: actions/checkout@v4
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set lower case repository name
+        run: |
+          echo "REPO_LOWER=$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend
+          file: ./backend/Dockerfile
+          push: true
+          tags: ghcr.io/${{ env.REPO_LOWER }}/backend:${{ github.sha }}
 
       - name: Azure Login
         uses: azure/login@v2
@@ -31,14 +48,16 @@ jobs:
           tenant-id: ${{ secrets.STYRABACKEND_AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.STYRABACKEND_AZURE_SUBSCRIPTION_ID }}
 
-      - name: Build and deploy container app
+      - name: Deploy to Azure Container App
         uses: azure/container-apps-deploy-action@v2
         with:
-          appSourcePath: ${{ github.workspace }}/backend
-          dockerfilePath: Dockerfile
+          imageToDeploy: ghcr.io/${{ env.REPO_LOWER }}/backend:${{ github.sha }}
           containerAppName: styra-backend
           resourceGroup: clothing-app-rg
-          imageToBuild: styra-backend:${{ github.sha }}
+          registryUrl: ghcr.io
+          registryUsername: ${{ github.actor }}
+          registryPassword: ${{ secrets.GITHUB_TOKEN }}
+
 
 
 
