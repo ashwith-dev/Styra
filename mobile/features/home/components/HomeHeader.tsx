@@ -10,6 +10,7 @@ export function HomeHeader({
   userAvatar,
   greetingTime,
   liveTemp,
+  userFitPreference,
   userLifestyle,
   onContextTagPress,
 }: HomeHeaderProps) {
@@ -21,13 +22,14 @@ export function HomeHeader({
     ? formattedName.charAt(0).toUpperCase() + formattedName.slice(1).toLowerCase()
     : "Alex";
 
-  const lifestyleLabel = userLifestyle
-    ? userLifestyle.charAt(0).toUpperCase() + userLifestyle.slice(1).toLowerCase()
-    : "COLLEGE";
+  // Display user's selected fit preference (e.g. "SLIM", "REGULAR", "OVERSIZED"),
+  // with fallback to lifestyle or "REGULAR"
+  const rawPreference = userFitPreference || userLifestyle || "REGULAR";
+  const preferenceLabel = rawPreference.toUpperCase();
 
-  // When live temp is not loaded/available, show '_' (e.g. "_ • COLLEGE")
+  // When live temp is not loaded/available, show '_' (e.g. "_ • REGULAR")
   const tempLabel = liveTemp ?? "_";
-  const contextText = `${tempLabel} • ${lifestyleLabel}`;
+  const contextText = `${tempLabel} • ${preferenceLabel}`;
 
   const isTappable = Boolean(onContextTagPress);
 

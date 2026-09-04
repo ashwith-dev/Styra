@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { getCachedWardrobeCategoryCount, useWardrobe } from "@/hooks/useWardrobe";
 import { useAuth } from "@/providers/AuthProvider";
 import { getPreferences } from "@/lib/storage/preferences";
+import { getOnboardingState } from "@/lib/storage/onboarding";
 import {
   validateMinimumWardrobe,
   type WardrobeValidationResult,
@@ -31,6 +32,7 @@ export interface HomeViewModel {
     greetingTime: string;
     signOut: () => Promise<void>;
     lifestyle: string | null;
+    fitPreference: string | null;
   };
   stats: {
     totalItems: number;
@@ -49,21 +51,30 @@ export function useHomeData(): HomeViewModel {
   const { user, signOut } = useAuth();
   const { allItems, loading, error, refresh, confirmDelete } = useWardrobe();
   const [userLifestyle, setUserLifestyle] = useState<string | null>(null);
+  const [userFitPreference, setUserFitPreference] = useState<string | null>(null);
 
   useEffect(() => {
     let mounted = true;
     void (async () => {
       try {
         const prefs = await getPreferences();
-        if (mounted && prefs.lifestyle) {
-          setUserLifestyle(prefs.lifestyle);
+        if (mounted) {
+          if (prefs.lifestyle) setUserLifestyle(prefs.lifestyle);
+          if (prefs.fitPreference) {
+            setUserFitPreference(prefs.fitPreference);
+          } else if (user?.id) {
+            const ob = await getOnboardingState(user.id);
+            if (ob?.selections?.preferredFit) {
+              setUserFitPreference(String(ob.selections.preferredFit));
+            }
+          }
         }
       } catch {
-        // Non-fatal — lifestyle label is cosmetic
+        // Non-fatal — preferences label is cosmetic
       }
     })();
     return () => { mounted = false; };
-  }, []);
+  }, [user?.id]);
 
   const greetingTime = useMemo(() => getGreetingTime(), []);
 
@@ -122,6 +133,7 @@ export function useHomeData(): HomeViewModel {
       greetingTime,
       signOut,
       lifestyle: userLifestyle,
+      fitPreference: userFitPreference,
     },
     stats: {
       totalItems,

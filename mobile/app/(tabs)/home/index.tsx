@@ -260,13 +260,14 @@ export default function HomeScreen() {
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
         >
-          {/* Header with live temp or '_ • COLLEGE' when not fetched yet */}
+          {/* Header with live temp or '_ • REGULAR' when not fetched yet */}
           <HomeHeader
             userName={user.name}
             userAvatar={user.avatar}
             greetingTime={user.greetingTime}
             onSignOut={user.signOut}
             liveTemp={weatherData?.temperatureDisplay ?? null}
+            userFitPreference={user.fitPreference}
             userLifestyle={user.lifestyle}
             onContextTagPress={triggerLocationWeather}
           />

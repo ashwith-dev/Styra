@@ -10,9 +10,11 @@ export interface HomeHeaderProps {
   onSignOut?: () => void;
   /** Live temperature display string, e.g. "29°C" */
   liveTemp?: string | null;
-  /** User's lifestyle preference to show in context tag */
+  /** User's fit preference to show in context tag (e.g. "SLIM", "REGULAR", "OVERSIZED") */
+  userFitPreference?: string | null;
+  /** User's lifestyle preference to show in context tag (legacy/fallback) */
   userLifestyle?: string | null;
-  /** Called when user taps the context tag (temp/lifestyle row) */
+  /** Called when user taps the context tag (temp/fit row) */
   onContextTagPress?: () => void;
 }
 

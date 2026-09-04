@@ -2,7 +2,7 @@ import { useRef, useState } from "react";
 import type { TextInput } from "react-native";
 import { router } from "expo-router";
 import { useAuth } from "@/providers/AuthProvider";
-import { saveOnboardingState } from "@/lib/storage/onboarding";
+import { getOnboardingState, saveOnboardingState } from "@/lib/storage/onboarding";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -84,12 +84,13 @@ export function useSignInForm() {
 
         // Existing user signing in: Automatically mark onboarding as completed for this user
         if (user?.id) {
+          const existing = await getOnboardingState(user.id);
           await saveOnboardingState(user.id, {
-            currentStep: 7,
-            totalSteps: 7,
-            completedSteps: [1, 2, 3, 4, 5, 6, 7],
+            currentStep: 8,
+            totalSteps: 8,
+            completedSteps: [1, 2, 3, 4, 5, 6, 7, 8],
             completed: true,
-            selections: {
+            selections: existing?.selections ?? {
               preferredStyles: [],
               preferredColors: [],
             },

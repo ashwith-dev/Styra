@@ -1,5 +1,7 @@
+import { useEffect } from "react";
 import { ActivityIndicator, StyleSheet } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { router } from "expo-router";
 import {
   Step1Welcome,
   Step2Lifestyle,
@@ -13,9 +15,15 @@ import {
 } from "@/features/onboarding";
 
 export default function OnboardingScreen() {
-  const { currentStep, selections, loading, actions } = useOnboarding();
+  const { currentStep, selections, loading, completed, actions } = useOnboarding();
 
-  if (loading) {
+  useEffect(() => {
+    if (!loading && completed) {
+      router.replace("/home");
+    }
+  }, [loading, completed]);
+
+  if (loading || completed) {
     return (
       <SafeAreaView style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#1A1A1A" />

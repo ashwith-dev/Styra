@@ -30,9 +30,9 @@ function RootNavigator() {
         contentStyle: { backgroundColor: "#F7F5F0" },
       }}
     >
-      <Stack.Screen name="auth" redirect={!!session} />
-      <Stack.Screen name="onboarding" redirect={!session} />
+      <Stack.Screen name="auth" />
       <Stack.Screen name="(tabs)" redirect={!session} options={{ animation: "none" }} />
+      <Stack.Screen name="onboarding" redirect={!session} />
       <Stack.Screen name="recommendations" redirect={!session} />
       <Stack.Screen name="outfits" redirect={!session} />
       <Stack.Screen name="upload" redirect={!session} />
