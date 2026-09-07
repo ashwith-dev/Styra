@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import {
   Animated,
   Image,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -142,8 +143,36 @@ export function InsufficientWardrobeDashboard({
         </Text>
       </View>
 
-      {/* Wardrobe Progress Card */}
+      {/* Unified AI Outfit Generator & Wardrobe Progress Card */}
       <View style={styles.progressCard}>
+        {/* Top Header: Tag & Locked Badge */}
+        <View style={styles.lockedCardHeader}>
+          <Text style={styles.lockedCardTag}>STITCH - DESIGN WITH AI</Text>
+          <View style={styles.lockedBadge}>
+            <Ionicons name="lock-closed" size={12} color={colors.textPrimary} />
+            <Text style={styles.lockedBadgeText}>LOCKED</Text>
+          </View>
+        </View>
+
+        {/* Visual Hero Area */}
+        <View style={styles.lockedVisualContainer}>
+          <View style={styles.lockIconCircle}>
+            <Ionicons
+              name="lock-closed-outline"
+              size={24}
+              color={colors.textPrimary}
+            />
+          </View>
+          <Text style={styles.lockedVisualTitle}>AI Outfit Generator</Text>
+          <Text style={styles.lockedVisualSubtitle}>
+            Locked — Unlock by adding: 2 Tops, 2 Bottoms, 1 Footwear
+          </Text>
+        </View>
+
+        {/* Section Divider */}
+        <View style={styles.sectionDivider} />
+
+        {/* Wardrobe Progress Section */}
         <View style={styles.progressCardHeader}>
           <Text style={styles.progressCardHeaderLabel}>WARDROBE PROGRESS</Text>
           <Ionicons name="analytics-outline" size={18} color="#7F7C76" />
@@ -235,153 +264,28 @@ export function InsufficientWardrobeDashboard({
         </TouchableOpacity>
       </View>
 
-      {/* Locked AI Outfit Generator Card */}
-      <View style={styles.lockedCard}>
-        <View style={styles.lockedCardHeader}>
-          <Text style={styles.lockedCardTag}>STITCH - DESIGN WITH AI</Text>
-          <View style={styles.lockedBadge}>
-            <Ionicons name="lock-closed" size={12} color={colors.textPrimary} />
-            <Text style={styles.lockedBadgeText}>LOCKED</Text>
-          </View>
+      {/* Informational Card 1: The Capsule Formula */}
+      <View style={styles.featureCard}>
+        <View style={styles.iconCircle}>
+          <Ionicons name="layers-outline" size={18} color={colors.textPrimary} />
         </View>
+        <Text style={styles.featureLabel}>THE CAPSULE FORMULA</Text>
+        <Text style={styles.featureTitle}>5 Pieces, 4 Daily Looks</Text>
+        <Text style={styles.featureBody}>
+          With 2 tops, 2 bottoms, and 1 footwear item, STYRA unlocks 4 complete outfits. Every added piece multiplies your rotation.
+        </Text>
+      </View>
 
-        {/* Visual Hero Area */}
-        <View style={styles.lockedVisualContainer}>
-          <View style={styles.lockIconCircle}>
-            <Ionicons
-              name="lock-closed-outline"
-              size={26}
-              color={colors.textPrimary}
-            />
-          </View>
-          <Text style={styles.lockedVisualTitle}>AI Outfit Generator</Text>
-          <Text style={styles.lockedVisualSubtitle}>
-            Locked — Unlock by adding: 2 Tops, 2 Bottoms, 1 Footwear
-          </Text>
+      {/* Informational Card 2: Photo Guidelines */}
+      <View style={styles.featureCard}>
+        <View style={styles.iconCircle}>
+          <Ionicons name="camera-outline" size={18} color={colors.textPrimary} />
         </View>
-
-        {/* Progress Requirements List (vertical rows) */}
-        <View style={styles.requirementsList}>
-          {/* Tops Row */}
-          <View
-            style={[
-              styles.reqRowPill,
-              topsCount >= requiredTops && styles.completedReqRowPill,
-            ]}
-          >
-            <View style={styles.reqRowLeft}>
-              <Ionicons
-                name={
-                  topsCount >= requiredTops
-                    ? "checkmark-circle"
-                    : "ellipse-outline"
-                }
-                size={18}
-                color={
-                  topsCount >= requiredTops
-                    ? colors.textPrimary
-                    : colors.textSecondary
-                }
-              />
-              <Text
-                style={[
-                  styles.reqRowLabel,
-                  topsCount >= requiredTops && styles.completedReqRowLabel,
-                ]}
-              >
-                Tops
-              </Text>
-            </View>
-            <Text
-              style={[
-                styles.reqRowValue,
-                topsCount >= requiredTops && styles.completedReqRowValue,
-              ]}
-            >
-              {topsCount} / {requiredTops}
-            </Text>
-          </View>
-
-          {/* Bottoms Row */}
-          <View
-            style={[
-              styles.reqRowPill,
-              bottomsCount >= requiredBottoms && styles.completedReqRowPill,
-            ]}
-          >
-            <View style={styles.reqRowLeft}>
-              <Ionicons
-                name={
-                  bottomsCount >= requiredBottoms
-                    ? "checkmark-circle"
-                    : "ellipse-outline"
-                }
-                size={18}
-                color={
-                  bottomsCount >= requiredBottoms
-                    ? colors.textPrimary
-                    : colors.textSecondary
-                }
-              />
-              <Text
-                style={[
-                  styles.reqRowLabel,
-                  bottomsCount >= requiredBottoms && styles.completedReqRowLabel,
-                ]}
-              >
-                Bottoms
-              </Text>
-            </View>
-            <Text
-              style={[
-                styles.reqRowValue,
-                bottomsCount >= requiredBottoms && styles.completedReqRowValue,
-              ]}
-            >
-              {bottomsCount} / {requiredBottoms}
-            </Text>
-          </View>
-
-          {/* Footwear Row */}
-          <View
-            style={[
-              styles.reqRowPill,
-              footwearCount >= requiredFootwear && styles.completedReqRowPill,
-            ]}
-          >
-            <View style={styles.reqRowLeft}>
-              <Ionicons
-                name={
-                  footwearCount >= requiredFootwear
-                    ? "checkmark-circle"
-                    : "ellipse-outline"
-                }
-                size={18}
-                color={
-                  footwearCount >= requiredFootwear
-                    ? colors.textPrimary
-                    : colors.textSecondary
-                }
-              />
-              <Text
-                style={[
-                  styles.reqRowLabel,
-                  footwearCount >= requiredFootwear && styles.completedReqRowLabel,
-                ]}
-              >
-                Footwear
-              </Text>
-            </View>
-            <Text
-              style={[
-                styles.reqRowValue,
-                footwearCount >= requiredFootwear && styles.completedReqRowValue,
-              ]}
-            >
-              {footwearCount} / {requiredFootwear}
-            </Text>
-          </View>
-        </View>
+        <Text style={styles.featureLabel}>PHOTO GUIDELINES</Text>
+        <Text style={styles.featureTitle}>Natural Light & Flat Lay</Text>
+        <Text style={styles.featureBody}>
+          Photograph one piece at a time in daylight on a flat surface for true color accuracy and clean silhouette detection.
+        </Text>
       </View>
     </Animated.View>
   );
@@ -559,11 +463,6 @@ const styles = StyleSheet.create({
     color: "#787571",
     paddingHorizontal: 2,
   },
-  lockedCard: {
-    ...neumorphicStyles.raised,
-    borderRadius: 32,
-    padding: spacing.lg,
-  },
   lockedCardHeader: {
     flexDirection: "row",
     alignItems: "center",
@@ -595,22 +494,19 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
   },
   lockedVisualContainer: {
-    ...neumorphicStyles.subtle,
-    borderRadius: 24,
-    paddingVertical: spacing.xl,
-    paddingHorizontal: spacing.lg,
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: spacing.md,
+    paddingTop: spacing.xs,
+    paddingBottom: spacing.sm,
   },
   lockIconCircle: {
-    ...neumorphicStyles.raised,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: "rgba(20, 20, 18, 0.05)",
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: spacing.md,
+    marginBottom: spacing.sm,
   },
   lockedVisualTitle: {
     fontFamily: "serif",
@@ -626,45 +522,49 @@ const styles = StyleSheet.create({
     fontStyle: "italic",
     color: "#787571",
     textAlign: "center",
+    lineHeight: 18,
+    paddingHorizontal: spacing.sm,
   },
-  requirementsList: {
-    gap: spacing.md,
+  sectionDivider: {
+    height: 1,
+    backgroundColor: "rgba(20, 20, 18, 0.07)",
+    marginVertical: spacing.lg,
   },
-  reqRowPill: {
+  featureCard: {
+    ...neumorphicStyles.raised,
+    borderRadius: 24,
+    padding: spacing.xl,
+    marginBottom: spacing.lg,
+  },
+  iconCircle: {
     ...neumorphicStyles.subtle,
-    flexDirection: "row",
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     alignItems: "center",
-    justifyContent: "space-between",
-    paddingVertical: 14,
-    paddingHorizontal: spacing.lg,
-    borderRadius: 20,
+    justifyContent: "center",
+    marginBottom: spacing.md,
   },
-  completedReqRowPill: {
-    backgroundColor: "#FFFFFF",
-    borderColor: "rgba(63, 125, 88, 0.4)",
-    borderWidth: 1,
-  },
-  reqRowLeft: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.sm,
-  },
-  reqRowLabel: {
-    ...typography.body,
-    fontSize: 14,
-    fontWeight: "600",
-    color: colors.textSecondary,
-  },
-  completedReqRowLabel: {
-    color: colors.textPrimary,
-  },
-  reqRowValue: {
-    ...typography.body,
-    fontSize: 14,
+  featureLabel: {
+    ...typography.caption,
+    fontSize: 10,
     fontWeight: "700",
-    color: colors.textSecondary,
+    letterSpacing: 1.4,
+    color: "#7F7C76",
+    textTransform: "uppercase",
+    marginBottom: 4,
   },
-  completedReqRowValue: {
+  featureTitle: {
+    fontFamily: Platform.OS === "ios" ? "Georgia" : "serif",
+    fontSize: 18,
+    fontWeight: "700",
     color: colors.textPrimary,
+    marginBottom: 6,
+  },
+  featureBody: {
+    ...typography.body,
+    fontSize: 13,
+    color: colors.textSecondary,
+    lineHeight: 20,
   },
 });

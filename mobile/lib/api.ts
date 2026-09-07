@@ -24,18 +24,25 @@ function resolveApiUrl(): string {
   }
 
   // 2. Physical devices in Expo Go reach dev machine over Wi-Fi
-  const hostUri = Constants.expoConfig?.hostUri || (Constants as unknown as Record<string, any>).manifest2?.extra?.expoGo?.debuggerHost;
-  if (hostUri) {
-    const hostIp = String(hostUri).split(":")[0];
-    if (hostIp && hostIp !== "localhost" && hostIp !== "127.0.0.1") {
+  const rawHost =
+    Constants.expoConfig?.hostUri ||
+    (Constants as unknown as Record<string, any>).manifest2?.extra?.expoGo?.debuggerHost ||
+    (Constants as unknown as Record<string, any>).manifest?.debuggerHost;
+
+  if (rawHost) {
+    const hostIp = String(rawHost).replace(/^[a-zA-Z]+:\/\//, "").split(":")[0];
+    if (hostIp && hostIp !== "localhost" && hostIp !== "127.0.0.1" && hostIp !== "0.0.0.0") {
       return `http://${hostIp}:8000`;
     }
   }
 
   if (process.env.EXPO_PUBLIC_API_URL) {
-    const envUrl = process.env.EXPO_PUBLIC_API_URL.replace(/\/$/, "");
-    if (Platform.OS === "android" && envUrl.includes("localhost")) {
-      return envUrl.replace("localhost", "10.0.2.2");
+    let envUrl = process.env.EXPO_PUBLIC_API_URL.replace(/\/$/, "");
+    if (envUrl.includes("0.0.0.0")) {
+      envUrl = envUrl.replace("0.0.0.0", "localhost");
+    }
+    if (Platform.OS === "android" && (envUrl.includes("localhost") || envUrl.includes("127.0.0.1"))) {
+      return envUrl.replace(/localhost|127\.0\.0\.1/, "10.0.2.2");
     }
     return envUrl;
   }

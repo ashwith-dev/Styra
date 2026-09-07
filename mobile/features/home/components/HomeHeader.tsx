@@ -27,10 +27,8 @@ export function HomeHeader({
   const rawPreference = userFitPreference || userLifestyle || "REGULAR";
   const preferenceLabel = rawPreference.toUpperCase();
 
-  // When live temp is not loaded/available, show '_' (e.g. "_ • REGULAR")
-  const tempLabel = liveTemp ?? "_";
-  const contextText = `${tempLabel} • ${preferenceLabel}`;
-
+  // When live temp is not loaded/available, show red 'TEMP' as a tappable prompt
+  const hasTemp = Boolean(liveTemp);
   const isTappable = Boolean(onContextTagPress);
 
   return (
@@ -62,18 +60,27 @@ export function HomeHeader({
         </Text>
 
         <View style={styles.subMetaRow}>
-          <TouchableOpacity
-            onPress={onContextTagPress}
-            disabled={!isTappable}
-            activeOpacity={0.6}
-            accessibilityRole="button"
-            accessibilityLabel={`Location weather status: ${contextText}. Tap to update location.`}
-            hitSlop={{ top: 8, bottom: 8, left: 0, right: 0 }}
-          >
-            <Text style={[styles.contextTag, !liveTemp && styles.contextTagTappable]}>
-              • HOME  {contextText}
-            </Text>
-          </TouchableOpacity>
+          {/* Temp part: red + tappable when no location, normal when available */}
+          {hasTemp ? (
+            <Text style={styles.contextTag}>{liveTemp}</Text>
+          ) : (
+            <TouchableOpacity
+              onPress={onContextTagPress}
+              disabled={!isTappable}
+              activeOpacity={0.6}
+              accessibilityRole="button"
+              accessibilityLabel="Tap to enable location and get live temperature"
+              hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
+            >
+              <Text style={[styles.contextTag, styles.tempUnavailable]}>TEMP</Text>
+            </TouchableOpacity>
+          )}
+
+          {/* Pipe separator */}
+          <Text style={styles.contextSeparator}> | </Text>
+
+          {/* Fit preference — always static */}
+          <Text style={styles.contextTag}>{preferenceLabel}</Text>
         </View>
       </View>
     </View>
@@ -136,7 +143,15 @@ const styles = StyleSheet.create({
     color: homeTokens.textSecondary,
     textTransform: "uppercase",
   },
-  contextTagTappable: {
+  contextSeparator: {
+    ...typography.caption,
+    fontSize: 11,
+    fontWeight: "400",
+    color: homeTokens.textSecondary,
+    opacity: 0.5,
+  },
+  tempUnavailable: {
+    color: "#D94F3D",
     textDecorationLine: "underline",
     textDecorationStyle: "dotted",
   },

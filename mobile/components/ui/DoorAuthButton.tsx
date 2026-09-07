@@ -187,7 +187,7 @@ export function DoorAuthButton({
   // Interpolations
   const doorRotateY = doorRotate.interpolate({
     inputRange: [0, 1],
-    outputRange: ["0deg", "-75deg"],
+    outputRange: ["0deg", "-85deg"],
   });
 
   const leftLegAngle = legSwing.interpolate({
@@ -251,7 +251,12 @@ export function DoorAuthButton({
               style={[
                 styles.doorPanel,
                 {
-                  transform: [{ rotateY: doorRotateY }],
+                  transform: [
+                    { translateX: 10 },
+                    { perspective: 200 },
+                    { rotateY: doorRotateY },
+                    { translateX: -10 },
+                  ],
                 },
               ]}
             >
@@ -364,7 +369,6 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: "rgba(255, 255, 255, 0.6)",
     borderRadius: 3,
-    overflow: "hidden",
   },
   doorCavity: {
     ...StyleSheet.absoluteFillObject,
@@ -375,7 +379,8 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     borderRadius: 2,
     justifyContent: "center",
-    paddingLeft: 2,
+    paddingRight: 2,
+    alignItems: "flex-end",
   },
   doorHandle: {
     width: 3,
